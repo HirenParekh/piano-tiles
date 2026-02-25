@@ -1,0 +1,42 @@
+@use 'variables' as *;
+
+.dropzone {
+  border: 2px dashed $border;
+  border-radius: $radius;
+  padding: 5rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  max-width: 520px;
+  margin: 0 auto;
+
+  &:hover,
+  &--active {
+    border-color: $accent;
+    background: rgba($accent, 0.04);
+  }
+
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &__icon {
+    font-size: 3.5rem;
+    color: $accent;
+    margin-bottom: 1rem;
+  }
+
+  &__primary {
+    font-family: $font-disp;
+    font-size: 1.6rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+  }
+
+  &__secondary {
+    color: $muted;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+  }
+}

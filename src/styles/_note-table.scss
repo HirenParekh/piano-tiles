@@ -1,0 +1,132 @@
+@use 'variables' as *;
+
+.note-table {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem $pad-panel;
+    border-bottom: 1px solid $border;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__title {
+    font-family: $font-disp;
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+  }
+
+  &__count {
+    font-size: 11px;
+    color: $muted;
+  }
+
+  &__scroll {
+    overflow-x: auto;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  &__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 0.8rem;
+    border-top: 1px solid $border;
+    font-size: 12px;
+    color: $muted;
+
+    button {
+      background: transparent;
+      border: 1px solid $border;
+      color: $text;
+      font-family: $font-mono;
+      font-size: 11px;
+      padding: 0.3rem 0.8rem;
+      border-radius: $radius-xs;
+      cursor: pointer;
+      transition: border-color $transition, color $transition;
+
+      &:hover:not(:disabled) {
+        border-color: $accent;
+        color: $accent;
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: $muted;
+  padding: 0.6rem 1rem;
+  background: $surface2;
+  border-bottom: 1px solid $border;
+  white-space: nowrap;
+}
+
+td {
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid rgba($border, 0.5);
+  font-size: 12px;
+  white-space: nowrap;
+
+  &.muted    { color: $muted; }
+  &.note-name { color: $accent; font-weight: 700; }
+}
+
+tr {
+  &:last-child td { border-bottom: none; }
+  &:hover td { background: $surface2; }
+}
+
+// ── Lane badge ────────────────────────────────────────────────────────────
+.lane-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: $radius-xs;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+// ── Play button ───────────────────────────────────────────────────────────
+.play-btn {
+  background: transparent;
+  border: 1px solid $border;
+  color: $accent;
+  font-size: 11px;
+  padding: 0.2rem 0.6rem;
+  border-radius: $radius-xs;
+  cursor: pointer;
+  font-family: $font-mono;
+  transition: background $transition;
+
+  &:hover {
+    background: $accent;
+    color: $bg;
+    border-color: $accent;
+  }
+}

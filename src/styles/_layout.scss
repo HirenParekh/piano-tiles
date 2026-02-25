@@ -1,0 +1,106 @@
+@use 'variables' as *;
+
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    padding: 2rem $pad-page 1.5rem;
+    border-bottom: 1px solid $border;
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__subtitle {
+    font-size: 11px;
+    color: $muted;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  &__main {
+    flex: 1;
+    padding: $pad-page;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  &__footer {
+    padding: 1rem $pad-page;
+    border-top: 1px solid $border;
+    color: $muted;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+}
+
+.logo-mark {
+  font-size: 2.2rem;
+  color: $accent;
+  line-height: 1;
+}
+
+.logo-text {
+  font-family: $font-disp;
+  font-size: 2.6rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+
+  em {
+    font-style: normal;
+    color: $accent;
+  }
+}
+
+// ── Shared panel helpers ───────────────────────────────────────────────────
+.panel-title {
+  font-family: $font-disp;
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  color: $accent;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+}
+
+.hint {
+  font-size: 11px;
+  color: $muted;
+  letter-spacing: 0.05em;
+}
+
+.btn-row {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+// ── Game launch row ────────────────────────────────────────────────────────
+.game-launch {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+
+  &__hint {
+    font-size: 12px;
+    color: $muted;
+  }
+}

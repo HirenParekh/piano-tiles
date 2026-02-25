@@ -1,0 +1,251 @@
+@use "variables" as *;
+
+$lane-color-map: (
+  0: #1a1a1a,
+  1: #1a1a1a,
+  2: #1a1a1a,
+  3: #1a1a1a,
+);
+
+// ── Studio layout ──────────────────────────────────────────────────────────
+.studio {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+
+  &__table {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  &__board {
+    flex-shrink: 0;
+    width: 320px;
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+// ── Board shell ────────────────────────────────────────────────────────────
+.game-board {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 140px);
+  border: 1px solid $border;
+  border-radius: $radius;
+  overflow: hidden;
+  background: #f0eef8;
+
+  &__topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+    flex-shrink: 0;
+    gap: 0.5rem;
+  }
+
+  &__song {
+    font-family: $font-disp;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    color: #e74c3c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  &__score {
+    font-family: $font-disp;
+    font-size: 1.4rem;
+    color: #e74c3c;
+    white-space: nowrap;
+
+    span {
+      color: rgba(0, 0, 0, 0.25);
+      font-size: 0.85rem;
+    }
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  &__play-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background 0.15s,
+      transform 0.1s;
+
+    &:hover {
+      background: #333;
+      transform: scale(1.05);
+    }
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &--playing {
+      background: #e74c3c;
+      &:hover {
+        background: #c0392b;
+      }
+    }
+  }
+
+  &__viewport {
+    flex: 1;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    position: relative;
+    background: #f0eef8;
+
+    &::-webkit-scrollbar {
+      width: 3px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 2px;
+    }
+  }
+
+  &__canvas {
+    position: relative;
+    width: 100%;
+  }
+
+  &__lanes {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    pointer-events: none;
+  }
+
+  &__lane {
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    &:last-child {
+      border-right: none;
+    }
+  }
+
+  &__tile-lane {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 25%;
+
+    &--0 {
+      left: 0%;
+    }
+    &--1 {
+      left: 25%;
+    }
+    &--2 {
+      left: 50%;
+    }
+    &--3 {
+      left: 75%;
+    }
+  }
+
+  &__second-marker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.08);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  &__second-label {
+    position: absolute;
+    right: 6px;
+    top: -9px;
+    font-size: 9px;
+    color: rgba(0, 0, 0, 0.25);
+    letter-spacing: 0.05em;
+    user-select: none;
+  }
+
+  &__legend {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.8rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+}
+
+// ── Tile ───────────────────────────────────────────────────────────────────
+.game-tile {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  background: #1a1a1a;
+  border: none;
+  transition:
+    opacity 0.15s,
+    transform 0.08s;
+
+  &__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+  }
+
+  &:hover {
+    background: #2c2c2c;
+  }
+  &:active {
+    transform: scaleY(0.95);
+  }
+
+  &--tapped {
+    opacity: 0.12;
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+// ── Compact button variant ─────────────────────────────────────────────────
+.btn-ghost--xs {
+  padding: 0.25rem 0.6rem;
+  font-size: 14px;
+}

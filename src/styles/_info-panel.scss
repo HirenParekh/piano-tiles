@@ -1,0 +1,117 @@
+@use 'variables' as *;
+
+.info-panel {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: $pad-panel;
+
+  &__playback {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__play-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__play-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    border: none;
+    background: $accent;
+    color: #000;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity $transition;
+    flex-shrink: 0;
+
+    &:hover { opacity: 0.85; }
+
+    &--pause {
+      background: $accent2;
+      color: #fff;
+    }
+  }
+
+  &__stop-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: $radius;
+    border: 1px solid $border;
+    background: $surface2;
+    color: $muted;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color $transition, border-color $transition;
+    flex-shrink: 0;
+
+    &:hover {
+      color: $text;
+      border-color: $muted;
+    }
+  }
+
+  &__playtime {
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $muted;
+    margin-left: auto;
+    letter-spacing: 0.05em;
+  }
+
+  &__progress {
+    height: 3px;
+    background: $border;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  &__progress-fill {
+    height: 100%;
+    background: $accent;
+    border-radius: 2px;
+    transition: width 0.2s linear;
+  }
+
+  &__tracks {
+    margin-top: 1rem;
+    font-size: 11px;
+    color: $muted;
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  &__label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: $muted;
+  }
+
+  &__value {
+    font-size: 15px;
+    font-weight: 700;
+  }
+}

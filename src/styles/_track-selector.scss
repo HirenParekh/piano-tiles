@@ -1,0 +1,147 @@
+@use 'variables' as *;
+
+.track-selector {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  overflow: hidden;
+
+  &__header {
+    padding: 1.2rem $pad-panel;
+    border-bottom: 1px solid $border;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__footer {
+    padding: 1rem $pad-panel;
+    border-top: 1px solid $border;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__summary {
+    font-size: 12px;
+    color: $muted;
+
+    strong { color: $text; }
+  }
+}
+
+.track-list {
+  list-style: none;
+  padding: 1rem $pad-panel;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  transition: border-color $transition, background $transition;
+  user-select: none;
+
+  &:hover { border-color: $muted; }
+
+  &--selected {
+    border-color: $accent;
+    background: rgba($accent, 0.04);
+
+    .track-row__checkbox {
+      background: $accent;
+      border-color: $accent;
+      color: $bg;
+    }
+  }
+
+  &--auto {
+    border-color: $accent3;
+    background: rgba($accent3, 0.04);
+
+    .track-row__checkbox {
+      background: $accent3;
+      border-color: $accent3;
+      color: $bg;
+    }
+  }
+
+  &__checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid $border;
+    border-radius: $radius-xs;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: background $transition, border-color $transition;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 0.25rem;
+  }
+
+  &__meta {
+    font-size: 11px;
+    color: $muted;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
+// ── Instrument badges ──────────────────────────────────────────────────────
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: $radius-xs;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+
+  &--piano {
+    background: rgba($accent, 0.15);
+    color: $accent;
+    border: 1px solid rgba($accent, 0.3);
+  }
+
+  &--keyboard {
+    background: rgba($accent3, 0.15);
+    color: $accent3;
+    border: 1px solid rgba($accent3, 0.3);
+  }
+
+  &--other {
+    background: rgba($muted, 0.2);
+    color: $muted;
+    border: 1px solid $border;
+  }
+}
+
+.auto-tag {
+  font-size: 10px;
+  color: $accent3;
+}
