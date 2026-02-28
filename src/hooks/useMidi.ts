@@ -3,7 +3,6 @@ import { Midi } from '@tonejs/midi';
 import {
   parseMidiFile,
   readFileAsArrayBuffer,
-  extractTrackMeta,
   buildTilesFromTracks,
 } from '../utils/midiParser';
 import type { MidiParseResult, TrackMeta } from '../types/midi';

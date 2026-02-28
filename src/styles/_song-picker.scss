@@ -1,0 +1,229 @@
+@use 'variables' as *;
+
+// ── Studio tab nav ──────────────────────────────────────────────────────────
+.studio-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid $border;
+}
+
+.studio-tab {
+  padding: 0.55rem 1.1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px; // overlap the border-bottom of .studio-tabs
+  color: $muted;
+  font-family: $font-disp;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: color $transition, border-color $transition;
+
+  &:hover { color: $text; }
+
+  &--active {
+    color: $accent;
+    border-bottom-color: $accent;
+  }
+}
+
+// ── Inline Library tab ──────────────────────────────────────────────────────
+.library-tab {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  &__search {
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid $border;
+    flex-shrink: 0;
+  }
+
+  &__input {
+    width: 100%;
+    background: $surface2;
+    border: 1px solid $border;
+    border-radius: $radius-sm;
+    padding: 0.45rem 0.7rem;
+    color: $text;
+    font-family: $font-mono;
+    font-size: 12px;
+    outline: none;
+    transition: border-color $transition;
+
+    &:focus { border-color: $muted; }
+    &::placeholder { color: $muted; }
+  }
+
+  &__list {
+    list-style: none;
+    overflow-y: auto;
+    flex: 1;
+    // fill remaining space in the left panel without overflowing
+    max-height: calc(100vh - 280px);
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.9rem;
+    background: none;
+    border: none;
+    color: $text;
+    font-family: $font-mono;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: background $transition;
+
+    &:hover:not(:disabled) { background: $surface2; }
+    &:disabled { cursor: wait; opacity: 0.6; }
+
+    &--open {
+      background: $surface2;
+      color: $accent;
+    }
+
+    &--current {
+      .library-tab__name { color: $accent; }
+    }
+  }
+
+  &__chevron {
+    color: $muted;
+    font-size: 11px;
+    width: 12px;
+    text-align: center;
+    flex-shrink: 0;
+
+    .library-tab__row--open & { color: $accent; }
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__active-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $accent;
+    flex-shrink: 0;
+  }
+
+  // ── Expanded difficulty panel ─────────────────────────────────────────────
+  &__detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: $border;
+    border-top: 1px solid $border;
+    border-bottom: 1px solid $border;
+  }
+
+  // ── Score / track selector ────────────────────────────────────────────────
+  &__scores {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem 0.45rem 2.1rem;
+    background: $surface2;
+    flex-wrap: wrap;
+  }
+
+  &__scores-label {
+    font-family: $font-mono;
+    font-size: 10px;
+    color: $muted;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    margin-right: 0.1rem;
+  }
+
+  &__score-chip {
+    font-family: $font-mono;
+    font-size: 10px;
+    padding: 0.18rem 0.55rem;
+    border-radius: 100px;
+    border: 1px solid $border;
+    background: $surface;
+    color: $muted;
+    cursor: pointer;
+    transition: border-color $transition, color $transition, background $transition;
+
+    &:hover { border-color: $muted; color: $text; }
+
+    &--active {
+      border-color: $accent;
+      color: $accent;
+      background: rgba(#c8ff00, 0.07);
+    }
+  }
+
+  &__diff-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.9rem 0.5rem 2.1rem;
+    background: $surface2;
+    border: none;
+    color: $text;
+    font-family: $font-mono;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: background $transition;
+
+    &:hover {
+      background: $bg;
+
+      .library-tab__diff-label { color: var(--diff-color, $accent); }
+      .library-tab__diff-load  { opacity: 1; color: var(--diff-color, $accent); }
+    }
+  }
+
+  &__diff-label {
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: $muted;
+    width: 50px;
+    transition: color $transition;
+  }
+
+  &__diff-bpm {
+    color: $muted;
+    flex: 1;
+  }
+
+  &__diff-load {
+    font-size: 10px;
+    opacity: 0;
+    color: $muted;
+    transition: opacity $transition, color $transition;
+  }
+
+  &__empty {
+    padding: 1.2rem 0.9rem;
+    font-size: 12px;
+    color: $muted;
+    font-family: $font-mono;
+  }
+}

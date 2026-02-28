@@ -90,6 +90,15 @@
     font-size: 11px;
     color: $muted;
   }
+
+  &__copy-row {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid $border;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
 }
 
 .stats-grid {

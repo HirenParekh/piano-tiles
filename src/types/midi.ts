@@ -33,10 +33,15 @@ export interface ParsedNote {
   channel: number;
 }
 
-// A tile in the game — one note assigned to a lane
+// A tile in the game — one or more notes assigned to a lane
 export interface GameTile {
   id: string;
+  /** Primary (first) note — always present */
   note: ParsedNote;
+  /** All notes in this tile — length > 1 means a hold tile */
+  notes: ParsedNote[];
+  /** 1-based indices of each note in the original ParsedNote[] array */
+  noteIndices: number[];
   /** Lane 0–3 (left to right) */
   lane: number;
   /** Whether this tile has been tapped */
@@ -54,6 +59,13 @@ export interface MidiInfo {
   name: string;
   durationSeconds: number;
   bpm: number;
+  /**
+   * Effective BPM used for tile spacing and scroll speed.
+   * For MIDI files: equals bpm.
+   * For PianoTiles JSON songs: equals bpm / baseBeats (e.g. 90 BPM + 0.5 baseBeats → 180).
+   * Formula from original game: TPS = effectiveBpm / 60 = BPM / (baseBeats × 60).
+   */
+  effectiveBpm?: number;
   timeSignature: [number, number];
   trackCount: number;
   totalNotes: number;

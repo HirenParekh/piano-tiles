@@ -16,6 +16,16 @@
     border-color: $accent;
     color: $accent;
   }
+
+  &--xs {
+    font-size: 11px;
+    padding: 0.25rem 0.6rem;
+  }
+
+  &--active {
+    border-color: $accent;
+    color: $accent;
+  }
 }
 
 .btn-primary {

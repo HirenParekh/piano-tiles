@@ -136,6 +136,17 @@ $lane-color-map: (
     width: 100%;
   }
 
+  &__grid-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  &__tile-layer {
+    position: absolute;
+    inset: 0;
+  }
+
   &__lanes {
     position: absolute;
     inset: 0;
@@ -169,6 +180,26 @@ $lane-color-map: (
     &--3 {
       left: 75%;
     }
+  }
+
+  &__beat-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+  }
+
+  &__beat-label {
+    position: absolute;
+    left: 4px;
+    top: -9px;
+    font-size: 8px;
+    color: rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.03em;
+    user-select: none;
+    line-height: 1;
   }
 
   &__second-marker {
@@ -223,11 +254,25 @@ $lane-color-map: (
     transform 0.08s;
 
   &__label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
     pointer-events: none;
+
+    span {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.2;
+    }
+
+    span:first-child {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.65);
+    }
   }
 
   &:hover {
@@ -240,6 +285,39 @@ $lane-color-map: (
   &--tapped {
     opacity: 0.12;
     cursor: default;
+    pointer-events: none;
+  }
+
+  &--start {
+    background: #2980b9;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #fff;
+
+    &:hover {
+      background: #3498db;
+    }
+  }
+
+  &--hold {
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+
+    &:hover {
+      background: #2a2a2a;
+    }
+  }
+
+  &__hold-dot {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
     pointer-events: none;
   }
 }

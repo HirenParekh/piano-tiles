@@ -3,7 +3,32 @@
     "allow": [
       "mcp__Claude_Preview__preview_start",
       "Bash(where:*)",
-      "Bash(command -v npm:*)"
+      "Bash(command -v npm:*)",
+      "Bash(xargs grep -l \"class.*Game\\\\|class.*Tile\\\\|class.*Note\")",
+      "Bash(xargs grep -l \"Game\\\\|Tile\\\\|Note\\\\|Scroll\\\\|Board\")",
+      "Bash(xargs grep -l \"split\\\\|parse.*note\\\\|frequency\\\\|MIDI\")",
+      "Bash(xargs grep -l \"\\\\.json\\\\|\"\"notes\"\"\\\\|\"\"note\"\"\")",
+      "Bash(xargs grep -l \"split\\\\\\(\")",
+      "Bash(xargs grep -l \"scores\\\\|note\")",
+      "Bash(xargs grep -l \"\"\"LM\"\"\\\\|\"\"K\"\"\\\\|\"\"J\"\"\\\\|\"\"L\"\"\\\\|\"\"H\"\"\\\\|\"\"I\"\"\")",
+      "Bash(xargs grep -l \"parseScore\\\\|parseSong\\\\|parseNote\")",
+      "Bash(grep -h \"\\\\[K\\\\]\\\\|\\\\[J\\\\]\\\\|\\\\[L\\\\]\\\\|\\\\[H\\\\]\\\\|\\\\[I\\\\]\\\\|\\\\[M\\\\]\" \"c:/Users/parek/Projects/piano-tiles/PianoTilesJAVA/resources/assets/res/song\"/*.json)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(xargs grep -l \"tile\\\\|note\\\\|lane\\\\|music\\\\|score\")",
+      "Bash(python3 -m json.tool \"c:/Users/parek/Projects/piano-tiles/PianoTilesJAVA/resources/assets/res/song/Amazing Grace.json\")",
+      "Bash(xargs grep -l \"score\\\\|Score\")",
+      "Bash(xargs grep -l \"parse\\\\|Parse\")",
+      "Bash(xargs grep -l \"native\\\\|jni\\\\|JNI\")",
+      "Bash(ls *.json)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -c \":*)",
+      "WebFetch(domain:felipejfc.medium.com)",
+      "Bash(python3 -:*)",
+      "Bash(py -3 --version)",
+      "Bash(py -3:*)",
+      "Bash(pip show capstone)",
+      "WebFetch(domain:piano-tiles-2-modding.fandom.com)",
+      "Bash(python -m json.tool --no-ensure-ascii)"
     ]
   }
 }

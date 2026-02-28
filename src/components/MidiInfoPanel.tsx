@@ -12,6 +12,8 @@ interface Props {
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
+  onCopyNotes?: () => void;
+  onCopyTiles?: () => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -24,6 +26,7 @@ export function MidiInfoPanel({
   info, tracks, selectedTracks, tileCount,
   isPlaying, currentTime,
   onChangeTrack, onReset, onPlay, onPause, onStop,
+  onCopyNotes, onCopyTiles,
 }: Props) {
   const usedTrackNames = [...selectedTracks]
     .map((i) => tracks[i]?.name)
@@ -90,6 +93,21 @@ export function MidiInfoPanel({
 
       {usedTrackNames && (
         <p className="info-panel__tracks">Using: {usedTrackNames}</p>
+      )}
+
+      {(onCopyNotes || onCopyTiles) && (
+        <div className="info-panel__copy-row">
+          {onCopyNotes && (
+            <button className="btn-ghost btn-ghost--xs" onClick={onCopyNotes}>
+              Copy Notes JSON
+            </button>
+          )}
+          {onCopyTiles && (
+            <button className="btn-ghost btn-ghost--xs" onClick={onCopyTiles}>
+              Copy Tiles JSON
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

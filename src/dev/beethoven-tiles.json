@@ -1,0 +1,312 @@
+[
+  {
+    "id": "tile-0-64-2.400",
+    "note": { "midi": 64, "name": "E4", "time": 2.4, "duration": 0.6000000000000001, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 0, "top": 6637
+  },
+  {
+    "id": "tile-1-64-3.000",
+    "note": { "midi": 64, "name": "E4", "time": 3, "duration": 0.5999999999999996, "velocity": 0.968503937007874, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 96, "top": 6541
+  },
+  {
+    "id": "tile-2-65-3.600",
+    "note": { "midi": 65, "name": "F4", "time": 3.5999999999999996, "duration": 0.6000000000000005, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 192, "top": 6445
+  },
+  {
+    "id": "tile-3-67-4.200",
+    "note": { "midi": 67, "name": "G4", "time": 4.2, "duration": 0.5999999999999996, "velocity": 0.9291338582677166, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 288, "top": 6349
+  },
+  {
+    "id": "tile-4-67-4.800",
+    "note": { "midi": 67, "name": "G4", "time": 4.8, "duration": 0.5999999999999996, "velocity": 0.9606299212598425, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 384, "top": 6253
+  },
+  {
+    "id": "tile-5-65-5.400",
+    "note": { "midi": 65, "name": "F4", "time": 5.3999999999999995, "duration": 0.6000000000000005, "velocity": 0.8976377952755905, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 480, "top": 6157
+  },
+  {
+    "id": "tile-6-64-6.000",
+    "note": { "midi": 64, "name": "E4", "time": 6, "duration": 0.5999999999999996, "velocity": 0.9133858267716536, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 576, "top": 6061
+  },
+  {
+    "id": "tile-7-62-6.600",
+    "note": { "midi": 62, "name": "D4", "time": 6.6, "duration": 0.5999999999999996, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 672, "top": 5965
+  },
+  {
+    "id": "tile-8-60-7.200",
+    "note": { "midi": 60, "name": "C4", "time": 7.199999999999999, "duration": 0.6000000000000005, "velocity": 0.9133858267716536, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 768, "top": 5869
+  },
+  {
+    "id": "tile-9-60-7.800",
+    "note": { "midi": 60, "name": "C4", "time": 7.8, "duration": 0.6000000000000005, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 864, "top": 5773
+  },
+  {
+    "id": "tile-10-62-8.400",
+    "note": { "midi": 62, "name": "D4", "time": 8.4, "duration": 0.5999999999999996, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 960, "top": 5677
+  },
+  {
+    "id": "tile-11-64-9.000",
+    "note": { "midi": 64, "name": "E4", "time": 9, "duration": 0.5999999999999996, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 1056, "top": 5581
+  },
+  {
+    "id": "tile-12-64-9.600",
+    "note": { "midi": 64, "name": "E4", "time": 9.6, "duration": 0.9000000000000004, "velocity": 0.968503937007874, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 135, "bottomOffset": 1152, "top": 5440
+  },
+  {
+    "id": "tile-13-62-10.500",
+    "note": { "midi": 62, "name": "D4", "time": 10.5, "duration": 0.29999999999999893, "velocity": 0.84251968503937, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 1293, "top": 5344
+  },
+  {
+    "id": "tile-14-62-10.800",
+    "note": { "midi": 62, "name": "D4", "time": 10.799999999999999, "duration": 1.200000000000001, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 180, "bottomOffset": 1389, "top": 5158
+  },
+  {
+    "id": "tile-15-64-12.000",
+    "note": { "midi": 64, "name": "E4", "time": 12, "duration": 0.5999999999999996, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 1575, "top": 5062
+  },
+  {
+    "id": "tile-16-64-12.600",
+    "note": { "midi": 64, "name": "E4", "time": 12.6, "duration": 0.5999999999999996, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 1671, "top": 4966
+  },
+  {
+    "id": "tile-17-65-13.200",
+    "note": { "midi": 65, "name": "F4", "time": 13.2, "duration": 0.5999999999999996, "velocity": 0.8976377952755905, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 1767, "top": 4870
+  },
+  {
+    "id": "tile-18-67-13.800",
+    "note": { "midi": 67, "name": "G4", "time": 13.799999999999999, "duration": 0.5999999999999996, "velocity": 0.937007874015748, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 1863, "top": 4774
+  },
+  {
+    "id": "tile-19-67-14.400",
+    "note": { "midi": 67, "name": "G4", "time": 14.399999999999999, "duration": 0.6000000000000014, "velocity": 0.9606299212598425, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 1959, "top": 4678
+  },
+  {
+    "id": "tile-20-65-15.000",
+    "note": { "midi": 65, "name": "F4", "time": 15, "duration": 0.5999999999999996, "velocity": 0.84251968503937, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 2055, "top": 4582
+  },
+  {
+    "id": "tile-21-64-15.600",
+    "note": { "midi": 64, "name": "E4", "time": 15.6, "duration": 0.5999999999999996, "velocity": 0.8740157480314961, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 2151, "top": 4486
+  },
+  {
+    "id": "tile-22-62-16.200",
+    "note": { "midi": 62, "name": "D4", "time": 16.2, "duration": 0.6000000000000014, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 2247, "top": 4390
+  },
+  {
+    "id": "tile-23-60-16.800",
+    "note": { "midi": 60, "name": "C4", "time": 16.8, "duration": 0.5999999999999979, "velocity": 0.8976377952755905, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 2343, "top": 4294
+  },
+  {
+    "id": "tile-24-60-17.400",
+    "note": { "midi": 60, "name": "C4", "time": 17.4, "duration": 0.6000000000000014, "velocity": 0.9291338582677166, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 2439, "top": 4198
+  },
+  {
+    "id": "tile-25-62-18.000",
+    "note": { "midi": 62, "name": "D4", "time": 18, "duration": 0.5999999999999979, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 2535, "top": 4102
+  },
+  {
+    "id": "tile-26-64-18.600",
+    "note": { "midi": 64, "name": "E4", "time": 18.599999999999998, "duration": 0.6000000000000014, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 2631, "top": 4006
+  },
+  {
+    "id": "tile-27-62-19.200",
+    "note": { "midi": 62, "name": "D4", "time": 19.2, "duration": 0.8999999999999986, "velocity": 0.9291338582677166, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 135, "bottomOffset": 2727, "top": 3865
+  },
+  {
+    "id": "tile-28-60-20.100",
+    "note": { "midi": 60, "name": "C4", "time": 20.099999999999998, "duration": 0.3000000000000007, "velocity": 0.9133858267716536, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 2868, "top": 3769
+  },
+  {
+    "id": "tile-29-60-20.400",
+    "note": { "midi": 60, "name": "C4", "time": 20.4, "duration": 1.1999999999999993, "velocity": 0.9763779527559056, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 180, "bottomOffset": 2964, "top": 3583
+  },
+  {
+    "id": "tile-30-62-21.600",
+    "note": { "midi": 62, "name": "D4", "time": 21.599999999999998, "duration": 0.6000000000000014, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 3150, "top": 3487
+  },
+  {
+    "id": "tile-31-62-22.200",
+    "note": { "midi": 62, "name": "D4", "time": 22.2, "duration": 0.6000000000000014, "velocity": 0.937007874015748, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 3246, "top": 3391
+  },
+  {
+    "id": "tile-32-64-22.800",
+    "note": { "midi": 64, "name": "E4", "time": 22.8, "duration": 0.5999999999999979, "velocity": 0.937007874015748, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 3342, "top": 3295
+  },
+  {
+    "id": "tile-33-60-23.400",
+    "note": { "midi": 60, "name": "C4", "time": 23.4, "duration": 0.6000000000000014, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 3438, "top": 3199
+  },
+  {
+    "id": "tile-34-62-24.000",
+    "note": { "midi": 62, "name": "D4", "time": 24, "duration": 0.5999999999999979, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 3534, "top": 3103
+  },
+  {
+    "id": "tile-35-64-24.600",
+    "note": { "midi": 64, "name": "E4", "time": 24.599999999999998, "duration": 0.3000000000000007, "velocity": 0.9606299212598425, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 3630, "top": 3007
+  },
+  {
+    "id": "tile-36-65-24.900",
+    "note": { "midi": 65, "name": "F4", "time": 24.9, "duration": 0.3000000000000007, "velocity": 0.8188976377952756, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 3726, "top": 2911
+  },
+  {
+    "id": "tile-37-64-25.200",
+    "note": { "midi": 64, "name": "E4", "time": 25.2, "duration": 0.6000000000000014, "velocity": 0.937007874015748, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 3822, "top": 2815
+  },
+  {
+    "id": "tile-38-60-25.800",
+    "note": { "midi": 60, "name": "C4", "time": 25.8, "duration": 0.5999999999999979, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 3918, "top": 2719
+  },
+  {
+    "id": "tile-39-62-26.400",
+    "note": { "midi": 62, "name": "D4", "time": 26.4, "duration": 0.6000000000000014, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 4014, "top": 2623
+  },
+  {
+    "id": "tile-40-64-27.000",
+    "note": { "midi": 64, "name": "E4", "time": 27, "duration": 0.3000000000000007, "velocity": 0.937007874015748, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 4110, "top": 2527
+  },
+  {
+    "id": "tile-41-65-27.300",
+    "note": { "midi": 65, "name": "F4", "time": 27.3, "duration": 0.29999999999999716, "velocity": 0.8818897637795275, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 4206, "top": 2431
+  },
+  {
+    "id": "tile-42-64-27.600",
+    "note": { "midi": 64, "name": "E4", "time": 27.599999999999998, "duration": 0.6000000000000014, "velocity": 0.9606299212598425, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 4302, "top": 2335
+  },
+  {
+    "id": "tile-43-62-28.200",
+    "note": { "midi": 62, "name": "D4", "time": 28.2, "duration": 0.5999999999999979, "velocity": 0.9133858267716536, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 4398, "top": 2239
+  },
+  {
+    "id": "tile-44-60-28.800",
+    "note": { "midi": 60, "name": "C4", "time": 28.799999999999997, "duration": 0.6000000000000014, "velocity": 0.9291338582677166, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 4494, "top": 2143
+  },
+  {
+    "id": "tile-45-62-29.400",
+    "note": { "midi": 62, "name": "D4", "time": 29.4, "duration": 0.6000000000000014, "velocity": 0.8582677165354331, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 4590, "top": 2047
+  },
+  {
+    "id": "tile-46-55-30.000",
+    "note": { "midi": 55, "name": "G3", "time": 30, "duration": 0.5999999999999979, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 4686, "top": 1951
+  },
+  {
+    "id": "tile-47-64-30.600",
+    "note": { "midi": 64, "name": "E4", "time": 30.599999999999998, "duration": 1.1999999999999993, "velocity": 0.9763779527559056, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 180, "bottomOffset": 4782, "top": 1765
+  },
+  {
+    "id": "tile-48-64-31.800",
+    "note": { "midi": 64, "name": "E4", "time": 31.799999999999997, "duration": 0.6000000000000014, "velocity": 0.9763779527559056, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 4968, "top": 1669
+  },
+  {
+    "id": "tile-49-65-32.400",
+    "note": { "midi": 65, "name": "F4", "time": 32.4, "duration": 0.6000000000000014, "velocity": 0.7795275590551181, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 5064, "top": 1573
+  },
+  {
+    "id": "tile-50-67-33.000",
+    "note": { "midi": 67, "name": "G4", "time": 33, "duration": 0.6000000000000014, "velocity": 0.8976377952755905, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 5160, "top": 1477
+  },
+  {
+    "id": "tile-51-67-33.600",
+    "note": { "midi": 67, "name": "G4", "time": 33.6, "duration": 0.5999999999999943, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 5256, "top": 1381
+  },
+  {
+    "id": "tile-52-65-34.200",
+    "note": { "midi": 65, "name": "F4", "time": 34.199999999999996, "duration": 0.6000000000000014, "velocity": 0.8503937007874016, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 5352, "top": 1285
+  },
+  {
+    "id": "tile-53-64-34.800",
+    "note": { "midi": 64, "name": "E4", "time": 34.8, "duration": 0.6000000000000014, "velocity": 0.8976377952755905, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 5448, "top": 1189
+  },
+  {
+    "id": "tile-54-62-35.400",
+    "note": { "midi": 62, "name": "D4", "time": 35.4, "duration": 0.6000000000000014, "velocity": 0.889763779527559, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 90, "bottomOffset": 5544, "top": 1093
+  },
+  {
+    "id": "tile-55-60-36.000",
+    "note": { "midi": 60, "name": "C4", "time": 36, "duration": 0.6000000000000014, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 5640, "top": 997
+  },
+  {
+    "id": "tile-56-60-36.600",
+    "note": { "midi": 60, "name": "C4", "time": 36.6, "duration": 0.5999999999999943, "velocity": 0.9212598425196851, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 5736, "top": 901
+  },
+  {
+    "id": "tile-57-62-37.200",
+    "note": { "midi": 62, "name": "D4", "time": 37.199999999999996, "duration": 0.6000000000000014, "velocity": 0.889763779527559, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 90, "bottomOffset": 5832, "top": 805
+  },
+  {
+    "id": "tile-58-64-37.800",
+    "note": { "midi": 64, "name": "E4", "time": 37.8, "duration": 0.6000000000000014, "velocity": 0.952755905511811, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 3, "tapped": false, "height": 90, "bottomOffset": 5928, "top": 709
+  },
+  {
+    "id": "tile-59-62-38.400",
+    "note": { "midi": 62, "name": "D4", "time": 38.4, "duration": 0.8999999999999986, "velocity": 0.9606299212598425, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 0, "tapped": false, "height": 135, "bottomOffset": 6024, "top": 568
+  },
+  {
+    "id": "tile-60-60-39.300",
+    "note": { "midi": 60, "name": "C4", "time": 39.3, "duration": 0.30000000000000426, "velocity": 0.905511811023622, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 1, "tapped": false, "height": 90, "bottomOffset": 6165, "top": 472
+  },
+  {
+    "id": "tile-61-60-39.600",
+    "note": { "midi": 60, "name": "C4", "time": 39.6, "duration": 1.1999999999999957, "velocity": 0.9921259842519685, "trackIndex": 0, "trackName": "RightHand", "channel": 0 },
+    "lane": 2, "tapped": false, "height": 180, "bottomOffset": 6261, "top": 286
+  }
+]

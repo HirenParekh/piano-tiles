@@ -6,6 +6,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
 
   &__header {
     padding: 2rem $pad-page 1.5rem;

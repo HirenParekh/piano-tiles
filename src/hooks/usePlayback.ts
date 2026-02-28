@@ -34,9 +34,11 @@ export function usePlayback(
     partRef.current?.dispose();
 
     const events: Array<[number, ParsedNote]> = notes.map(n => [n.time, n]);
+    // Tone.js Part accepts [time, value] tuples; cast needed due to typing mismatch
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const part = new Tone.Part<ParsedNote>((time, note) => {
-      playNoteScheduled(note, time);
-    }, events);
+      playNoteScheduled(note, time as number);
+    }, events as unknown as ParsedNote[]);
     part.start(0);
     partRef.current = part;
 
