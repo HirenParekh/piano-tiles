@@ -31,6 +31,10 @@ export interface ParsedNote {
   trackName: string;
   /** Which instrument/channel (0–15) */
   channel: number;
+  /** The assigned instrument for this note (e.g. 'piano', 'bass', 'drum') */
+  instrument?: string;
+  /** Original PT2 notation if parsed from a PianoTiles JSON song, e.g. "e3[L]", "c1[K]" */
+  pt2Notation?: string;
 }
 
 // A tile in the game — one or more notes assigned to a lane
@@ -54,6 +58,13 @@ export interface GameTile {
   top: number;
 }
 
+export interface ScrollSegment {
+  startPixel: number; // Bottom offset
+  endPixel: number;
+  startTime: number;  // Seconds
+  endTime: number;
+}
+
 // Summary info about the loaded MIDI file
 export interface MidiInfo {
   name: string;
@@ -69,6 +80,7 @@ export interface MidiInfo {
   timeSignature: [number, number];
   trackCount: number;
   totalNotes: number;
+  scrollSegments?: ScrollSegment[];
 }
 
 // Full result from the MIDI parser

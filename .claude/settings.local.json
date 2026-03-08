@@ -28,7 +28,13 @@
       "Bash(py -3:*)",
       "Bash(pip show capstone)",
       "WebFetch(domain:piano-tiles-2-modding.fandom.com)",
-      "Bash(python -m json.tool --no-ensure-ascii)"
+      "Bash(python -m json.tool --no-ensure-ascii)",
+      "Bash(xargs grep -l \"accompan\\\\|suppress\\\\|skip\\\\|duplicate\\\\|pitch\\\\|filter.*note\\\\|hide.*note\")",
+      "Bash(adb devices)",
+      "Bash(/c/Users/parek/Projects/piano-tiles/android-tools/platform-tools/adb.exe devices)",
+      "Bash(python build_apk.py)",
+      "Bash(java -jar uber-apk-signer.jar --apks piano-tiles-modified.apk)",
+      "Bash(./platform-tools/adb.exe install -r piano-tiles-modified-aligned-debugSigned.apk)"
     ]
   }
 }

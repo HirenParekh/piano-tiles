@@ -37,18 +37,18 @@ Each song is a `.json` file in `/assets/res/song/`.
 | Field | Type | Description |
 |-------|------|-------------|
 | `baseBpm` | number | Legacy field; modern songs define BPM per-music entry. Can be ignored. |
-| `musics` | array | One entry per difficulty level (Easy → Expert). |
+| `musics` | array | Ordered list of song **segments** (milestones). All entries are played consecutively in an "endless run" — each with its own BPM, creating progressive speed increases. See §19.2. |
 
 ### Per-music fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `id` | yes | Difficulty identifier (1-indexed). Also encodes star rating. |
-| `bpm` | yes | Beats per minute. Determines playback speed. |
+| `id` | yes | Segment identifier (1-indexed). Orders the milestones. |
+| `bpm` | yes | Beats per minute for this segment. Increases across milestones. |
 | `baseBeats` | yes | Duration of one "slot" in beats. Typical values: 0.25, 0.5, 1. |
 | `scores` | yes | Array of score strings. Index 0 = melody, index 1 = bass/accompaniment. |
 | `instruments` | no | Array of instrument names matching scores[]. Default: `"piano"`. |
-| `alternatives` | no | Fallback instruments for offline mode. |
+| `alternatives` | no | Fallback instruments for offline mode. Also used to select instrument samples. |
 | `audition` | no | Song preview range: `{"start":[id,noteIndex],"end":[id,noteIndex]}`. |
 
 ---
@@ -79,7 +79,6 @@ A score string is a comma-separated (and semicolon-separated) sequence of tokens
 
 ```
 score    := token (',' token)* (';' token)*
-token    := rest | stop | group | note | chord
 ```
 
 Semicolons (`;`) are **visual measure markers only** — treat them identically to commas.
@@ -315,9 +314,11 @@ A score string ending early does not affect the others.
 ```
 
 - `instruments` — sound bank per score string (must match scores[] length)
-- `alternatives` — offline fallback per score string
+- `alternatives` — offline fallback per score string; **our implementation uses
+  `alternatives` first**, falling back to `instruments`, then to `"piano"`.
 - Default if omitted: `"piano"`
-- Files are `.mp3` located in `/assets/res/music/`
+- Original game files are `.mp3` located in `/assets/res/music/<instrument>/`
+- Four instrument banks available: `piano`, `bass`, `bass2`, `drum`
 
 ---
 
@@ -335,7 +336,7 @@ A score string ending early does not affect the others.
 ## 16. Complete Grammar Summary
 
 ```
-score    := (token ',')* token?
+score    := (token ',')*  token?
 token    := rest | stop | group | note | chord | arpeggio
 
 rest     := restLetter              ; Q R T U V W X Y  (S = STOP, not rest)
@@ -353,31 +354,30 @@ operator      := '@'|'%'|'!'|'~'|'$'|'^'|'&'
 
 ---
 
-## 17. Real Example — Little Star (Easy)
+## 17. Real Example — Little Star (All Segments)
 
-```json
-{ "bpm": 90, "baseBeats": 0.5 }
-```
-`slotDurationS = 0.5 × (60/90) = 0.333s`
+**Little Star** has 3 segments with progressive BPM:
 
-**Score 0 (Melody):**
+| Segment | `id` | `bpm` | `baseBeats` | `slotDuration` | Scores |
+|---------|------|-------|-------------|----------------|--------|
+| 0 | 1 | 90 | 0.5 | 0.333s | 2 (melody + bass) |
+| 1 | 2 | 95 | 0.5 | 0.316s | 2 (melody + bass) |
+| 2 | 3 | 100 | 0.5 | 0.300s | 2 (melody + bass) |
+
+**Segment 0, Score 0 (Melody):**
 ```
 c2[L] , U , (e1.g1.c2)[L] , c1[L] , g2[L] , U , (g1.b1.g2)[L] , c2[L]
  t=0    rest   t=0.667        t=1.0   t=1.333  rest    t=2.0         t=2.333
 ```
 
-**Score 1 (Bass):**
+**Segment 0, Score 1 (Bass):**
 ```
 c[L] , g[L] , T , e[L] , c1[L] , T
  t=0    t=0.333  rest  t=1.0   t=1.333  rest
 ```
 
-Notes produced (first 10 tiles):
-| t=0.000s | c2 (C4) melody, c (C2) bass |
-| t=0.333s | g (G2) bass |
-| t=0.667s | chord e1+g1+c2 (E3+G3+C4) melody |
-| t=1.000s | c1 (C3) melody, e (E2) bass |
-| t=1.333s | g2 (G4) melody, c1 (C3) bass |
+All segments are stitched end-to-end. Segment 1 notes begin at the time offset
+where segment 0 ends. The tempo visibly increases at each transition.
 
 ---
 
@@ -402,18 +402,133 @@ From static analysis of the original Android game binary:
 
 ## 19. Implementation Notes (Web Clone)
 
-Built with: Vite + React 18 + TypeScript + Tone.js (Salamander Grand Piano samples).
+Built with: Vite + React 18 + TypeScript + Tone.js + original game `.mp3` samples.
 
-- `slotDurationS = baseBeats × (60/bpm)` — every comma = this many seconds
-- `effectiveBpm = bpm / baseBeats` — used for scroll speed (`PX_PER_SEC = MIN_HEIGHT × effectiveBpm / 60`)
-- `MIN_HEIGHT = 100px` — 1 slot = 100px of board height
-- Score 0 notes → lanes 2–3 (right side, melody), Score 1 → lanes 0–1 (left side, bass)
-- `tileScoreIndices` parameter controls which score strings produce tappable tiles
-  (remaining scores can be treated as background audio)
-- Chord notes `(n1.n2)[K]` → single tile object with `tile.notes[]` array; on tap, all notes play
-- `N<single_note>` groups → hold tile spanning N × slotDurationS seconds
-- Known parser gaps: `D`-prefix double tiles, arpeggios, special effects `{n}`
+### 19.1 Architecture Overview
+
+| Module | File | Purpose |
+|--------|------|---------|
+| Score Parser | `src/utils/pianoTilesParser.ts` | Parses JSON → `ParsedNote[]`, builds tiles & scroll segments |
+| MIDI Parser | `src/utils/midiParser.ts` | Generic MIDI support, `buildTilesFromNotes()`, layout engine |
+| Synth/Audio | `src/hooks/useSynth.ts` | Multi-instrument Tone.js samplers (piano, bass, bass2, drum) |
+| Auto-scroll | `src/hooks/useAutoScroll.ts` | Variable-speed `requestAnimationFrame` scroller with segment mapping |
+| Game Board | `src/components/GameBoard.tsx` | Viewport, dynamic scaling, tile rendering, START button |
+| Tile Cards | `src/components/GameTileCard.tsx`, `HoldTileCard.tsx` | Individual tile rendering with `scaleRatio` support |
+
+### 19.2 Multi-Segment Playback (Milestones)
+
+**Key discovery:** The `musics[]` array in a song JSON does **not** represent separate difficulty levels. Instead, all entries are played **consecutively** as an "endless run" — each segment is a milestone where the tempo increases. This matches the original game behaviour where songs progressively speed up as the player advances.
+
+Example from **Little Star**:
+```
+musics[0]:  bpm=90,  baseBeats=0.5  →  slotDuration = 0.333s
+musics[1]:  bpm=95,  baseBeats=0.5  →  slotDuration = 0.316s
+musics[2]:  bpm=100, baseBeats=0.5  →  slotDuration = 0.300s
+```
+
+`buildResultFromPianoTilesSong()` iterates over **all** `musics` entries:
+1. Parses each section's notes with time starting at 0.
+2. Builds tiles (via `buildTilesFromNotes()`) for each section independently.
+3. Shifts all note times and tile pixel offsets by the accumulated offset.
+4. Records a `ScrollSegment` per section mapping pixel ranges to time ranges.
+5. Adds a 5-row blank buffer at the start (START tile + 4 empty rows) so tiles scroll in from the top after the player taps START.
+
+### 19.3 Scroll Segments (Variable-Speed Scrolling)
+
+Each section has a potentially different `slotDurationS`, meaning the scroll speed changes at milestone boundaries. The `ScrollSegment` type maps pixel ranges to time ranges:
+
+```typescript
+interface ScrollSegment {
+  startPixel: number;  // Bottom offset (unscaled)
+  endPixel: number;
+  startTime: number;   // Seconds
+  endTime: number;
+}
+```
+
+`useAutoScroll` uses `timeToPixels(t)` and `pixelsToTime(px)` helpers to convert between game-clock time and pixel positions. The `tick()` function:
+1. Computes elapsed wall-clock time × `speedMultiplier` = game time.
+2. Maps game time → pixel offset via `timeToPixels()`.
+3. Sets `scrollTop = maxScroll - pixelOffset`.
+
+This ensures the scroll speed automatically adjusts at each milestone boundary without any discrete jumps.
+
+### 19.4 Dynamic Viewport Scaling (4-Rows-Visible)
+
+The original game always displays exactly **4 tile rows** on screen regardless of device size (confirmed on iPad and iPhone). We replicate this with a `ResizeObserver`:
+
+```
+scaleRatio = (viewportHeight / 4) / MIN_HEIGHT
+```
+
+All pixel values (tile `top`, `height`, `bottomOffset`, beat-line positions, scroll segment pixels, canvas height) are multiplied by `scaleRatio` before rendering. The `scrollSegments` are also scaled before passing to `useAutoScroll`.
+
+### 19.5 Audio System (Original Game Samples)
+
+Migrated from Salamander piano samples to the **original game's `.mp3` files** from `PianoTilesJAVA/resources/assets/res/music/`. Four instrument folders are served from `public/music/`:
+
+| Folder | Type | Usage |
+|--------|------|-------|
+| `piano/` | Pitched | Default instrument, melody |
+| `bass/` | Pitched | Bass accompaniment |
+| `bass2/` | Pitched | Alternate bass |
+| `drum/` | Unpitched | Percussion |
+
+**File naming fix:** Original files used `#` for sharps (e.g. `#A-1.mp3`), which browsers interpret as URL fragments. All sharp-note files were renamed with `s` prefix (e.g. `sA-1.mp3`). A `music_urls.json` mapping was generated to map Tone.js note names to actual filenames.
+
+**Multi-sampler architecture:** `useSynth` creates one `Tone.Sampler` per instrument, routing notes via `ParsedNote.instrument`. Pitched instruments use a subset of samples per octave (Tone.js pitch-shifts automatically); drum samples retain all files since they are unpitched.
+
+**Instrument selection:** The parser checks `alternatives[i]` first, then `instruments[i]`, defaulting to `"piano"`. This is stored on each `ParsedNote.instrument`.
+
+### 19.6 Tile & Lane Assignment
+
+Lane assignment is **random** (not pitch-based), matching the original game:
+- Each tile gets a random lane (0–3), avoiding the same lane as the previous tile.
+- Post-assignment overlap detection shifts tiles to free lanes if they would visually collide.
+
+### 19.7 Score Parser Details
+
+The parser (`parseScore`) follows the `pt2.cpp` / `json2midi` C++ reference:
+- Strips `N<...>` group wrappers and `{...}` effect brackets.
+- Treats `;` as `,` (measure markers only).
+- `ST` is handled as a combined rest (S=2 + T=1 = 3 beats), not as a stop token.
+- Rest tokens (Q–Y) advance the timeline by their beat value.
+- Chord tokens `(n1.n2)[K]` → single tile with `notes[]` array; all notes play on tap.
+- Arpeggio operators (`@`, `%`, `!`, `~`, `$`, `^`, `&`) introduce sequential delays between notes in a chord group.
+- Both `scores[0]` (melody) and `scores[1]` (bass) produce tappable tiles by default (`tileScoreIndices = [0, 1]`).
+
+### 19.8 Key Constants
+
+```
+MIN_HEIGHT     = 100px     — 1 tile slot height (before scaling)
+LAYOUT_PAD_TOP = 160px     — padding above the last note
+START_OFFSET   = 5 rows    — blank buffer before first tile (START + 4 empty)
+LANE_COUNT     = 4         — total lanes on screen
+```
+
+### 19.9 Current Status ✅
+
+- ✅ JSON score parsing (notes, chords, rests, arpeggios, hold tiles)
+- ✅ Multi-segment milestone playback with progressive BPM increase
+- ✅ Variable-speed auto-scroll with segment-mapped timing
+- ✅ Original game `.mp3` audio (piano, bass, bass2, drum)
+- ✅ Multi-instrument routing per score track
+- ✅ Dynamic 4-row viewport scaling (responsive to all screen sizes)
+- ✅ Random lane assignment with overlap avoidance
+- ✅ Hold tiles with intermediate note dots
+- ✅ START tile with 4-row pre-roll buffer
+- ✅ Speed multiplier (1×, 1.5×, 2×)
+- ✅ **Little Star verified against original game — sounds and feels matching** 🎉
+
+### 19.10 Known Gaps / Future Work
+
+- ❌ `D`-prefix double tiles (simultaneous tiles in adjacent lanes)
+- ❌ Special tile types (combo, slide, burst, etc.)
+- ❌ Special visual effects `{1}`–`{5}`
+- ❌ Game over logic (missed tile, tapped empty lane)
+- ❌ Score tracking / star rating
+- ❌ `audition` range (song preview before play)
 
 ---
 
-*Last updated: 2026-02-27*
+*Last updated: 2026-02-28*

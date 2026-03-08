@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import type { GameTile, MidiParseResult } from '../types/midi';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
@@ -16,7 +16,6 @@ interface Props {
 }
 
 const LANE_COUNT = 4;
-const VIEWPORT_H = 600; // approximation — matches CSS height
 
 function groupByLane(tiles: GameTile[]): Map<number, GameTile[]> {
   const map = new Map<number, GameTile[]>();
@@ -29,27 +28,53 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
   const { tappedIds, tapTile, scrollRef, reset: resetBoard } = useGameBoard(onPlayNote);
   const [started, setStarted] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState<typeof SPEED_OPTIONS[number]>(1);
+  const [viewportH, setViewportH] = useState(600);
 
   const { tiles, info, totalHeight } = result;
   const byLane = groupByLane(tiles);
 
-  // Use effectiveBpm for scroll speed: TPS = effectiveBpm / 60, px/s = TPS × MIN_HEIGHT.
-  // For PianoTiles JSON songs effectiveBpm = bpm / baseBeats (e.g. 90 BPM + 0.5 baseBeats → 180).
-  // For MIDI files effectiveBpm is undefined so we fall back to bpm.
-  const effectiveBpm  = info.effectiveBpm ?? info.bpm;
-  const slotDurationS = 60 / effectiveBpm;        // seconds per tile slot
-  const PX_PER_SEC    = (MIN_HEIGHT / slotDurationS) * speedMultiplier;
+  // Measure physical viewport explicitly
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const en of entries) {
+        setViewportH(en.contentRect.height);
+      }
+    });
+    ro.observe(scrollRef.current);
+    return () => ro.disconnect();
+  }, [scrollRef]);
 
-  // Grid lines — one line every MIN_HEIGHT px (= 1 tile slot)
+  // Compute scaling: exactly 4 tiles must fit correctly on screen height
+  const scaleRatio = (viewportH / 4) / MIN_HEIGHT;
+  const scaledTotalHeight = totalHeight * scaleRatio;
+
+  // Use effectiveBpm for scroll speed: TPS = effectiveBpm / 60, px/s = TPS × MIN_HEIGHT × scaleRatio
+  const effectiveBpm = info.effectiveBpm ?? info.bpm;
+  const slotDurationS = 60 / effectiveBpm;
+  const PX_PER_SEC = (MIN_HEIGHT / slotDurationS) * speedMultiplier * scaleRatio;
+
+  // Scale beat lines
   const beatLines: { y: number; beat: number; timeS: number }[] = [];
   for (let y = totalHeight - MIN_HEIGHT, beat = 1; y >= 0; y -= MIN_HEIGHT, beat++) {
-    beatLines.push({ y, beat, timeS: beat * slotDurationS });
+    beatLines.push({ y: y * scaleRatio, beat, timeS: beat * slotDurationS });
   }
 
+  // Map scrollSegments correctly scaled
+  const scaledScrollSegments = useMemo(() => {
+    return info.scrollSegments?.map(s => ({
+      ...s,
+      startPixel: s.startPixel * scaleRatio,
+      endPixel: s.endPixel * scaleRatio,
+    }));
+  }, [info.scrollSegments, scaleRatio]);
+
   const { isPlaying, play, reset: resetScroll } = useAutoScroll(scrollRef, {
-    pixelsPerSecond: PX_PER_SEC,
-    totalHeight,
-    viewportHeight: VIEWPORT_H,
+    pixelsPerSecond: (MIN_HEIGHT / slotDurationS) * scaleRatio,
+    speedMultiplier,
+    totalHeight: scaledTotalHeight,
+    viewportHeight: viewportH,
+    scrollSegments: scaledScrollSegments,
   });
 
   const handleReset = () => {
@@ -78,7 +103,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
   }, [tapTile]);
 
   // START tile sits at beat 0 — below all real notes, visible on mount
-  const startTileTop = totalHeight - MIN_HEIGHT;
+  const startTileTop = (totalHeight - MIN_HEIGHT) * scaleRatio;
 
   return (
     <div className="game-board">
@@ -106,8 +131,15 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
       </div>
 
       {/* Viewport */}
-      <div className="game-board__viewport" ref={scrollRef} onContextMenu={(e) => e.preventDefault()}>
-        <div className="game-board__canvas" style={{ height: totalHeight }}>
+      <div
+        className="game-board__viewport"
+        ref={scrollRef}
+        onContextMenu={(e) => e.preventDefault()}
+        style={{
+          touchAction: started ? 'none' : 'auto',
+        }}
+      >
+        <div className="game-board__canvas" style={{ height: scaledTotalHeight }}>
 
           {/* ── Grid layer (background) ── */}
           <div className="game-board__grid-layer">
@@ -137,7 +169,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
                 {laneIndex === 0 && (
                   <div
                     className={`game-tile game-tile--start ${started ? 'game-tile--tapped' : ''}`}
-                    style={{ top: startTileTop, height: MIN_HEIGHT }}
+                    style={{ top: startTileTop, height: MIN_HEIGHT * scaleRatio }}
                     onPointerDown={(e) => { e.preventDefault(); if (!started) handleStart(); }}
                   >
                     START
@@ -146,18 +178,20 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
                 {laneTiles.map(tile => (
                   tile.height > MIN_HEIGHT
                     ? <HoldTileCard
-                        key={tile.id}
-                        tile={tile}
-                        tapped={tappedIds.has(tile.id)}
-                        onTap={handleTileTap}
-                        onRelease={onHoldRelease}
-                      />
+                      key={tile.id}
+                      tile={tile}
+                      tapped={tappedIds.has(tile.id)}
+                      scaleRatio={scaleRatio}
+                      onTap={handleTileTap}
+                      onRelease={onHoldRelease}
+                    />
                     : <GameTileCard
-                        key={tile.id}
-                        tile={tile}
-                        tapped={tappedIds.has(tile.id)}
-                        onTap={handleTileTap}
-                      />
+                      key={tile.id}
+                      tile={tile}
+                      tapped={tappedIds.has(tile.id)}
+                      scaleRatio={scaleRatio}
+                      onTap={handleTileTap}
+                    />
                 ))}
               </div>
             ))}
@@ -169,7 +203,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
       {/* Legend */}
       <div className="game-board__legend">
         <span>{isPlaying ? 'playing…' : started ? 'paused' : 'tap START to begin'}</span>
-        <span>{info.bpm} BPM · {PX_PER_SEC}px/s</span>
+        <span>{info.bpm} BPM · {Math.round(PX_PER_SEC)}px/s</span>
       </div>
 
     </div>

@@ -45,7 +45,7 @@ const KEYBOARD_KEYWORDS =
 
 export function getInstrumentCategory(program: number | null): InstrumentCategory {
   if (program === null) return 'other';
-  if (program >= 0 && program <= 7)  return 'piano';
+  if (program >= 0 && program <= 7) return 'piano';
   if (program >= 8 && program <= 23) return 'keyboard';
   return 'other';
 }
@@ -54,48 +54,7 @@ export function isKeyboardByName(name: string): boolean {
   return KEYBOARD_KEYWORDS.test(name);
 }
 
-// ── Lane assignment ────────────────────────────────────────────────────────
-/**
- * Assign a note to a lane.
- * @param candidateLanes  Subset of lanes this note is allowed to use.
- *   Pass [0,1,2,3] (the default) for pitch-based global assignment.
- *   Pass [0,1] for bass / [2,3] for melody to get track-based split.
- */
-function assignLane(
-  midiNumber: number,
-  laneUsageCounts: number[],
-  candidateLanes: number[] = [0, 1, 2, 3],
-): number {
-  // Pick preferred sub-lane by pitch within the candidate set
-  const relZone = Math.min(
-    Math.floor((midiNumber / 128) * candidateLanes.length),
-    candidateLanes.length - 1,
-  );
-  const preferred = candidateLanes[relZone];
 
-  // Load-balance within candidates
-  let chosenLane = preferred;
-  let minCount = Infinity;
-  for (const lane of candidateLanes) {
-    if (laneUsageCounts[lane] < minCount) {
-      minCount = laneUsageCounts[lane];
-      chosenLane = lane;
-    }
-  }
-  return chosenLane;
-}
-
-/**
- * Return the candidate lanes for a given track index when using track-based layout.
- * Track 0 (melody/right hand) → lanes 2–3 (right half).
- * Track 1 (bass/left hand)   → lanes 0–1 (left half).
- * Other tracks               → all 4 lanes.
- */
-function trackLaneCandidates(trackIndex: number): number[] {
-  if (trackIndex === 0) return [2, 3];
-  if (trackIndex === 1) return [0, 1];
-  return [0, 1, 2, 3];
-}
 
 // ── Track metadata extraction ──────────────────────────────────────────────
 export function extractTrackMeta(midi: Midi): TrackMeta[] {
@@ -124,7 +83,7 @@ export function extractTrackMeta(midi: Midi): TrackMeta[] {
 }
 
 // ── Time-proportional layout — tiles placed at their actual beat position ──
-export const MIN_HEIGHT  = 100;  // px — 1 beat minimum
+export const MIN_HEIGHT = 100;  // px — 1 beat minimum
 const LAYOUT_PAD_TOP = 160;      // px of space above the last note
 
 // Merge notes into tile groups.
@@ -151,12 +110,16 @@ function mergeConsecutiveNotes(notes: ParsedNote[], beatDurationS: number): Pars
 
     // Phase 2: absorb sequential notes that fall inside this tile's visual span → hold tile
     while (i + group.length < notes.length) {
-      const lastInGroup = group[group.length - 1];
       const next = notes[i + group.length];
 
-      // Snap current group's total duration → compute its visual end time
-      const groupDuration = lastInGroup.time + lastInGroup.duration - startTime;
-      const snappedBeats  = Math.max(1, Math.round(groupDuration / beatDurationS));
+      let maxEndTime = startTime;
+      for (const n of group) {
+        if (n.time + n.duration > maxEndTime) {
+          maxEndTime = n.time + n.duration;
+        }
+      }
+      const groupDuration = maxEndTime - startTime;
+      const snappedBeats = Math.max(1, Math.round(groupDuration / beatDurationS));
       const snappedEndTime = startTime + snappedBeats * beatDurationS;
 
       // If next note falls inside the snapped span → absorb it
@@ -179,10 +142,16 @@ function mergeConsecutiveNotes(notes: ParsedNote[], beatDurationS: number): Pars
 function buildLayout(tiles: GameTile[], beatDurationS: number): number {
   // Beat-quantized heights — use full group span for hold tiles
   for (const tile of tiles) {
-    const lastNote = tile.notes[tile.notes.length - 1];
-    const totalDuration = lastNote.time + lastNote.duration - tile.note.time;
+    let maxEndTime = tile.note.time;
+    for (const n of tile.notes) {
+      if (n.time + n.duration > maxEndTime) {
+        maxEndTime = n.time + n.duration;
+      }
+    }
+    const totalDuration = maxEndTime - tile.note.time;
+    // Allow durations longer than 1 beat (e.g. e3[K] at baseBeats=0.5 spans 2 beats)
     const durationBeats = totalDuration / beatDurationS;
-    const snappedBeats  = Math.max(1, Math.round(durationBeats));
+    const snappedBeats = Math.max(1, Math.round(durationBeats));
     tile.height = snappedBeats * MIN_HEIGHT;
   }
 
@@ -217,28 +186,25 @@ export function buildTilesFromNotes(
    * Defaults to `60 / bpm` (one quarter-note).
    */
   beatDurationSOverride?: number,
-  /**
-   * When true, notes from track 0 (melody) are confined to lanes 2–3 and
-   * notes from track 1 (bass) are confined to lanes 0–1, mirroring the
-   * original game's left-hand / right-hand visual split.
-   */
-  useTrackBasedLanes = false,
 ): { tiles: GameTile[]; totalHeight: number } {
   const beatDurationS = beatDurationSOverride ?? (60 / bpm);
 
   // Merge consecutive fractional-beat notes into hold tiles
   const groups = mergeConsecutiveNotes(notes, beatDurationS);
 
-  const laneUsageCounts = Array(LANE_COUNT).fill(0);
   let noteOffset = 0;
+  let lastLane = -1;
   const tiles: GameTile[] = groups.map((group, index) => {
     const primaryNote = group[0];
-    const isMixedTrack = group.some(n => n.trackIndex !== primaryNote.trackIndex);
-    const candidates = useTrackBasedLanes && !isMixedTrack
-      ? trackLaneCandidates(primaryNote.trackIndex)
-      : [0, 1, 2, 3];
-    const lane = assignLane(primaryNote.midi, laneUsageCounts, candidates);
-    laneUsageCounts[lane]++;
+
+    // Pick a random lane (0-3), but try to avoid picking the exact same lane
+    // as the immediately preceding tile to make the gameplay feel more dynamic.
+    let lane = Math.floor(Math.random() * LANE_COUNT);
+    if (lane === lastLane) {
+      lane = (lane + 1) % LANE_COUNT;
+    }
+    lastLane = lane;
+
     const noteIndices = Array.from({ length: group.length }, (_, j) => noteOffset + j + 1);
     noteOffset += group.length;
     return {
@@ -261,8 +227,8 @@ export function buildTilesFromNotes(
 
   for (const tile of tiles) {
     const startTime = tile.note.time;
-    const lastNote  = tile.notes[tile.notes.length - 1];
-    const endTime   = lastNote.time + lastNote.duration;
+    const lastNote = tile.notes[tile.notes.length - 1];
+    const endTime = lastNote.time + lastNote.duration;
 
     if (startTime < laneEndTimes[tile.lane] + GAP) {
       const candidates = [0, 1, 2, 3]

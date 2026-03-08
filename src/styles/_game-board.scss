@@ -27,6 +27,26 @@ $lane-color-map: (
     position: sticky;
     top: 1rem;
   }
+
+  @media (max-width: 768px) and (orientation: portrait) {
+    display: block;
+    
+    &__table {
+      display: none;
+    }
+
+    &__board {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10000;
+      background: #000;
+      margin: 0;
+      padding: 0;
+    }
+  }
 }
 
 // ── Board shell ────────────────────────────────────────────────────────────
@@ -38,6 +58,12 @@ $lane-color-map: (
   border-radius: $radius;
   overflow: hidden;
   background: #f0eef8;
+
+  @media (max-width: 768px) and (orientation: portrait) {
+    height: 100vh;
+    border: none;
+    border-radius: 0;
+  }
 
   &__topbar {
     display: flex;

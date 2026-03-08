@@ -1,9 +1,13 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+import type { ScrollSegment } from '../types/midi';
+
 interface UseAutoScrollOptions {
-  pixelsPerSecond: number;
+  pixelsPerSecond: number; // fallback strategy
+  speedMultiplier: number; // dynamically adjusts speed
   totalHeight: number;
   viewportHeight: number;
+  scrollSegments?: ScrollSegment[];
 }
 
 interface UseAutoScrollReturn {
@@ -16,15 +20,48 @@ interface UseAutoScrollReturn {
 
 export function useAutoScroll(
   scrollRef: React.RefObject<HTMLDivElement>,
-  { pixelsPerSecond, totalHeight, viewportHeight }: UseAutoScrollOptions
+  { pixelsPerSecond, speedMultiplier, totalHeight, viewportHeight, scrollSegments }: UseAutoScrollOptions
 ): UseAutoScrollReturn {
   const [isPlaying, setIsPlaying] = useState(false);
-  const rafRef        = useRef<number | null>(null);
-  const startTimeRef  = useRef<number | null>(null); // anchored to first rAF timestamp
-  const startScrollRef = useRef<number>(0);          // scrollTop when play() was called
-  const isPlayingRef  = useRef(false);
+  const rafRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const timeAtPlayRef = useRef<number>(0); // Internal logic time when play() started
+  const isPlayingRef = useRef(false);
 
-  const maxScroll = totalHeight - viewportHeight;
+  const maxScroll = Math.max(0, totalHeight - viewportHeight);
+
+  // Time-Pixel helpers
+  const timeToPixels = useCallback((t: number) => {
+    if (!scrollSegments || scrollSegments.length === 0) return t * pixelsPerSecond;
+
+    for (const seg of scrollSegments) {
+      if (t >= seg.startTime && t <= seg.endTime) {
+        const segDuration = seg.endTime - seg.startTime;
+        const segHeight = seg.endPixel - seg.startPixel;
+        const progress = segDuration === 0 ? 0 : (t - seg.startTime) / segDuration;
+        return seg.startPixel + (progress * segHeight);
+      }
+    }
+    const last = scrollSegments[scrollSegments.length - 1];
+    const lastSpeed = (last.endTime - last.startTime) === 0 ? pixelsPerSecond : (last.endPixel - last.startPixel) / (last.endTime - last.startTime);
+    return last.endPixel + (t - last.endTime) * lastSpeed;
+  }, [scrollSegments, pixelsPerSecond]);
+
+  const pixelsToTime = useCallback((px: number) => {
+    if (!scrollSegments || scrollSegments.length === 0) return px / pixelsPerSecond;
+
+    for (const seg of scrollSegments) {
+      if (px >= seg.startPixel && px <= seg.endPixel) {
+        const segDuration = seg.endTime - seg.startTime;
+        const segHeight = seg.endPixel - seg.startPixel;
+        const progress = segHeight === 0 ? 0 : (px - seg.startPixel) / segHeight;
+        return seg.startTime + (progress * segDuration);
+      }
+    }
+    const last = scrollSegments[scrollSegments.length - 1];
+    const lastSpeed = (last.endTime - last.startTime) === 0 ? pixelsPerSecond : (last.endPixel - last.startPixel) / (last.endTime - last.startTime);
+    return last.endTime + (px - last.endPixel) / lastSpeed;
+  }, [scrollSegments, pixelsPerSecond]);
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) {
@@ -40,33 +77,38 @@ export function useAutoScroll(
     if (!isPlayingRef.current) return;
     if (!scrollRef.current) return;
 
-    // Anchor start time to the first frame so elapsed is always exact
     if (startTimeRef.current === null) {
       startTimeRef.current = timestamp;
     }
 
-    const elapsed = (timestamp - startTimeRef.current) / 1000;
-    // Absolute position: no accumulation, no drift
-    const next = startScrollRef.current - elapsed * pixelsPerSecond;
+    const elapsedWall = (timestamp - startTimeRef.current) / 1000;
+    const elapsedGame = elapsedWall * speedMultiplier;
+    const currentTime = timeAtPlayRef.current + elapsedGame;
 
-    if (next <= 0) {
+    const targetPxFromBottom = timeToPixels(currentTime);
+    const nextScrollTop = maxScroll - targetPxFromBottom;
+
+    if (nextScrollTop <= 0) {
       scrollRef.current.scrollTop = 0;
       stop();
       return;
     }
 
-    scrollRef.current.scrollTop = next;
+    scrollRef.current.scrollTop = nextScrollTop;
     rafRef.current = requestAnimationFrame(tick);
-  }, [pixelsPerSecond, scrollRef, stop]);
+  }, [speedMultiplier, timeToPixels, maxScroll, scrollRef, stop]);
 
   const play = useCallback(() => {
     if (isPlayingRef.current) return;
-    startScrollRef.current = scrollRef.current?.scrollTop ?? maxScroll;
+    const currentScrollTop = scrollRef.current?.scrollTop ?? maxScroll;
+    const currentPxFromBottom = maxScroll - currentScrollTop;
+    timeAtPlayRef.current = pixelsToTime(currentPxFromBottom);
+
     isPlayingRef.current = true;
     setIsPlaying(true);
     startTimeRef.current = null; // anchored on first tick
     rafRef.current = requestAnimationFrame(tick);
-  }, [tick, scrollRef, maxScroll]);
+  }, [tick, scrollRef, maxScroll, pixelsToTime]);
 
   const pause = useCallback(() => stop(), [stop]);
 

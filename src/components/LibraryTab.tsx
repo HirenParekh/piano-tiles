@@ -36,7 +36,7 @@ export function LibraryTab({ onSelect, currentSongName }: Props) {
     name: string;
     song: PianoTilesSong;
   } | null>(null);
-  const [selectedScores, setSelectedScores] = useState<Set<number>>(new Set([0]));
+  const [selectedScores, setSelectedScores] = useState<Set<number>>(new Set([0, 1]));
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function LibraryTab({ onSelect, currentSongName }: Props) {
       setExpandedData(null);
       return;
     }
-    setSelectedScores(new Set([0])); // reset to melody-only for each new song
+    setSelectedScores(new Set([0, 1])); // select both Melody and Bass tracks by default
     setLoading(path);
     try {
       const mod = await SONG_MODULES[path]();

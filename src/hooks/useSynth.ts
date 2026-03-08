@@ -1,29 +1,17 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import * as Tone from 'tone';
 import type { ParsedNote } from '../types/midi';
-
-// Salamander Grand Piano — every ~3 semitones, Tone.Sampler interpolates the rest
-const SALAMANDER_BASE = 'https://tonejs.github.io/audio/salamander/';
-const SALAMANDER_URLS: Record<string, string> = {
-  A0: 'A0.mp3',
-  C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', A1: 'A1.mp3',
-  C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
-  C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
-  C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
-  C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
-  C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', A6: 'A6.mp3',
-  C7: 'C7.mp3',
-};
+import musicUrls from '../music_urls.json';
 
 interface UseSynthReturn {
-  /** True once all Salamander samples have loaded */
+  /** True once all instrument samples have loaded */
   loaded: boolean;
   /** Play a single note immediately (for tap tiles) */
   playNote: (note: ParsedNote) => void;
   /** Start a note without scheduling its release (for hold tiles) */
   attackNote: (note: ParsedNote) => void;
-  /** Release a held note by name */
-  releaseNote: (noteName: string) => void;
+  /** Release a held note by its parsed note reference */
+  releaseNote: (note: ParsedNote) => void;
   /** Play a note at a precise scheduled time (for Transport-based playback) */
   playNoteScheduled: (note: ParsedNote, time: number) => void;
   /** Ensure AudioContext is running (must be called from a user gesture) */
@@ -31,55 +19,84 @@ interface UseSynthReturn {
 }
 
 export function useSynth(): UseSynthReturn {
-  const samplerRef = useRef<Tone.Sampler | null>(null);
+  const samplersRef = useRef<Record<string, Tone.Sampler>>({});
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const reverb = new Tone.Reverb({ decay: 1.5, wet: 0.2 }).toDestination();
 
-    const sampler = new Tone.Sampler({
-      urls: SALAMANDER_URLS,
-      baseUrl: SALAMANDER_BASE,
-      release: 1.2,
-      onload: () => setLoaded(true),
-    }).connect(reverb);
+    const instruments = Object.keys(musicUrls);
+    let loadedCount = 0;
+    const samplers: Record<string, Tone.Sampler> = {};
 
-    sampler.volume.value = -6;
-    samplerRef.current = sampler;
+    for (const instr of instruments) {
+      const sampler = new Tone.Sampler({
+        urls: (musicUrls as any)[instr],
+        baseUrl: `/music/${instr}/`,
+        release: instr === 'drum' ? 0.5 : 1.2,
+        onload: () => {
+          console.log(`Loaded ${instr} samples`);
+          loadedCount++;
+          if (loadedCount === instruments.length) {
+            setLoaded(true);
+          }
+        },
+        onerror: (err) => {
+          console.error(`Failed to load samples for ${instr}:`, err);
+        }
+      }).connect(reverb);
+
+      sampler.volume.value = instr === 'piano' ? -6 : -4;
+      samplers[instr] = sampler;
+    }
+
+    samplersRef.current = samplers;
 
     return () => {
-      sampler.dispose();
+      Object.keys(samplers).forEach(k => samplers[k].dispose());
       reverb.dispose();
     };
   }, []);
+
+  const getSamplerAndLoaded = (note: ParsedNote) => {
+    let instr = note.instrument || 'piano';
+    if (!samplersRef.current[instr]) instr = 'piano';
+    const sampler = samplersRef.current[instr];
+    return { sampler, loaded: sampler?.loaded };
+  }
 
   const resumeContext = useCallback(async () => {
     await Tone.start();
   }, []);
 
   const playNote = useCallback((note: ParsedNote) => {
-    if (!samplerRef.current?.loaded) return;
-    const durationSec = Math.max(note.duration, 0.1);
+    const { sampler, loaded } = getSamplerAndLoaded(note);
+    if (!loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    samplerRef.current.triggerAttackRelease(note.name, durationSec, Tone.now(), velocity);
+    // Allow the MP3 to ring out fully through its natural 7+ second decay.
+    // This perfectly emulates SimpleAudioEngine::playEffect used in the original Cocos2d-x PT2.
+    sampler.triggerAttackRelease(note.name, 8, Tone.now(), velocity);
   }, []);
 
   const attackNote = useCallback((note: ParsedNote) => {
-    if (!samplerRef.current?.loaded) return;
+    const { sampler, loaded } = getSamplerAndLoaded(note);
+    if (!loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    samplerRef.current.triggerAttack(note.name, Tone.now(), velocity);
+    sampler.triggerAttack(note.name, Tone.now(), velocity);
   }, []);
 
-  const releaseNote = useCallback((noteName: string) => {
-    if (!samplerRef.current?.loaded) return;
-    samplerRef.current.triggerRelease(noteName, Tone.now());
+  const releaseNote = useCallback((note: ParsedNote) => {
+    // In PT2, releasing a hold tile does NOT choke the audio immediately; it lets it finish its release tail.
+    const { sampler, loaded } = getSamplerAndLoaded(note);
+    if (!loaded) return;
+    sampler.triggerRelease(note.name, Tone.now() + 0.1);
   }, []);
 
   const playNoteScheduled = useCallback((note: ParsedNote, time: number) => {
-    if (!samplerRef.current?.loaded) return;
-    const durationSec = Math.max(note.duration, 0.1);
+    const { sampler, loaded } = getSamplerAndLoaded(note);
+    if (!loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    samplerRef.current.triggerAttackRelease(note.name, durationSec, time, velocity);
+    sampler.triggerAttackRelease(note.name, 8, time, velocity);
   }, []);
 
   return { loaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
