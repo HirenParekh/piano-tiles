@@ -4,13 +4,11 @@ import { useSynth } from './hooks/useSynth';
 import { usePlayback } from './hooks/usePlayback';
 import { MidiDropzone } from './components/MidiDropzone';
 import { TrackSelector } from './components/TrackSelector';
-import { MidiInfoPanel } from './components/MidiInfoPanel';
-import { NoteTable } from './components/NoteTable';
+import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
-import { LibraryTab } from './components/LibraryTab';
 import type { GameTile, MidiParseResult, ParsedNote } from './types/midi';
 import { MIN_HEIGHT } from './utils/midiParser';
-import { devResult, DEV_SELECTED_TRACKS } from './dev/devResult';
+import { devResult } from './dev/devResult';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import './styles/main.scss';
 
@@ -26,27 +24,21 @@ export default function App() {
 
   const { loaded: samplesLoaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
-  // Left panel tab state
-  const [leftTab, setLeftTab] = useState<'notes' | 'library'>('notes');
-
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
 
   const activeResult = DEV_SKIP_FILE ? (pickedResult ?? devResult) : result;
   const activeStage = DEV_SKIP_FILE ? 'ready' : stage;
-  const activeSelectedTracks = DEV_SKIP_FILE ? DEV_SELECTED_TRACKS : selectedTracks;
 
   const playbackNotes = useMemo(
     () => activeResult?.notes ?? [],
     [activeResult],
   );
-  const {
-    isPlaying: isPlaybackPlaying,
-    currentTime,
-    play: playbackPlay,
-    pause: playbackPause,
-    stop: playbackStop,
-  } = usePlayback(playbackNotes, activeResult?.info.durationSeconds ?? 0, playNoteScheduled);
+  const { stop: playbackStop } = usePlayback(
+    playbackNotes,
+    activeResult?.info.durationSeconds ?? 0,
+    playNoteScheduled
+  );
 
   const handleFile = async (file: File) => {
     await resumeContext();
@@ -99,7 +91,18 @@ export default function App() {
   const handleSongSelect = (result: MidiParseResult) => {
     playbackStop();
     setPickedResult(result);
-    setLeftTab('notes');
+  };
+
+  const handlePlaySong = async (id: string) => {
+    try {
+      const res = await fetch(`/songs/${encodeURIComponent(id)}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const ptJson = await res.json();
+      handleSongSelect(buildResultFromPianoTilesSong(ptJson, 0, id));
+    } catch (err) {
+      console.error('Failed to load song:', err);
+      alert('Failed to load song: ' + id);
+    }
   };
 
   return (
@@ -144,75 +147,11 @@ export default function App() {
 
             {/* Left panel — tabbed */}
             <div className="studio__table">
-              <div style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderBottom: '1px solid #2a2a2a', background: '#0e0e0e' }}>
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: '11px', padding: '4px 8px' }}
-                  onClick={() => {
-                    handleSongSelect(devResult);
-                  }}
-                >
-                  Load Jingle Bells
-                </button>
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: '11px', padding: '4px 8px' }}
-                  onClick={async () => {
-                    const req = await fetch('/src/dev/Little Star.json');
-                    if (req.ok) {
-                      const sf = await req.json();
-                      handleSongSelect(buildResultFromPianoTilesSong(sf, 0, 'Little Star'));
-                    }
-                  }}
-                >
-                  Load Little Star
-                </button>
-              </div>
-
-              <div className="studio-tabs">
-                <button
-                  className={`studio-tab${leftTab === 'notes' ? ' studio-tab--active' : ''}`}
-                  onClick={() => setLeftTab('notes')}
-                >
-                  Notes
-                </button>
-                <button
-                  className={`studio-tab${leftTab === 'library' ? ' studio-tab--active' : ''}`}
-                  onClick={() => setLeftTab('library')}
-                >
-                  Library
-                </button>
-              </div>
-
-              {leftTab === 'notes' ? (
-                <>
-                  <MidiInfoPanel
-                    info={activeResult.info}
-                    tracks={activeResult.tracks}
-                    selectedTracks={activeSelectedTracks}
-                    tileCount={activeResult.tiles.length}
-                    isPlaying={isPlaybackPlaying}
-                    currentTime={currentTime}
-                    onChangeTrack={handleReset}
-                    onReset={handleReset}
-                    onPlay={playbackPlay}
-                    onPause={playbackPause}
-                    onStop={playbackStop}
-                    onCopyNotes={() => navigator.clipboard.writeText(JSON.stringify(activeResult.notes, null, 2))}
-                    onCopyTiles={() => navigator.clipboard.writeText(JSON.stringify(activeResult.tiles, null, 2))}
-                  />
-                  <NoteTable tiles={activeResult.tiles} onTileTap={handleTileTap} />
-                </>
-              ) : (
-                <LibraryTab
-                  onSelect={handleSongSelect}
-                  currentSongName={activeResult.info.name}
-                />
-              )}
+              <SongSelection onPlaySong={handlePlaySong} />
             </div>
 
             {/* Right — game board */}
-            <div className="studio__board" style={{ position: 'relative' }}>
+            <div className="studio__board">
               {!samplesLoaded && (
                 <div style={{
                   position: 'absolute', inset: 0, zIndex: 10,
@@ -227,7 +166,6 @@ export default function App() {
                 result={activeResult}
                 onPlayNote={handleTileTap}
                 onHoldRelease={handleHoldRelease}
-                onSpeedChange={(mult) => { speedRef.current = mult; }}
               />
             </div>
           </div>

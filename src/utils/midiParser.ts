@@ -186,14 +186,15 @@ export function buildTilesFromNotes(
    * Defaults to `60 / bpm` (one quarter-note).
    */
   beatDurationSOverride?: number,
-): { tiles: GameTile[]; totalHeight: number } {
+  initialLastLane?: number,
+): { tiles: GameTile[]; totalHeight: number; lastLane: number } {
   const beatDurationS = beatDurationSOverride ?? (60 / bpm);
 
   // Merge consecutive fractional-beat notes into hold tiles
   const groups = mergeConsecutiveNotes(notes, beatDurationS);
 
   let noteOffset = 0;
-  let lastLane = -1;
+  let lastLane = initialLastLane ?? -1;
   const tiles: GameTile[] = groups.map((group, index) => {
     const primaryNote = group[0];
 
@@ -247,7 +248,7 @@ export function buildTilesFromNotes(
   }
 
   const totalHeight = buildLayout(tiles, beatDurationS);
-  return { tiles, totalHeight };
+  return { tiles, totalHeight, lastLane };
 }
 
 // ── Build tiles from selected tracks ──────────────────────────────────────

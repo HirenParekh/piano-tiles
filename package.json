@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.13.21",
     "@tonejs/midi": "^2.0.28",
-    "tone": "^14.7.77",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "tone": "^14.7.77"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

@@ -3,100 +3,224 @@ import * as Tone from 'tone';
 import type { ParsedNote } from '../types/midi';
 import musicUrls from '../music_urls.json';
 
-interface UseSynthReturn {
-  /** True once all instrument samples have loaded */
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+function parseKeyToMidi(key: string): number {
+  const match = key.match(/^([A-G]#?)(\d+)$/);
+  if (!match) return 60;
+  const noteName = match[1];
+  const octave = parseInt(match[2], 10);
+  const index = NOTE_NAMES.indexOf(noteName);
+  return (octave + 1) * 12 + index;
+}
+
+/**
+ * Raw Web Audio API Sampler for Zero-Latency Rhythm Game Playback.
+ * Replaces Tone.Sampler to avoid main-thread scheduling abstractions.
+ */
+class WebAudioSampler {
+  context: AudioContext;
+  masterGain: GainNode;
+  buffers: Map<number, AudioBuffer> = new Map();
+  releaseTime: number;
+  activeVoices: Set<{ source: AudioBufferSourceNode; gain: GainNode; name: string; stopTime: number; stopped: boolean }> = new Set();
+  loaded: boolean = false;
+
+  constructor(context: AudioContext, urls: Record<string, string>, baseUrl: string, targetVolumeDb: number, releaseTime: number = 1.2, setLoaded?: () => void) {
+    this.context = context;
+    this.releaseTime = releaseTime;
+
+    // Connect to destination directly for minimum latency 
+    this.masterGain = context.createGain();
+    const amplitude = Math.pow(10, targetVolumeDb / 20);
+    this.masterGain.gain.value = amplitude;
+    this.masterGain.connect(context.destination);
+
+    this.load(urls, baseUrl).then(() => {
+      this.loaded = true;
+      if (setLoaded) setLoaded();
+    });
+  }
+
+  async load(urls: Record<string, string>, baseUrl: string) {
+    const promises = Object.entries(urls).map(async ([key, fileName]) => {
+      const midi = parseKeyToMidi(key);
+      try {
+        const response = await fetch(`${baseUrl}${fileName}`);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await this.context.decodeAudioData(arrayBuffer);
+        this.buffers.set(midi, audioBuffer);
+      } catch (e) {
+        console.error(`Failed to load ${fileName}`, e);
+      }
+    });
+    await Promise.all(promises);
+  }
+
+  getNearestBuffer(midi: number): { buffer: AudioBuffer | null, detune: number } {
+    if (this.buffers.size === 0) return { buffer: null, detune: 0 };
+    if (this.buffers.has(midi)) return { buffer: this.buffers.get(midi)!, detune: 0 };
+
+    let nearest = -1;
+    let minDiff = Infinity;
+    for (const loadedMidi of this.buffers.keys()) {
+      const diff = Math.abs(midi - loadedMidi);
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearest = loadedMidi;
+      }
+    }
+    return { buffer: this.buffers.get(nearest)!, detune: midi - nearest };
+  }
+
+  triggerAttack(midi: number, name: string, time: number, velocity: number = 0.8) {
+    if (!this.loaded) return;
+    const { buffer, detune } = this.getNearestBuffer(midi);
+    if (!buffer) return;
+
+    // Direct C++ Native AudioBufferSourceNode allocation (Fastest possible playback)
+    const source = this.context.createBufferSource();
+    source.buffer = buffer;
+    if (detune !== 0) {
+      source.playbackRate.value = Math.pow(2, detune / 12);
+    }
+
+    const gainNode = this.context.createGain();
+    gainNode.gain.setValueAtTime(velocity, time);
+
+    source.connect(gainNode);
+    gainNode.connect(this.masterGain);
+
+    source.start(time);
+
+    // Cleanup GC for finished long-notes
+    this._cleanupVoices(time);
+
+    const voice = { source, gain: gainNode, name, stopTime: time + buffer.duration, stopped: false };
+    this.activeVoices.add(voice);
+
+    source.onended = () => {
+      this.activeVoices.delete(voice);
+    };
+  }
+
+  triggerRelease(name: string, time: number) {
+    for (const voice of this.activeVoices) {
+      if (voice.name === name && !voice.stopped) {
+        voice.stopped = true;
+        // Damper pedal fadeout simulation
+        voice.gain.gain.cancelScheduledValues(time);
+        voice.gain.gain.setValueAtTime(voice.gain.gain.value, time);
+        voice.gain.gain.exponentialRampToValueAtTime(0.001, time + this.releaseTime);
+
+        voice.source.stop(time + this.releaseTime + 0.1);
+        voice.stopTime = time + this.releaseTime + 0.1;
+      }
+    }
+  }
+
+  triggerAttackRelease(midi: number, name: string, duration: number, time: number, velocity: number = 0.8) {
+    this.triggerAttack(midi, name, time, velocity);
+    this.triggerRelease(name, time + duration);
+  }
+
+  _cleanupVoices(time: number) {
+    for (const voice of this.activeVoices) {
+      if (voice.stopTime < time) {
+        this.activeVoices.delete(voice);
+      }
+    }
+  }
+
+  dispose() {
+    this.masterGain.disconnect();
+    this.activeVoices.clear();
+  }
+}
+
+export interface UseSynthReturn {
   loaded: boolean;
-  /** Play a single note immediately (for tap tiles) */
   playNote: (note: ParsedNote) => void;
-  /** Start a note without scheduling its release (for hold tiles) */
   attackNote: (note: ParsedNote) => void;
-  /** Release a held note by its parsed note reference */
   releaseNote: (note: ParsedNote) => void;
-  /** Play a note at a precise scheduled time (for Transport-based playback) */
   playNoteScheduled: (note: ParsedNote, time: number) => void;
-  /** Ensure AudioContext is running (must be called from a user gesture) */
   resumeContext: () => Promise<void>;
 }
 
 export function useSynth(): UseSynthReturn {
-  const samplersRef = useRef<Record<string, Tone.Sampler>>({});
+  const samplersRef = useRef<Record<string, WebAudioSampler>>({});
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    const reverb = new Tone.Reverb({ decay: 1.5, wet: 0.2 }).toDestination();
+  // We explicitly fetch the Web Audio API context powering Tone.js's transport
+  // so `usePlayback.ts` remains perfectly in sync with our custom low-latency node.
+  const rawContext = Tone.getContext().rawContext as AudioContext;
 
+  useEffect(() => {
     const instruments = Object.keys(musicUrls);
     let loadedCount = 0;
-    const samplers: Record<string, Tone.Sampler> = {};
+    const samplers: Record<string, WebAudioSampler> = {};
+
+    const checkAllLoaded = () => {
+      loadedCount++;
+      if (loadedCount === instruments.length) {
+        setLoaded(true);
+      }
+    };
 
     for (const instr of instruments) {
-      const sampler = new Tone.Sampler({
-        urls: (musicUrls as any)[instr],
-        baseUrl: `/music/${instr}/`,
-        release: instr === 'drum' ? 0.5 : 1.2,
-        onload: () => {
-          console.log(`Loaded ${instr} samples`);
-          loadedCount++;
-          if (loadedCount === instruments.length) {
-            setLoaded(true);
-          }
-        },
-        onerror: (err) => {
-          console.error(`Failed to load samples for ${instr}:`, err);
-        }
-      }).connect(reverb);
+      const urls = (musicUrls as any)[instr];
+      const baseUrl = `/music/${instr}/`;
+      const release = instr === 'drum' ? 0.5 : 1.2;
+      const volDb = instr === 'piano' ? -4 : -2;
 
-      sampler.volume.value = instr === 'piano' ? -6 : -4;
-      samplers[instr] = sampler;
+      samplers[instr] = new WebAudioSampler(rawContext, urls, baseUrl, volDb, release, checkAllLoaded);
     }
 
     samplersRef.current = samplers;
 
     return () => {
       Object.keys(samplers).forEach(k => samplers[k].dispose());
-      reverb.dispose();
     };
-  }, []);
+  }, [rawContext]);
 
-  const getSamplerAndLoaded = (note: ParsedNote) => {
+  const getSampler = (note: ParsedNote) => {
     let instr = note.instrument || 'piano';
     if (!samplersRef.current[instr]) instr = 'piano';
-    const sampler = samplersRef.current[instr];
-    return { sampler, loaded: sampler?.loaded };
+    return samplersRef.current[instr];
   }
 
   const resumeContext = useCallback(async () => {
+    if (rawContext && rawContext.state !== 'running') {
+      await rawContext.resume();
+    }
     await Tone.start();
-  }, []);
+  }, [rawContext]);
 
   const playNote = useCallback((note: ParsedNote) => {
-    const { sampler, loaded } = getSamplerAndLoaded(note);
-    if (!loaded) return;
+    const sampler = getSampler(note);
+    if (!sampler || !sampler.loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    // Allow the MP3 to ring out fully through its natural 7+ second decay.
-    // This perfectly emulates SimpleAudioEngine::playEffect used in the original Cocos2d-x PT2.
-    sampler.triggerAttackRelease(note.name, 8, Tone.now(), velocity);
-  }, []);
+    sampler.triggerAttackRelease(note.midi, note.name, 8, rawContext.currentTime, velocity);
+  }, [rawContext]);
 
   const attackNote = useCallback((note: ParsedNote) => {
-    const { sampler, loaded } = getSamplerAndLoaded(note);
-    if (!loaded) return;
+    const sampler = getSampler(note);
+    if (!sampler || !sampler.loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    sampler.triggerAttack(note.name, Tone.now(), velocity);
-  }, []);
+    sampler.triggerAttack(note.midi, note.name, rawContext.currentTime, velocity);
+  }, [rawContext]);
 
   const releaseNote = useCallback((note: ParsedNote) => {
-    // In PT2, releasing a hold tile does NOT choke the audio immediately; it lets it finish its release tail.
-    const { sampler, loaded } = getSamplerAndLoaded(note);
-    if (!loaded) return;
-    sampler.triggerRelease(note.name, Tone.now() + 0.1);
-  }, []);
+    const sampler = getSampler(note);
+    if (!sampler || !sampler.loaded) return;
+    sampler.triggerRelease(note.name, rawContext.currentTime + 0.1);
+  }, [rawContext]);
 
   const playNoteScheduled = useCallback((note: ParsedNote, time: number) => {
-    const { sampler, loaded } = getSamplerAndLoaded(note);
-    if (!loaded) return;
+    const sampler = getSampler(note);
+    if (!sampler || !sampler.loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    sampler.triggerAttackRelease(note.name, 8, time, velocity);
+    sampler.triggerAttackRelease(note.midi, note.name, 8, time, velocity);
   }, []);
 
   return { loaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };

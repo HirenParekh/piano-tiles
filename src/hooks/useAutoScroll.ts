@@ -50,6 +50,14 @@ export function useAutoScroll(
   const pixelsToTime = useCallback((px: number) => {
     if (!scrollSegments || scrollSegments.length === 0) return px / pixelsPerSecond;
 
+    // Below the first segment (e.g., negative pixels or start padding)
+    const first = scrollSegments[0];
+    if (px < first.startPixel) {
+      const firstSpeed = (first.endTime - first.startTime) === 0 ? pixelsPerSecond : (first.endPixel - first.startPixel) / (first.endTime - first.startTime);
+      return first.startTime - (first.startPixel - px) / firstSpeed;
+    }
+
+    // Inside a valid segment
     for (const seg of scrollSegments) {
       if (px >= seg.startPixel && px <= seg.endPixel) {
         const segDuration = seg.endTime - seg.startTime;
@@ -58,6 +66,8 @@ export function useAutoScroll(
         return seg.startTime + (progress * segDuration);
       }
     }
+
+    // Above the last segment
     const last = scrollSegments[scrollSegments.length - 1];
     const lastSpeed = (last.endTime - last.startTime) === 0 ? pixelsPerSecond : (last.endPixel - last.startPixel) / (last.endTime - last.startTime);
     return last.endTime + (px - last.endPixel) / lastSpeed;
@@ -102,7 +112,14 @@ export function useAutoScroll(
     if (isPlayingRef.current) return;
     const currentScrollTop = scrollRef.current?.scrollTop ?? maxScroll;
     const currentPxFromBottom = maxScroll - currentScrollTop;
-    timeAtPlayRef.current = pixelsToTime(currentPxFromBottom);
+
+    // If we are at the very start (with 1px float precision tolerance), force time 0 
+    // to prevent the pixelsToTime scale offset from jumping ahead.
+    if (Math.abs(currentPxFromBottom) <= 1) {
+      timeAtPlayRef.current = 0;
+    } else {
+      timeAtPlayRef.current = pixelsToTime(currentPxFromBottom);
+    }
 
     isPlayingRef.current = true;
     setIsPlaying(true);
@@ -120,6 +137,7 @@ export function useAutoScroll(
     stop();
     if (scrollRef.current) {
       scrollRef.current.scrollTop = maxScroll;
+      timeAtPlayRef.current = 0;
     }
   }, [stop, scrollRef, maxScroll]);
 
@@ -127,6 +145,7 @@ export function useAutoScroll(
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = maxScroll;
+      timeAtPlayRef.current = 0;
     }
   }, [scrollRef, maxScroll]);
 

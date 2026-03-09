@@ -261,6 +261,7 @@ export function buildResultFromPianoTilesSong(
   const scrollSegments: ScrollSegment[] = [];
 
   let maxTrackCount = 0;
+  let globalLastLane = -1;
 
   const initialMusic = song.musics[musicIndex] ?? song.musics[0];
   const initialBpm = initialMusic?.bpm || 100;
@@ -330,7 +331,8 @@ export function buildResultFromPianoTilesSong(
 
     // Tiles come from melody + bass notes at melody-rest positions (must be sorted by time)
     const tileNotes = [...melodyNotes, ...bassTileNotes].sort((a, b) => a.time - b.time);
-    const { tiles: sectionTiles } = buildTilesFromNotes(tileNotes, bpm, slotDurationS);
+    const { tiles: sectionTiles, lastLane } = buildTilesFromNotes(tileNotes, bpm, slotDurationS, globalLastLane);
+    globalLastLane = lastLane;
 
     // Attach bassAccomp notes to their melody tile by time-window coverage
     const sortedTiles = [...sectionTiles].sort((a, b) => a.note.time - b.note.time);

@@ -6,13 +6,10 @@ import { useGameBoard } from '../hooks/useGameBoard';
 import { useAutoScroll } from '../hooks/useAutoScroll';
 import { MIN_HEIGHT } from '../utils/midiParser';
 
-const SPEED_OPTIONS = [1, 1.5, 2] as const;
-
 interface Props {
   result: MidiParseResult;
   onPlayNote: (tile: GameTile) => void;
   onHoldRelease?: () => void;
-  onSpeedChange?: (multiplier: number) => void;
 }
 
 const LANE_COUNT = 4;
@@ -24,10 +21,10 @@ function groupByLane(tiles: GameTile[]): Map<number, GameTile[]> {
   return map;
 }
 
-export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: Props) {
-  const { tappedIds, tapTile, scrollRef, reset: resetBoard } = useGameBoard(onPlayNote);
+export function GameBoard({ result, onPlayNote, onHoldRelease }: Props) {
+  const { tappedIds, tapTile, scrollRef } = useGameBoard(onPlayNote);
   const [started, setStarted] = useState(false);
-  const [speedMultiplier, setSpeedMultiplier] = useState<typeof SPEED_OPTIONS[number]>(1);
+  const speedMultiplier = 1;
   const [viewportH, setViewportH] = useState(600);
 
   const { tiles, info, totalHeight } = result;
@@ -52,7 +49,6 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
   // Use effectiveBpm for scroll speed: TPS = effectiveBpm / 60, px/s = TPS × MIN_HEIGHT × scaleRatio
   const effectiveBpm = info.effectiveBpm ?? info.bpm;
   const slotDurationS = 60 / effectiveBpm;
-  const PX_PER_SEC = (MIN_HEIGHT / slotDurationS) * speedMultiplier * scaleRatio;
 
   // Scale beat lines
   const beatLines: { y: number; beat: number; timeS: number }[] = [];
@@ -69,7 +65,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
     }));
   }, [info.scrollSegments, scaleRatio]);
 
-  const { isPlaying, play, reset: resetScroll } = useAutoScroll(scrollRef, {
+  const { play } = useAutoScroll(scrollRef, {
     pixelsPerSecond: (MIN_HEIGHT / slotDurationS) * scaleRatio,
     speedMultiplier,
     totalHeight: scaledTotalHeight,
@@ -77,19 +73,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
     scrollSegments: scaledScrollSegments,
   });
 
-  const handleReset = () => {
-    resetScroll();
-    resetBoard();
-    setStarted(false);
-  };
 
-  const handleSpeedChange = (mult: typeof SPEED_OPTIONS[number]) => {
-    setSpeedMultiplier(mult);
-    onSpeedChange?.(mult);
-    resetScroll();
-    resetBoard();
-    setStarted(false);
-  };
 
   // START tile handler — only triggers scroll, no note played
   const handleStart = useCallback(() => {
@@ -108,27 +92,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
   return (
     <div className="game-board">
 
-      {/* Top bar */}
-      <div className="game-board__topbar">
-        <span className="game-board__song">{info.name}</span>
-        <span className="game-board__score">
-          {tappedIds.size}<span>/{tiles.length}</span>
-        </span>
-        <div className="game-board__controls">
-          {SPEED_OPTIONS.map(s => (
-            <button
-              key={s}
-              className={`btn-ghost btn-ghost--xs${speedMultiplier === s ? ' btn-ghost--active' : ''}`}
-              onClick={() => handleSpeedChange(s)}
-            >
-              {s}x
-            </button>
-          ))}
-          <button className="btn-ghost btn-ghost--xs" onClick={handleReset} title="Restart">
-            ↺
-          </button>
-        </div>
-      </div>
+
 
       {/* Viewport */}
       <div
@@ -200,10 +164,10 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onSpeedChange }: 
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="game-board__legend">
-        <span>{isPlaying ? 'playing…' : started ? 'paused' : 'tap START to begin'}</span>
-        <span>{info.bpm} BPM · {Math.round(PX_PER_SEC)}px/s</span>
+      {/* Bottom Info */}
+      <div className="game-board__bottom-info">
+        <div className="song-title">{info.name}</div>
+        <div className="song-author">Unknown Author</div>
       </div>
 
     </div>
