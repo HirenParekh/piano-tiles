@@ -1,12 +1,11 @@
 import type { GameTile } from '../types/midi';
 import type { GameTrackData, Card, Tile } from '../types/track';
-import { MIN_HEIGHT } from './midiParser';
 
 export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
     // 1. Map old GameTile array to new Card-based Tile array with absolute track rows
     const absTiles = tiles.map(t => {
-        const rowStart = Math.round(t.bottomOffset / MIN_HEIGHT);
-        const rowSpan = Math.max(1, Math.round(t.height / MIN_HEIGHT));
+        const rowStart = Math.round(t.slotStart);
+        const rowSpan = Math.max(1, Math.round(t.slotSpan));
         const isHold = rowSpan > 1;
 
         const base: any = {
@@ -16,7 +15,7 @@ export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
             rowSpan,
             notes: t.notes,
             tapped: t.tapped,
-            gameTile: t,
+            noteIndices: t.noteIndices,
         };
 
         if (isHold) {

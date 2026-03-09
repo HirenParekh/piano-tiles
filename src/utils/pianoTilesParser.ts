@@ -1,5 +1,5 @@
 import type { ParsedNote, MidiParseResult, TrackMeta, GameTile, ScrollSegment } from '../types/midi';
-import { buildTilesFromNotes } from './midiParser';
+import { buildTilesFromNotes } from './tileBuilder';
 
 // ── PianoTiles JSON song format ─────────────────────────────────────────────
 export interface PianoTilesSong {
@@ -98,13 +98,14 @@ function parseBracketBeats(token: string, fallbackBeats: number): number {
 function parseScore(
   score: string,
   bpm: number,
-  _baseBeats: number,
+  baseBeats: number,
   trackIndex: number,
   trackName: string,
   instrument: string,
-): { notes: ParsedNote[]; totalTimeS: number } {
+): { notes: ParsedNote[]; totalSlots: number } {
   const notes: ParsedNote[] = [];
   const beatDurationS = 60 / bpm;
+  const slotDurationS = baseBeats * beatDurationS;
 
   // pt2.cpp ignores N<...> grouping entirely. We strip \d+< and > and effect brackets {}
   const flat = score
@@ -115,28 +116,28 @@ function parseScore(
 
   const tokens = flat.split(',');
 
-  let currentTime = 0;
+  let currentSlot = 0;
 
   for (let token of tokens) {
     token = token.trim();
     if (!token) continue;
 
     if (token === 'ST') {
-      currentTime += 3 * beatDurationS; // S=2 + T=1
+      currentSlot += 3 / baseBeats;
       continue;
     }
 
     if (/^[QRSSTUVWXYZ]+$/.test(token)) {
       let restBeats = 0;
       for (const ch of token) restBeats += REST_BEATS[ch] || 0;
-      currentTime += restBeats * beatDurationS;
+      currentSlot += restBeats / baseBeats;
       continue;
     }
 
     const bracketBeats = parseBracketBeats(token, 0);
-    const lengthS = bracketBeats * beatDurationS;
+    const bracketSlots = bracketBeats / baseBeats;
 
-    if (lengthS === 0) {
+    if (bracketSlots === 0) {
       // Unparseable duration or missing bracket? Just skip
       continue;
     }
@@ -158,24 +159,24 @@ function parseScore(
     }
 
     if (notesToPlay.length === 0) {
-      currentTime += lengthS;
+      currentSlot += bracketSlots;
       continue;
     }
 
     const opCounts: Record<string, number> = { '.': 0, '@': 0, '%': 0, '!': 0, '~': 0, '$': 0, '^': 0, '&': 0 };
     for (const op of ops) opCounts[op] = (opCounts[op] || 0) + 1;
 
-    let delayS = lengthS;
+    let delayS = bracketSlots * slotDurationS;
     if (opCounts['@'] > 0) {
       const count = opCounts['@'];
-      delayS = lengthS / (count === 1 ? 10 : 10 * (count - 1));
+      delayS = delayS / (count === 1 ? 10 : 10 * (count - 1));
     } else if (opCounts['%'] > 0) {
-      delayS = (3 * lengthS) / (10 * opCounts['%']);
+      delayS = (3 * delayS) / (10 * opCounts['%']);
     } else if (opCounts['!'] > 0) {
-      delayS = (3 * lengthS) / (20 * opCounts['!']);
+      delayS = (3 * delayS) / (20 * opCounts['!']);
     } else if (opCounts['~'] > 0 || opCounts['$'] > 0) {
       const count = opCounts['~'] + opCounts['$'];
-      delayS = lengthS / (count + 1);
+      delayS = delayS / (count + 1);
     } else if (opCounts['^'] > 0 || opCounts['&'] > 0) {
       // Ornaments oscillate rapidly over a short delay
       delayS = beatDurationS / 24;
@@ -183,7 +184,7 @@ function parseScore(
       delayS = 0;
     }
 
-    let tokenTime = currentTime;
+    let tokenArpeggioDelayS = 0;
 
     const bracketStr = token.match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
 
@@ -194,26 +195,29 @@ function parseScore(
         notes.push({
           midi: parsed.midi,
           name: parsed.name,
-          time: tokenTime,
-          duration: Math.max(lengthS - (tokenTime - currentTime), 0.05),
+          time: currentSlot * slotDurationS + tokenArpeggioDelayS,
+          duration: Math.max(bracketSlots * slotDurationS - tokenArpeggioDelayS, 0.05),
           velocity: 0.7,
           trackIndex,
           trackName,
           channel: trackIndex,
           instrument,
           pt2Notation: rawName + bracketStr,
+          slotStart: currentSlot,
+          slotSpan: bracketSlots,
+          arpeggioDelayS: tokenArpeggioDelayS,
         });
       }
 
       if (i < notesToPlay.length - 1) {
-        tokenTime += delayS;
+        tokenArpeggioDelayS += delayS;
       }
     }
 
-    currentTime += lengthS;
+    currentSlot += bracketSlots;
   }
 
-  return { notes, totalTimeS: currentTime };
+  return { notes, totalSlots: currentSlot };
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -277,48 +281,46 @@ export function buildResultFromPianoTilesSong(
   const initialBpm = initialMusic?.bpm || 100;
   const initialEffectiveBpm = initialMusic ? Math.round(initialMusic.bpm / initialMusic.baseBeats) : 100;
 
-  // Set 0 offset rows so the first actual tile starts right above the START
-  // This removes any empty space between the START tile and the first real note.
-  const START_OFFSET_ROWS = 0;
+  const START_OFFSET_SLOTS = 0;
   const MIN_HEIGHT = 100;
   const initialSlotDurationS = initialMusic ? initialMusic.baseBeats * (60 / initialMusic.bpm) : 0.6;
 
-  let currentTimeOffset = START_OFFSET_ROWS * initialSlotDurationS;
-  let currentBottomOffset = START_OFFSET_ROWS * MIN_HEIGHT;
+  let currentSlotOffset = START_OFFSET_SLOTS;
+  let currentTimeOffset = START_OFFSET_SLOTS * initialSlotDurationS;
 
-  if (START_OFFSET_ROWS > 0) {
+  if (START_OFFSET_SLOTS > 0) {
     scrollSegments.push({
+      startSlot: 0,
+      endSlot: START_OFFSET_SLOTS,
+      slotDurationS: initialSlotDurationS,
       startPixel: 0,
-      endPixel: currentBottomOffset,
+      endPixel: START_OFFSET_SLOTS * MIN_HEIGHT,
       startTime: 0,
       endTime: currentTimeOffset,
     });
   }
 
-  // We play all musics consecutively starting from 0, to build the full endless-style track map
   song.musics.forEach((music) => {
     const { bpm, baseBeats, scores, instruments, alternatives } = music;
     const sectionNotes: ParsedNote[] = [];
-    let maxSectionTimeS = 0;
+    let maxSectionSlots = 0;
 
     if (scores.length > maxTrackCount) {
       maxTrackCount = scores.length;
     }
 
-    // 1. Parse notes for this section (results are time=0 based)
     scores.forEach((score, i) => {
       const trackName = i === 0 ? 'Melody' : i === 1 ? 'Bass' : `Track ${i + 1}`;
       const instr = (alternatives?.[i] || instruments?.[i] || 'piano').toLowerCase();
       const parsed = parseScore(score, bpm, baseBeats, i, trackName, instr);
       sectionNotes.push(...parsed.notes);
-      if (parsed.totalTimeS > maxSectionTimeS) {
-        maxSectionTimeS = parsed.totalTimeS;
+      if (parsed.totalSlots > maxSectionSlots) {
+        maxSectionSlots = parsed.totalSlots;
       }
     });
 
     sectionNotes.sort((a, b) => a.time - b.time);
 
-    // 2. Build local tiles at relative time 0
     const slotDurationS = baseBeats * (60 / bpm);
 
     const melodyNotes = sectionNotes.filter(n => n.trackIndex === 0);
@@ -326,86 +328,70 @@ export function buildResultFromPianoTilesSong(
       n => n.trackIndex !== 0 && audioScoreIndices.includes(n.trackIndex)
     );
 
-    // Split bass notes into two groups:
-    // - bassAccomp: falls within a melody note's time window → becomes a dot on that tile
-    // - bassTileNotes: falls in a melody rest gap → becomes its own tappable tile
     const bassAccomp: typeof accompNotes = [];
     const bassTileNotes: typeof accompNotes = [];
     for (const bassNote of accompNotes) {
       const overlaps = melodyNotes.some(
-        m => bassNote.time >= m.time - 0.001 && bassNote.time < m.time + m.duration - 0.001
+        m => bassNote.slotStart >= m.slotStart && bassNote.slotStart < m.slotStart + m.slotSpan
       );
       if (overlaps) bassAccomp.push(bassNote);
       else bassTileNotes.push(bassNote);
     }
 
-    // Tiles come from melody + bass notes at melody-rest positions (must be sorted by time)
     const tileNotes = [...melodyNotes, ...bassTileNotes].sort((a, b) => a.time - b.time);
-    const { tiles: sectionTiles, lastLane } = buildTilesFromNotes(tileNotes, bpm, slotDurationS, globalLastLane);
+    const { tiles: sectionTiles, lastLane } = buildTilesFromNotes(tileNotes, globalLastLane);
     globalLastLane = lastLane;
 
-    // Attach bassAccomp notes to their melody tile by time-window coverage
-    const sortedTiles = [...sectionTiles].sort((a, b) => a.note.time - b.note.time);
+    const sortedTiles = [...sectionTiles].sort((a, b) => a.note.slotStart - b.note.slotStart);
     for (const accNote of bassAccomp) {
       for (const tile of sortedTiles) {
-        if (accNote.time >= tile.note.time - 0.001 &&
-          accNote.time < tile.note.time + tile.note.duration - 0.001) {
-          // TODO: suppress accompaniment notes with same pitch class as a hold tile's melody note.
-          // Confirmed by experiment: e1 (E) silent inside e3[K] (E), c1 (C) shows dot, e2 (E) suppressed.
-          // const isHold = tile.note.duration > slotDurationS + 0.001;
-          // if (!(isHold && (accNote.midi % 12) === (tile.note.midi % 12)))
+        if (accNote.slotStart >= tile.note.slotStart &&
+          accNote.slotStart < tile.note.slotStart + tile.note.slotSpan) {
           tile.notes.push(accNote);
           break;
         }
       }
     }
 
-    // To ensure perfect synchronization between visual placement and audio start times
-    // for subsequent sections, we strictly advance the clock according to the parsed track bounds.
-    const MIN_HEIGHT = 100;
+    const sectionTotalSlots = Math.max(1, Math.round(maxSectionSlots));
+    const sectionLayoutTimeS = sectionTotalSlots * slotDurationS;
 
-    // We quantize the total track time to beats (in case of floating point drift)
-    const sectionLayoutBeats = Math.max(1, Math.round(maxSectionTimeS / slotDurationS));
-
-    // The height is simply the total beats in the score * the MIN_HEIGHT constant.
-    const sectionPureHeight = sectionLayoutBeats * MIN_HEIGHT;
-    const sectionLayoutTimeS = sectionLayoutBeats * slotDurationS;
-
-    // 3. Shift all times to absolute coordinate space
     sectionNotes.forEach(n => {
+      n.slotStart += currentSlotOffset;
       n.time += currentTimeOffset;
     });
 
-    // 4. Shift Y-offsets (bottom up)
     sectionTiles.forEach((tile) => {
-      tile.bottomOffset += currentBottomOffset;
+      tile.slotStart += currentSlotOffset;
+      tile.bottomOffset = Math.round(tile.slotStart) * MIN_HEIGHT;
+      tile.height = Math.max(1, Math.round(tile.slotSpan)) * MIN_HEIGHT;
     });
 
     allNotes.push(...sectionNotes.filter(n => audioScoreIndices.includes(n.trackIndex)));
     allTiles.push(...sectionTiles);
 
-    // Store scroll mapping segment
     scrollSegments.push({
-      startPixel: currentBottomOffset,
-      endPixel: currentBottomOffset + sectionPureHeight,
+      startSlot: currentSlotOffset,
+      endSlot: currentSlotOffset + sectionTotalSlots,
+      slotDurationS,
+      startPixel: Math.round(currentSlotOffset) * MIN_HEIGHT,
+      endPixel: Math.round(currentSlotOffset + sectionTotalSlots) * MIN_HEIGHT,
       startTime: currentTimeOffset,
       endTime: currentTimeOffset + sectionLayoutTimeS,
     });
 
-    // 5. Advance global offsets
+    currentSlotOffset += sectionTotalSlots;
     currentTimeOffset += sectionLayoutTimeS;
-    currentBottomOffset += sectionPureHeight;
   });
 
   allNotes.sort((a, b) => a.time - b.time);
 
-  // Recalibrate the final array of tiles to have the true valid 'top' style
   const LAYOUT_PAD_TOP = 160;
+  const currentBottomOffset = Math.round(currentSlotOffset) * MIN_HEIGHT;
   const finalTotalHeight = currentBottomOffset + LAYOUT_PAD_TOP;
 
   allTiles.forEach((tile, index) => {
-    // Generate fresh unique IDs over the whole song since local IDs reset to 0
-    tile.id = `tile-${index}-${tile.note.midi}-${tile.note.time.toFixed(3)}`;
+    tile.id = `tile-${index}-${tile.note.midi}-${tile.slotStart}`;
     tile.top = finalTotalHeight - tile.bottomOffset - tile.height;
   });
 

@@ -1,20 +1,20 @@
 import { useState, useCallback, useRef } from 'react';
-import type { GameTile } from '../types/midi';
+import type { Tile } from '../types/track';
 
 interface UseGameBoardReturn {
   tappedIds: Set<string>;
-  tapTile: (tile: GameTile) => void;
+  tapTile: (tile: Tile) => void;
   scrollRef: React.RefObject<HTMLDivElement>;
   reset: () => void;
 }
 
 export function useGameBoard(
-  onPlayNote: (tile: GameTile) => void
+  onPlayNote: (tile: Tile) => void
 ): UseGameBoardReturn {
   const [tappedIds, setTappedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const tapTile = useCallback((tile: GameTile) => {
+  const tapTile = useCallback((tile: Tile) => {
     if (tappedIds.has(tile.id)) return;
     onPlayNote(tile);
     setTappedIds(prev => new Set(prev).add(tile.id));

@@ -35,6 +35,12 @@ export interface ParsedNote {
   instrument?: string;
   /** Original PT2 notation if parsed from a PianoTiles JSON song, e.g. "e3[L]", "c1[K]" */
   pt2Notation?: string;
+  /** Absolute slot index (integer for 99% of cases) */
+  slotStart: number;
+  /** Duration in slots (bracketBeats / baseBeats) */
+  slotSpan: number;
+  /** Sub-slot audio offset for @%!~$^& operators (audio-only) */
+  arpeggioDelayS?: number;
 }
 
 // A tile in the game — one or more notes assigned to a lane
@@ -56,9 +62,16 @@ export interface GameTile {
   bottomOffset: number;
   /** CSS top = totalHeight - bottomOffset - height */
   top: number;
+  /** Tile start slot (absolute across whole song) */
+  slotStart: number;
+  /** Tile height in slots (>= 1) */
+  slotSpan: number;
 }
 
 export interface ScrollSegment {
+  startSlot: number;
+  endSlot: number;
+  slotDurationS: number; // For variable-BPM sections
   startPixel: number; // Bottom offset
   endPixel: number;
   startTime: number;  // Seconds

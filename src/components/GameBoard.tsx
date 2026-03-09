@@ -1,16 +1,16 @@
 import { useCallback, useState, useEffect, useMemo } from 'react';
-import type { GameTile, MidiParseResult } from '../types/midi';
-import type { TileCard } from '../types/track';
+import type { MidiParseResult } from '../types/midi';
+import type { TileCard, Tile } from '../types/track';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
 import { useGameBoard } from '../hooks/useGameBoard';
 import { useAutoScroll } from '../hooks/useAutoScroll';
-import { MIN_HEIGHT } from '../utils/midiParser';
+import { MIN_HEIGHT } from '../utils/tileBuilder';
 import { buildTrackFromTiles } from '../utils/trackBuilder';
 
 interface Props {
   result: MidiParseResult;
-  onPlayNote: (tile: GameTile) => void;
+  onPlayNote: (tile: Tile) => void;
   onHoldRelease?: () => void;
 }
 
@@ -180,9 +180,8 @@ export function GameBoard({ result, onPlayNote, onHoldRelease }: Props) {
                       tile.type === 'HOLD'
                         ? <HoldTileCard
                           key={tile.id}
-                          tile={tile.gameTile}
+                          tile={tile}
                           tapped={tappedIds.has(tile.id)}
-                          scaleRatio={scaleRatio}
                           onTap={tapTile}
                           onRelease={onHoldRelease}
                           className=""
@@ -195,9 +194,8 @@ export function GameBoard({ result, onPlayNote, onHoldRelease }: Props) {
                         />
                         : <GameTileCard
                           key={tile.id}
-                          tile={tile.gameTile}
+                          tile={tile}
                           tapped={tappedIds.has(tile.id)}
-                          scaleRatio={scaleRatio}
                           onTap={tapTile}
                           className=""
                           style={{

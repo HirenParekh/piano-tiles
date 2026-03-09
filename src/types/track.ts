@@ -11,7 +11,7 @@ export interface BaseTile {
     rowSpan: number;      // How many rows (beats) this tile spans
     notes: ParsedNote[];  // All the individual audio notes this tile is responsible for playing
     tapped: boolean;      // Gameplay state
-    gameTile: any;        // Original full GameTile reference!
+    noteIndices: number[];  // ADD
 }
 
 export interface SingleTile extends BaseTile {

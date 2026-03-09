@@ -1,17 +1,16 @@
-import type { GameTile } from '../types/midi';
+import type { Tile } from '../types/track';
 
 interface Props {
-  tile: GameTile;
+  tile: Tile;
   tapped: boolean;
-  scaleRatio?: number;
-  onTap: (tile: GameTile) => void;
+  onTap: (tile: Tile) => void;
   onRelease?: () => void;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export function HoldTileCard({ tile, tapped, scaleRatio = 1, onTap, onRelease, style, className = '' }: Props) {
-  const primaryNote = tile.note;
+export function HoldTileCard({ tile, tapped, onTap, onRelease, style, className = '' }: Props) {
+  const primaryNote = tile.notes[0];
   const lastNote = tile.notes[tile.notes.length - 1];
   const totalDuration = lastNote.time + lastNote.duration - primaryNote.time;
   const totalMs = Math.round(totalDuration * 1000);
@@ -22,7 +21,7 @@ export function HoldTileCard({ tile, tapped, scaleRatio = 1, onTap, onRelease, s
   return (
     <div
       className={`game-tile game-tile--hold ${tapped ? 'game-tile--tapped' : ''} ${className}`}
-      style={{ top: tile.top * scaleRatio, height: tile.height * scaleRatio, ...style }}
+      style={{ ...style }}
       onPointerDown={(e) => {
         e.preventDefault();
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -33,7 +32,7 @@ export function HoldTileCard({ tile, tapped, scaleRatio = 1, onTap, onRelease, s
       title={`#${tile.noteIndices[0]} · ${noteNames} · ${startS}s → ${endS}s · ${totalMs}ms`}
     >
       <span className="game-tile__label">
-        <span>{tile.note.pt2Notation ?? tile.note.name}</span>
+        <span>{tile.notes[0].pt2Notation ?? tile.notes[0].name}</span>
         {tile.notes.slice(1).map((note, ni) => (
           <span key={ni} style={{ opacity: 0.7 }}>{note.pt2Notation ?? note.name}</span>
         ))}

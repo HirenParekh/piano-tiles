@@ -3,8 +3,8 @@ import { useSynth } from './hooks/useSynth';
 import { usePlayback } from './hooks/usePlayback';
 import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
-import type { GameTile, MidiParseResult, ParsedNote } from './types/midi';
-import { MIN_HEIGHT } from './utils/midiParser';
+import type { MidiParseResult, ParsedNote } from './types/midi';
+import type { Tile } from './types/track';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import './styles/main.scss';
 export default function App() {
@@ -27,26 +27,27 @@ export default function App() {
   const speedRef = useRef(1);
   const heldNoteRef = useRef<ParsedNote | null>(null);
 
-  const handleTileTap = async (tile: GameTile) => {
+  const handleTileTap = async (tile: Tile) => {
     await resumeContext();
 
     holdTimersRef.current.forEach(clearTimeout);
     holdTimersRef.current = [];
 
     const speed = speedRef.current;
-    const isHold = tile.height > MIN_HEIGHT;
+    const isHold = tile.type === 'HOLD';
+    const primaryNote = tile.notes[0];
 
     if (isHold) {
       // Hold tiles trigger an initial attack and sustain naturally without artificial Tremolo.
-      attackNote({ ...tile.note, duration: tile.note.duration / speed });
-      heldNoteRef.current = tile.note;
+      attackNote({ ...primaryNote, duration: primaryNote.duration / speed });
+      heldNoteRef.current = primaryNote;
     } else {
       // Tap tiles just trigger once and are bound by the 8-second default release envelope.
-      playNote({ ...tile.note, duration: tile.note.duration / speed });
+      playNote({ ...primaryNote, duration: primaryNote.duration / speed });
     }
 
     tile.notes.slice(1).forEach((note) => {
-      const delayMs = Math.round((note.time - tile.note.time) * 1000 / speed);
+      const delayMs = Math.round((note.time - primaryNote.time) * 1000 / speed);
       const id = setTimeout(() => playNote({ ...note, duration: note.duration / speed }), delayMs);
       holdTimersRef.current.push(id);
     });
