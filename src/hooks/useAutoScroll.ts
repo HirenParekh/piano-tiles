@@ -47,31 +47,7 @@ export function useAutoScroll(
     return last.endPixel + (t - last.endTime) * lastSpeed;
   }, [scrollSegments, pixelsPerSecond]);
 
-  const pixelsToTime = useCallback((px: number) => {
-    if (!scrollSegments || scrollSegments.length === 0) return px / pixelsPerSecond;
 
-    // Below the first segment (e.g., negative pixels or start padding)
-    const first = scrollSegments[0];
-    if (px < first.startPixel) {
-      const firstSpeed = (first.endTime - first.startTime) === 0 ? pixelsPerSecond : (first.endPixel - first.startPixel) / (first.endTime - first.startTime);
-      return first.startTime - (first.startPixel - px) / firstSpeed;
-    }
-
-    // Inside a valid segment
-    for (const seg of scrollSegments) {
-      if (px >= seg.startPixel && px <= seg.endPixel) {
-        const segDuration = seg.endTime - seg.startTime;
-        const segHeight = seg.endPixel - seg.startPixel;
-        const progress = segHeight === 0 ? 0 : (px - seg.startPixel) / segHeight;
-        return seg.startTime + (progress * segDuration);
-      }
-    }
-
-    // Above the last segment
-    const last = scrollSegments[scrollSegments.length - 1];
-    const lastSpeed = (last.endTime - last.startTime) === 0 ? pixelsPerSecond : (last.endPixel - last.startPixel) / (last.endTime - last.startTime);
-    return last.endTime + (px - last.endPixel) / lastSpeed;
-  }, [scrollSegments, pixelsPerSecond]);
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) {
@@ -96,36 +72,48 @@ export function useAutoScroll(
     const currentTime = timeAtPlayRef.current + elapsedGame;
 
     const targetPxFromBottom = timeToPixels(currentTime);
-    const nextScrollTop = maxScroll - targetPxFromBottom;
 
-    if (nextScrollTop <= 0) {
-      scrollRef.current.scrollTop = 0;
+    // Instead of scrollTop, we use hardware-accelerated translate3d on the Canvas child
+    const canvas = scrollRef.current.firstElementChild as HTMLElement;
+    if (canvas) {
+      // The canvas natively extends `maxScroll` below the viewport.
+      // We push it UP by `-maxScroll` to see the bottom, and let it slide DOWN over time.
+      canvas.style.transform = `translate3d(0, ${-(maxScroll - targetPxFromBottom)}px, 0)`;
+    }
+
+    // Stop at the finish line securely
+    if (targetPxFromBottom >= maxScroll) {
+      if (canvas) canvas.style.transform = `translate3d(0, 0px, 0)`;
       stop();
       return;
     }
 
-    scrollRef.current.scrollTop = nextScrollTop;
     rafRef.current = requestAnimationFrame(tick);
   }, [speedMultiplier, timeToPixels, maxScroll, scrollRef, stop]);
 
   const play = useCallback(() => {
     if (isPlayingRef.current) return;
-    const currentScrollTop = scrollRef.current?.scrollTop ?? maxScroll;
-    const currentPxFromBottom = maxScroll - currentScrollTop;
 
-    // If we are at the very start (with 1px float precision tolerance), force time 0 
-    // to prevent the pixelsToTime scale offset from jumping ahead.
-    if (Math.abs(currentPxFromBottom) <= 1) {
-      timeAtPlayRef.current = 0;
-    } else {
-      timeAtPlayRef.current = pixelsToTime(currentPxFromBottom);
+    // Instead of reading scrollTop, we derive state precisely from the internal time
+    // If the game hasn't started, timeAtPlayRef is 0. 
+    // This removes all reliance on DOM measurement lag.
+    timeAtPlayRef.current = timeAtPlayRef.current || 0;
+
+    // Transition from native layout scrolling to translate3d scrolling seamlessly
+    if (scrollRef.current) {
+      // We force native scroll to true top (0) so translate3d drives layout locally
+      scrollRef.current.scrollTop = 0;
+      const canvas = scrollRef.current.firstElementChild as HTMLElement;
+      if (canvas) {
+        canvas.style.transform = `translate3d(0, ${-(maxScroll - timeToPixels(timeAtPlayRef.current))}px, 0)`;
+      }
     }
 
     isPlayingRef.current = true;
     setIsPlaying(true);
     startTimeRef.current = null; // anchored on first tick
     rafRef.current = requestAnimationFrame(tick);
-  }, [tick, scrollRef, maxScroll, pixelsToTime]);
+  }, [tick]);
 
   const pause = useCallback(() => stop(), [stop]);
 
@@ -136,14 +124,19 @@ export function useAutoScroll(
   const reset = useCallback(() => {
     stop();
     if (scrollRef.current) {
+      const canvas = scrollRef.current.firstElementChild as HTMLElement;
+      if (canvas) canvas.style.transform = `none`;
+      // Return control to manual DOM scrolling mechanics
       scrollRef.current.scrollTop = maxScroll;
       timeAtPlayRef.current = 0;
     }
   }, [stop, scrollRef, maxScroll]);
 
-  // Jump to bottom on mount so the song starts correctly
+  // Reset to bottom on mount
   useEffect(() => {
     if (scrollRef.current) {
+      const canvas = scrollRef.current.firstElementChild as HTMLElement;
+      if (canvas) canvas.style.transform = `none`;
       scrollRef.current.scrollTop = maxScroll;
       timeAtPlayRef.current = 0;
     }

@@ -1,49 +1,27 @@
 import { useMemo, useRef, useState } from 'react';
-import { useMidi } from './hooks/useMidi';
 import { useSynth } from './hooks/useSynth';
 import { usePlayback } from './hooks/usePlayback';
-import { MidiDropzone } from './components/MidiDropzone';
-import { TrackSelector } from './components/TrackSelector';
 import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
 import type { GameTile, MidiParseResult, ParsedNote } from './types/midi';
 import { MIN_HEIGHT } from './utils/midiParser';
-import { devResult } from './dev/devResult';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import './styles/main.scss';
-
-// ── Dev flag — set false to restore normal file-picker flow ────────────────
-const DEV_SKIP_FILE = true;
-
 export default function App() {
-  const {
-    stage, error,
-    tracks, selectedTracks, toggleTrack, confirmTracks,
-    result, loadFile, reset,
-  } = useMidi();
-
   const { loaded: samplesLoaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
 
-  const activeResult = DEV_SKIP_FILE ? (pickedResult ?? devResult) : result;
-  const activeStage = DEV_SKIP_FILE ? 'ready' : stage;
-
   const playbackNotes = useMemo(
-    () => activeResult?.notes ?? [],
-    [activeResult],
+    () => pickedResult?.notes ?? [],
+    [pickedResult],
   );
   const { stop: playbackStop } = usePlayback(
     playbackNotes,
-    activeResult?.info.durationSeconds ?? 0,
+    pickedResult?.info.durationSeconds ?? 0,
     playNoteScheduled
   );
-
-  const handleFile = async (file: File) => {
-    await resumeContext();
-    loadFile(file);
-  };
 
   const holdTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const speedRef = useRef(1);
@@ -83,11 +61,6 @@ export default function App() {
     holdTimersRef.current = [];
   };
 
-  const handleReset = () => {
-    playbackStop();
-    reset();
-  };
-
   const handleSongSelect = (result: MidiParseResult) => {
     playbackStop();
     setPickedResult(result);
@@ -116,33 +89,7 @@ export default function App() {
       </header>
 
       <main className="app__main">
-
-        {activeStage === 'idle' && <MidiDropzone onFile={handleFile} />}
-
-        {activeStage === 'loading' && (
-          <div className="status-msg">
-            <span className="spinner">◐</span> Parsing MIDI file…
-          </div>
-        )}
-
-        {activeStage === 'error' && (
-          <div className="status-msg status-msg--error">
-            <strong>Error:</strong> {error}
-            <button className="btn-ghost" onClick={handleReset}>Try Again</button>
-          </div>
-        )}
-
-        {activeStage === 'track-select' && (
-          <TrackSelector
-            tracks={tracks}
-            selectedTracks={selectedTracks}
-            onToggle={toggleTrack}
-            onConfirm={confirmTracks}
-            onReset={handleReset}
-          />
-        )}
-
-        {activeStage === 'ready' && activeResult && (
+        {pickedResult ? (
           <div className="studio">
 
             {/* Left panel — tabbed */}
@@ -162,15 +109,34 @@ export default function App() {
                   <span className="spinner">◐</span>&nbsp; Loading piano samples…
                 </div>
               )}
+              {/* Game Board */}
+              <div style={{ position: 'absolute', top: 0, right: 0, background: 'blue', color: 'white', zIndex: 100, padding: '4px 8px', fontSize: 12, borderBottomLeftRadius: 4 }}>
+                Piano Tiles
+              </div>
               <GameBoard
-                result={activeResult}
+                result={pickedResult}
                 onPlayNote={handleTileTap}
                 onHoldRelease={handleHoldRelease}
               />
             </div>
           </div>
+        ) : (
+          <div className="studio">
+            <div className="studio__table">
+              <SongSelection onPlaySong={handlePlaySong} />
+            </div>
+            <div className="studio__board">
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(240,238,248,0.85)', fontSize: '15px', color: '#555',
+                fontFamily: 'sans-serif'
+              }}>
+                Please select a song to start playing
+              </div>
+            </div>
+          </div>
         )}
-
       </main>
 
       <footer className="app__footer">

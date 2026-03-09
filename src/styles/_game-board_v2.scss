@@ -11,9 +11,8 @@ $lane-color-map: (
 .studio {
   display: flex;
   justify-content: flex-start;
-  gap: 1.5rem;
+  gap: 3rem;
   align-items: flex-start;
-  flex-wrap: wrap;
 
   &__table {
     flex: 0 0 375px;
@@ -93,7 +92,6 @@ $lane-color-map: (
   &__canvas {
     position: relative;
     width: 100%;
-    will-change: transform;
   }
 
   &__grid-layer {

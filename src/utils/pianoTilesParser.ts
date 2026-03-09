@@ -244,11 +244,21 @@ export function parsePianoTilesNotes(
 
 /**
  * Build a complete MidiParseResult from a PianoTiles song JSON.
- * Drop-in replacement for the MIDI parser output.
+ * This acts as the core engine translating the strict PT2 JSON format into the physical
+ * Layout and Note data used by the React GameBoard and the Tone.js Synth.
+ * 
+ * Process flow:
+ * 1. Iterates over all `musics` segments (milestones) chronologically.
+ * 2. Parses the literal bracket heights (e.g. [L] = 0.5 beats) and temporal delays into ParsedNotes.
+ * 3. Applies a `ScrollSegment` mapping for each milestone since BPMs transition smoothly.
+ * 4. Passes notes to `buildTilesFromNotes()` for mathematical grid-lane assignment and collision detection.
+ * 5. Correlates Bass track accompaniment dots into Melody hold tiles, or promotes them to full tiles if during a rest.
  *
- * @param tileScoreIndices  Which score-string indices (0=Melody, 1=Bass, …) produce
- *                          tappable tiles. All scores still go into result.notes for audio.
- *                          Defaults to [0] (melody only).
+ * @param song               The parsed raw JSON tree of the PianoTiles 2 file.
+ * @param musicIndex         The segment index to start parsing from (almost always 0 for endless mode).
+ * @param songName           Human-readable name of the song used for the UI INFO Card.
+ * @param audioScoreIndices  Which score array indices (e.g., [0, 1] for Melody + Bass) should be parsed into audio/tiles.
+ * @returns                  A standardized MidiParseResult object consumed by `GameBoard` and `useSynth`.
  */
 export function buildResultFromPianoTilesSong(
   song: PianoTilesSong,
@@ -267,9 +277,9 @@ export function buildResultFromPianoTilesSong(
   const initialBpm = initialMusic?.bpm || 100;
   const initialEffectiveBpm = initialMusic ? Math.round(initialMusic.bpm / initialMusic.baseBeats) : 100;
 
-  // Add 5 blank rows (slots) of offset so the first actual tile starts off-screen
-  // allowing the user to see 4 empty spaces above the START tile falling from the top.
-  const START_OFFSET_ROWS = 5;
+  // Set 0 offset rows so the first actual tile starts right above the START
+  // This removes any empty space between the START tile and the first real note.
+  const START_OFFSET_ROWS = 0;
   const MIN_HEIGHT = 100;
   const initialSlotDurationS = initialMusic ? initialMusic.baseBeats * (60 / initialMusic.bpm) : 0.6;
 

@@ -5,17 +5,19 @@ interface Props {
   tapped: boolean;
   scaleRatio?: number;
   onTap: (tile: GameTile) => void;
+  style?: React.CSSProperties;
+  className?: string;
 }
 
-export function GameTileCard({ tile, tapped, scaleRatio = 1, onTap }: Props) {
+export function GameTileCard({ tile, tapped, scaleRatio = 1, onTap, style, className = '' }: Props) {
   const noteNum = tile.noteIndices[0];
   const startS = tile.note.time.toFixed(3);
   const endS = (tile.note.time + tile.note.duration).toFixed(3);
   const durationMs = Math.round(tile.note.duration * 1000);
   return (
     <div
-      className={`game-tile ${tapped ? 'game-tile--tapped' : ''}`}
-      style={{ top: tile.top * scaleRatio, height: tile.height * scaleRatio }}
+      className={`game-tile ${tapped ? 'game-tile--tapped' : ''} ${className}`}
+      style={{ top: tile.top * scaleRatio, height: tile.height * scaleRatio, ...style }}
       onPointerDown={(e) => {
         e.preventDefault();
         e.currentTarget.setPointerCapture(e.pointerId);
