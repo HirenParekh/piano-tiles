@@ -169,7 +169,7 @@ export function useSynth(): UseSynthReturn {
 
     for (const instr of instruments) {
       const urls = (musicUrls as any)[instr];
-      const baseUrl = `/music/${instr}/`;
+      const baseUrl = `${import.meta.env.BASE_URL}music/${instr}/`;
       const release = instr === 'drum' ? 0.5 : 1.2;
       const volDb = instr === 'piano' ? -4 : -2;
 
