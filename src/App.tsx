@@ -3,15 +3,19 @@ import { useSynth } from './hooks/useSynth';
 import { usePlayback } from './hooks/usePlayback';
 import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
+import { CanvasGameBoard } from './components/CanvasGameBoard';
 import type { MidiParseResult, ParsedNote } from './types/midi';
 import type { Tile } from './types/track';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
+import songCatalog from './songCatalog.json';
 import './styles/main.scss';
 export default function App() {
   const { loaded: samplesLoaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
+  const [useCanvas, setUseCanvas] = useState(false);
 
   const playbackNotes = useMemo(
     () => pickedResult?.notes ?? [],
@@ -67,82 +71,81 @@ export default function App() {
     setPickedResult(result);
   };
 
+  const handleExitGame = () => {
+    playbackStop();
+    setIsExiting(true);
+    setTimeout(() => {
+      setPickedResult(null);
+      setIsExiting(false);
+    }, 500);
+  };
+
   const handlePlaySong = async (id: string) => {
     try {
       const res = await fetch(`/songs/${encodeURIComponent(id)}.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ptJson = await res.json();
-      handleSongSelect(buildResultFromPianoTilesSong(ptJson, 0, id));
+
+      const catalogEntry = songCatalog.find(s => s.id === id);
+      handleSongSelect(buildResultFromPianoTilesSong(ptJson, 0, id, [0, 1], catalogEntry as any));
     } catch (err) {
       console.error('Failed to load song:', err);
       alert('Failed to load song: ' + id);
     }
   };
 
+  const isGameReady = pickedResult !== null && samplesLoaded && !isExiting;
+
   return (
-    <div className="app">
-      <header className="app__header">
-        <div className="app__logo">
-          <span className="logo-mark">♪</span>
-          <span className="logo-text">PIANO<em>TILES</em></span>
-        </div>
-        <p className="app__subtitle">MIDI Parser &amp; Note Extractor</p>
-      </header>
+    <div className="app-container" style={{ position: 'relative', width: '100%', maxWidth: 'min(1024px, 75vh)', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
 
-      <main className="app__main">
-        {pickedResult ? (
-          <div className="studio">
-
-            {/* Left panel — tabbed */}
-            <div className="studio__table">
-              <SongSelection onPlaySong={handlePlaySong} />
-            </div>
-
-            {/* Right — game board */}
-            <div className="studio__board">
-              {!samplesLoaded && (
-                <div style={{
-                  position: 'absolute', inset: 0, zIndex: 10,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(240,238,248,0.85)', fontSize: '13px', color: '#555',
-                  fontFamily: 'monospace', letterSpacing: '0.05em',
-                }}>
-                  <span className="spinner">◐</span>&nbsp; Loading piano samples…
-                </div>
-              )}
-              {/* Game Board */}
-              <div style={{ position: 'absolute', top: 0, right: 0, background: 'blue', color: 'white', zIndex: 100, padding: '4px 8px', fontSize: 12, borderBottomLeftRadius: 4 }}>
-                Piano Tiles
-              </div>
-              <GameBoard
-                result={pickedResult}
-                onPlayNote={handleTileTap}
-                onHoldRelease={handleHoldRelease}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="studio">
-            <div className="studio__table">
-              <SongSelection onPlaySong={handlePlaySong} />
-            </div>
-            <div className="studio__board">
-              <div style={{
-                position: 'absolute', inset: 0, zIndex: 10,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(240,238,248,0.85)', fontSize: '15px', color: '#555',
-                fontFamily: 'sans-serif'
-              }}>
-                Please select a song to start playing
-              </div>
-            </div>
-          </div>
+      {/* Game Board (Slides in from Right, Slides out to Right) */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1,
+        background: '#000',
+        transform: isGameReady ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+      }}>
+        {pickedResult && (
+          useCanvas ? (
+            <CanvasGameBoard
+              result={pickedResult}
+              onPlayNote={handleTileTap}
+              onHoldRelease={handleHoldRelease}
+              onExit={handleExitGame}
+            />
+          ) : (
+            <GameBoard
+              result={pickedResult}
+              onPlayNote={handleTileTap}
+              onHoldRelease={handleHoldRelease}
+              onExit={handleExitGame}
+            />
+          )
         )}
-      </main>
+      </div>
 
-      <footer className="app__footer">
-        Piano Tiles Dev · @tonejs/midi + Tone.js + React + TypeScript
-      </footer>
+      {/* Song Selection Screen (Top Layer sliding off to the Left) */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 2,
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        background: '#fff',
+        transform: isGameReady ? 'translateX(-100%)' : 'translateX(0)',
+        transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+        pointerEvents: isGameReady ? 'none' : 'auto',
+        boxShadow: isGameReady ? 'none' : '0 0 20px rgba(0,0,0,0.5)',
+      }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 16px', textAlign: 'center', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+              <input type="checkbox" checked={useCanvas} onChange={e => setUseCanvas(e.target.checked)} />
+              Use Experimental Canvas Engine
+            </label>
+          </div>
+          <SongSelection onPlaySong={handlePlaySong} />
+        </div>
+      </div>
+
     </div>
   );
 }

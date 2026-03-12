@@ -32,7 +32,8 @@ function mergeConsecutiveNotes(notes: ParsedNote[]): ParsedNote[][] {
 
         while (i + group.length < notes.length) {
             const next = notes[i + group.length];
-            if (next.slotStart === startSlot) {
+            // Compare slots with a tiny tolerance due to floating point math (e.g., 0.1 + 0.2 != 0.3)
+            if (Math.abs(next.slotStart - startSlot) < 0.0001) {
                 group.push(next);
             } else {
                 break;
@@ -49,7 +50,8 @@ function mergeConsecutiveNotes(notes: ParsedNote[]): ParsedNote[][] {
                 }
             }
 
-            if (next.slotStart < maxEndSlot) {
+            // Only absorb subsequent notes that fall explicitly strictly INSIDE the current hold
+            if (next.slotStart < maxEndSlot - 0.0001) {
                 group.push(next);
             } else {
                 break;

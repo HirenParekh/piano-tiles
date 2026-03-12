@@ -1,6 +1,6 @@
 @use 'variables' as *;
 
-.app {
+.app-container {
   position: relative;
   z-index: 1;
   min-height: 100vh;
@@ -8,6 +8,7 @@
   flex-direction: column;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
 
   &__header {
     padding: 2rem $pad-page 1.5rem;

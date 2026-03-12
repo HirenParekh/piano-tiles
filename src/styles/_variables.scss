@@ -1,27 +1,27 @@
 // ── Colours ───────────────────────────────────────────────────────────────
-$bg:        #0a0a0c;
-$surface:   #111116;
-$surface2:  #1a1a22;
-$border:    #2a2a36;
-$accent:    #c8ff00;
-$accent2:   #ff4d6d;
-$accent3:   #00cfff;
-$text:      #e8e8f0;
-$muted:     #5a5a72;
+$bg: #0a0a0c;
+$surface: #111116;
+$surface2: #1a1a22;
+$border: #2a2a36;
+$accent: #c8ff00;
+$accent2: #ff4d6d;
+$accent3: #00cfff;
+$text: #e8e8f0;
+$muted: #5a5a72;
 
 // Lane colours
 $lane-colors: #e74c3c, #3498db, #2ecc71, #f39c12;
 
 // ── Typography ────────────────────────────────────────────────────────────
-$font-disp: 'Bebas Neue', sans-serif;
-$font-mono: 'Space Mono', monospace;
+$font-disp: 'Inter', sans-serif;
+$font-mono: 'Inter', sans-serif;
 
 // ── Spacing ───────────────────────────────────────────────────────────────
-$pad-page:    2.5rem;
-$pad-panel:   1.5rem;
-$radius:      4px;
-$radius-sm:   3px;
-$radius-xs:   2px;
+$pad-page: 2.5rem;
+$pad-panel: 1.5rem;
+$radius: 4px;
+$radius-sm: 3px;
+$radius-xs: 2px;
 
 // ── Transitions ───────────────────────────────────────────────────────────
 $transition: 0.15s ease;

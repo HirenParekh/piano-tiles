@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react';
 
 import type { ScrollSegment } from '../types/midi';
 
@@ -132,8 +132,8 @@ export function useAutoScroll(
     }
   }, [stop, scrollRef, maxScroll]);
 
-  // Reset to bottom on mount
-  useEffect(() => {
+  // Reset to bottom on mount (useLayoutEffect prevents visual flash)
+  useLayoutEffect(() => {
     if (scrollRef.current) {
       const canvas = scrollRef.current.firstElementChild as HTMLElement;
       if (canvas) canvas.style.transform = `none`;

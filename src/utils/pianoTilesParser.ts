@@ -1,6 +1,20 @@
 import type { ParsedNote, MidiParseResult, TrackMeta, GameTile, ScrollSegment } from '../types/midi';
 import { buildTilesFromNotes } from './tileBuilder';
 
+export interface CatalogEntry {
+  id: string;
+  title: string;
+  author: string;
+  level: number;
+  stars: number;
+  csvId: string;
+  mid: string;
+  bpm: string;
+  baseBeat: string;
+  ratio: string;
+}
+
+
 // ── PianoTiles JSON song format ─────────────────────────────────────────────
 export interface PianoTilesSong {
   baseBpm: number;
@@ -269,6 +283,7 @@ export function buildResultFromPianoTilesSong(
   musicIndex = 0,
   songName = 'Unknown',
   audioScoreIndices: number[] = [0, 1],
+  catalogEntry?: CatalogEntry
 ): MidiParseResult {
   const allNotes: ParsedNote[] = [];
   const allTiles: GameTile[] = [];
@@ -277,13 +292,24 @@ export function buildResultFromPianoTilesSong(
   let maxTrackCount = 0;
   let globalLastLane = -1;
 
+  let catBpms: number[] = [];
+  let catBaseBeats: number[] = [];
+  let catRatios: number[] = [];
+
+  if (catalogEntry) {
+    if (catalogEntry.bpm) catBpms = catalogEntry.bpm.split('|').map(Number);
+    if (catalogEntry.baseBeat) catBaseBeats = catalogEntry.baseBeat.split('|').map(Number);
+    if (catalogEntry.ratio) catRatios = catalogEntry.ratio.split('|').map(Number);
+  }
+
   const initialMusic = song.musics[musicIndex] ?? song.musics[0];
-  const initialBpm = initialMusic?.bpm || 100;
-  const initialEffectiveBpm = initialMusic ? Math.round(initialMusic.bpm / initialMusic.baseBeats) : 100;
+  const initialBpm = catBpms[0] ?? initialMusic?.bpm ?? 100;
+  const initialBaseBeat = catBaseBeats[0] ?? initialMusic?.baseBeats ?? 0.5;
+  const initialEffectiveBpm = catRatios[0] ?? (initialBpm / initialBaseBeat);
 
   const START_OFFSET_SLOTS = 0;
   const MIN_HEIGHT = 100;
-  const initialSlotDurationS = initialMusic ? initialMusic.baseBeats * (60 / initialMusic.bpm) : 0.6;
+  const initialSlotDurationS = initialBpm > 0 ? (initialBaseBeat * (60 / initialBpm)) : 0.6;
 
   let currentSlotOffset = START_OFFSET_SLOTS;
   let currentTimeOffset = START_OFFSET_SLOTS * initialSlotDurationS;
@@ -300,8 +326,13 @@ export function buildResultFromPianoTilesSong(
     });
   }
 
-  song.musics.forEach((music) => {
-    const { bpm, baseBeats, scores, instruments, alternatives } = music;
+  song.musics.forEach((music, segmentIdx) => {
+    // Rely on catalog arrays, fallback to current segment JSON, then fallback to last array element
+    const bpm = catBpms[segmentIdx] ?? catBpms[catBpms.length - 1] ?? music.bpm;
+    const baseBeats = catBaseBeats[segmentIdx] ?? catBaseBeats[catBaseBeats.length - 1] ?? music.baseBeats;
+    const ratio = catRatios[segmentIdx] ?? catRatios[catRatios.length - 1] ?? (bpm / baseBeats);
+
+    const { scores, instruments, alternatives } = music;
     const sectionNotes: ParsedNote[] = [];
     let maxSectionSlots = 0;
 
@@ -321,7 +352,9 @@ export function buildResultFromPianoTilesSong(
 
     sectionNotes.sort((a, b) => a.time - b.time);
 
-    const slotDurationS = baseBeats * (60 / bpm);
+    // The precalculated ratio is essentially effectiveBpm. 
+    // mathematically: slotDurationS = 60 / ratio
+    const slotDurationS = ratio > 0 ? (60 / ratio) : (baseBeats * (60 / bpm));
 
     const melodyNotes = sectionNotes.filter(n => n.trackIndex === 0);
     const accompNotes = sectionNotes.filter(

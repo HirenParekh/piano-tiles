@@ -58,7 +58,6 @@ $lane-color-map: (
   flex-direction: column;
   height: 667px;
   border: 1px solid $border;
-  border-radius: $radius;
   overflow: hidden;
   background: #f0eef8;
 
@@ -216,9 +215,8 @@ $lane-color-map: (
 // ── Tile ───────────────────────────────────────────────────────────────────
 .game-tile {
   position: absolute;
-  left: 2px;
-  right: 2px;
-  border-radius: 4px;
+  left: 0px;
+  right: 0px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -226,9 +224,21 @@ $lane-color-map: (
   user-select: none;
   background: #1a1a1a;
   border: none;
-  transition:
-    opacity 0.15s,
-    transform 0.08s;
+  transition: opacity 0.4s;
+  overflow: hidden; // Contain the ripple
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.35);
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+    opacity: 0;
+  }
 
   &__label {
     display: flex;
@@ -236,34 +246,31 @@ $lane-color-map: (
     align-items: center;
     gap: 1px;
     pointer-events: none;
-
-    span {
-      font-size: 9px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      color: rgba(255, 255, 255, 0.5);
-      line-height: 1.2;
-    }
-
-    span:first-child {
-      font-size: 10px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.65);
-    }
   }
 
-  &:hover {
-    background: #2c2c2c;
+  span {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.2;
   }
 
-  &:active {
-    transform: scaleY(0.95);
+  span:first-child {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.65);
   }
 
   &--tapped {
-    opacity: 0.12;
     cursor: default;
     pointer-events: none;
+    opacity: 0.3; // Let the ripple hold the weight of the animation, drop overall opacity just slightly
+
+    &::after {
+      opacity: 1;
+      animation: tapRipple 0.15s cubic-bezier(0.1, 1.0, 0.1, 1.0) forwards;
+    }
   }
 
   &--start {
@@ -272,19 +279,11 @@ $lane-color-map: (
     font-weight: 800;
     letter-spacing: 0.14em;
     color: #fff;
-
-    &:hover {
-      background: #3498db;
-    }
   }
 
   &--hold {
     background: #1a1a1a;
     border: 1px solid rgba(255, 255, 255, 0.15);
-
-    &:hover {
-      background: #2a2a2a;
-    }
   }
 
   &__hold-dot {
@@ -297,6 +296,18 @@ $lane-color-map: (
     background: rgba(255, 255, 255, 0.65);
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
     pointer-events: none;
+  }
+}
+
+@keyframes tapRipple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
   }
 }
 
