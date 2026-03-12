@@ -82,7 +82,7 @@ export default function App() {
 
   const handlePlaySong = async (id: string) => {
     try {
-      const res = await fetch(`/songs/${encodeURIComponent(id)}.json`);
+      const res = await fetch(`${import.meta.env.BASE_URL}songs/${encodeURIComponent(id)}.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ptJson = await res.json();
 
