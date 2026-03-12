@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import * as Tone from 'tone';
 import type { ParsedNote } from '../types/midi';
 import musicUrls from '../music_urls.json';
@@ -26,7 +26,7 @@ class WebAudioSampler {
   activeVoices: Set<{ source: AudioBufferSourceNode; gain: GainNode; name: string; stopTime: number; stopped: boolean }> = new Set();
   loaded: boolean = false;
 
-  constructor(context: AudioContext, urls: Record<string, string>, baseUrl: string, targetVolumeDb: number, releaseTime: number = 1.2, setLoaded?: () => void) {
+  constructor(context: AudioContext, targetVolumeDb: number, releaseTime: number = 1.2) {
     this.context = context;
     this.releaseTime = releaseTime;
 
@@ -35,14 +35,10 @@ class WebAudioSampler {
     const amplitude = Math.pow(10, targetVolumeDb / 20);
     this.masterGain.gain.value = amplitude;
     this.masterGain.connect(context.destination);
-
-    this.load(urls, baseUrl).then(() => {
-      this.loaded = true;
-      if (setLoaded) setLoaded();
-    });
   }
 
   async load(urls: Record<string, string>, baseUrl: string) {
+    if (this.loaded) return;
     const promises = Object.entries(urls).map(async ([key, fileName]) => {
       const midi = parseKeyToMidi(key);
       try {
@@ -55,6 +51,7 @@ class WebAudioSampler {
       }
     });
     await Promise.all(promises);
+    this.loaded = true;
   }
 
   getNearestBuffer(midi: number): { buffer: AudioBuffer | null, detune: number } {
@@ -139,7 +136,7 @@ class WebAudioSampler {
 }
 
 export interface UseSynthReturn {
-  loaded: boolean;
+  loadInstruments: (instruments: string[]) => Promise<void>;
   playNote: (note: ParsedNote) => void;
   attackNote: (note: ParsedNote) => void;
   releaseNote: (note: ParsedNote) => void;
@@ -149,38 +146,39 @@ export interface UseSynthReturn {
 
 export function useSynth(): UseSynthReturn {
   const samplersRef = useRef<Record<string, WebAudioSampler>>({});
-  const [loaded, setLoaded] = useState(false);
 
   // We explicitly fetch the Web Audio API context powering Tone.js's transport
   // so `usePlayback.ts` remains perfectly in sync with our custom low-latency node.
   const rawContext = Tone.getContext().rawContext as AudioContext;
 
   useEffect(() => {
-    const instruments = Object.keys(musicUrls);
-    let loadedCount = 0;
-    const samplers: Record<string, WebAudioSampler> = {};
-
-    const checkAllLoaded = () => {
-      loadedCount++;
-      if (loadedCount === instruments.length) {
-        setLoaded(true);
-      }
+    // Cleanup on unmount
+    return () => {
+      Object.values(samplersRef.current).forEach(s => s.dispose());
     };
+  }, []);
+
+  const loadInstruments = useCallback(async (instruments: string[]) => {
+    const samplers = samplersRef.current;
+    const promises: Promise<void>[] = [];
 
     for (const instr of instruments) {
-      const urls = (musicUrls as any)[instr];
-      const baseUrl = `${import.meta.env.BASE_URL}music/${instr}/`;
-      const release = instr === 'drum' ? 0.5 : 1.2;
-      const volDb = instr === 'piano' ? -4 : -2;
+      if (samplers[instr] && samplers[instr].loaded) continue;
 
-      samplers[instr] = new WebAudioSampler(rawContext, urls, baseUrl, volDb, release, checkAllLoaded);
+      const urls = (musicUrls as any)[instr];
+      if (!urls) continue;
+
+      if (!samplers[instr]) {
+        const release = instr === 'drum' ? 0.5 : 1.2;
+        const volDb = instr === 'piano' ? -4 : -2;
+        samplers[instr] = new WebAudioSampler(rawContext, volDb, release);
+      }
+
+      const baseUrl = `${import.meta.env.BASE_URL}music/${instr}/`;
+      promises.push(samplers[instr].load(urls, baseUrl));
     }
 
-    samplersRef.current = samplers;
-
-    return () => {
-      Object.keys(samplers).forEach(k => samplers[k].dispose());
-    };
+    await Promise.all(promises);
   }, [rawContext]);
 
   const getSampler = (note: ParsedNote) => {
@@ -223,5 +221,5 @@ export function useSynth(): UseSynthReturn {
     sampler.triggerAttackRelease(note.midi, note.name, 8, time, velocity);
   }, []);
 
-  return { loaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
+  return { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
 }

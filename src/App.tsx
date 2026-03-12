@@ -10,12 +10,13 @@ import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
 import './styles/main.scss';
 export default function App() {
-  const { loaded: samplesLoaded, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
+  const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [useCanvas, setUseCanvas] = useState(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
   const playbackNotes = useMemo(
     () => pickedResult?.notes ?? [],
@@ -82,19 +83,30 @@ export default function App() {
 
   const handlePlaySong = async (id: string) => {
     try {
+      setIsLoadingFiles(true);
       const res = await fetch(`${import.meta.env.BASE_URL}songs/${encodeURIComponent(id)}.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ptJson = await res.json();
 
       const catalogEntry = songCatalog.find(s => s.id === id);
-      handleSongSelect(buildResultFromPianoTilesSong(ptJson, 0, id, [0, 1], catalogEntry as any));
+      const result = buildResultFromPianoTilesSong(ptJson, 0, id, [0, 1], catalogEntry as any);
+
+      // Extract unique instruments required by this song, default to piano just in case
+      const requiredInstruments = Array.from(new Set(result.notes.map(n => n.instrument || 'piano')));
+      if (requiredInstruments.length === 0) requiredInstruments.push('piano');
+
+      await loadInstruments(requiredInstruments);
+
+      handleSongSelect(result);
     } catch (err) {
       console.error('Failed to load song:', err);
       alert('Failed to load song: ' + id);
+    } finally {
+      setIsLoadingFiles(false);
     }
   };
 
-  const isGameReady = pickedResult !== null && samplesLoaded && !isExiting;
+  const isGameReady = pickedResult !== null && !isExiting;
 
   return (
     <div className="app-container" style={{ position: 'relative', width: '100%', maxWidth: 'min(1024px, 75vh)', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
@@ -132,10 +144,38 @@ export default function App() {
         background: '#fff',
         transform: isGameReady ? 'translateX(-100%)' : 'translateX(0)',
         transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
-        pointerEvents: isGameReady ? 'none' : 'auto',
+        pointerEvents: isGameReady || isLoadingFiles ? 'none' : 'auto',
         boxShadow: isGameReady ? 'none' : '0 0 20px rgba(0,0,0,0.5)',
       }}>
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          
+          {isLoadingFiles && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10,
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', alignItems: 'center',
+              backdropFilter: 'blur(4px)'
+            }}>
+              <div style={{ 
+                width: '40px', height: '40px', 
+                border: '4px solid rgba(0,0,0,0.1)',
+                borderLeftColor: '#3498db',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              <div style={{ marginTop: '16px', fontFamily: 'Arial', fontWeight: 'bold', color: '#555' }}>
+                Loading Track Assets...
+              </div>
+              <style>{`
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              `}</style>
+            </div>
+          )}
+
           <div style={{ padding: '8px 16px', textAlign: 'center', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
             <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
               <input type="checkbox" checked={useCanvas} onChange={e => setUseCanvas(e.target.checked)} />
