@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useMemo } from 'react';
-import type { MidiParseResult } from '../types/midi';
+import type { MidiParseResult, ParsedNote } from '../types/midi';
 import type { TileCard, Tile } from '../types/track';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
@@ -12,12 +12,13 @@ interface Props {
   result: MidiParseResult;
   onPlayNote: (tile: Tile) => void;
   onHoldRelease?: () => void;
+  onHoldBeat?: (notes: ParsedNote[]) => void;
   onExit?: () => void;
 }
 
 const LANE_COUNT = 4;
 
-export function GameBoard({ result, onPlayNote, onHoldRelease, onExit }: Props) {
+export function GameBoard({ result, onPlayNote, onHoldRelease, onHoldBeat, onExit }: Props) {
   const { tappedIds, tapTile, scrollRef } = useGameBoard(onPlayNote);
   const [started, setStarted] = useState(false);
   const speedMultiplier = 1;
@@ -224,6 +225,7 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onExit }: Props) 
                             tapped={tappedIds.has(tile.id)}
                             onTap={tapTile}
                             onRelease={onHoldRelease}
+                            onNotePlay={onHoldBeat}
                             className=""
                             style={{
                               top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%',

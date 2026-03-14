@@ -282,20 +282,235 @@ $lane-color-map: (
   }
 
   &--hold {
-    background: #1a1a1a;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    // Black at the bottom (ring area), blue in the upper body — matches original game
+    background: linear-gradient(to top, #000000 0%, #000000 15%, #0e3a6e 55%, #1565c0 100%);
+    border: 1px solid rgba(0, 200, 255, 0.2);
+    overflow: visible; // Allow ring glow to bleed outside tile bounds
+    touch-action: none; // Prevent browser scroll from swallowing pointermove while swiping
+
+    &.game-tile--tapped {
+      opacity: 1; // Ring handles tap feedback — suppress the generic opacity flash
+
+      &::after {
+        display: none;
+      }
+    }
   }
 
+  &--hold-active {
+    border-color: rgba(0, 200, 255, 0.45);
+  }
+
+  // ── Soft radial haze centered on the vertical axis ────────────────────
+  &__hold-glow {
+    position: absolute;
+    inset: 0;
+    // Narrows toward the bottom (black area), wider/brighter at the top (blue area)
+    background: radial-gradient(ellipse 45% 80% at 50% 20%, rgba(30, 120, 255, 0.25) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  // ── Thin vertical laser line from top of tile down to the ring ─────────
+  // This is the most distinctive visual of the original game's hold tile
+  &__hold-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    // Stops at ring center: ring bottom:8px + height:24px / 2 = 20px from tile bottom
+    bottom: 20px;
+    width: 2px;
+    // More visible at the top (blue area), fades as it approaches the black bottom
+    background: linear-gradient(
+      to bottom,
+      rgba(100, 200, 255, 0.8) 0%,
+      rgba(0, 200, 255, 0.6) 60%,
+      rgba(0, 200, 255, 0.3) 100%
+    );
+    box-shadow: 0 0 5px rgba(0, 200, 255, 0.6), 0 0 12px rgba(0, 200, 255, 0.2);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  // ── Ring at the bottom — the "tap here" indicator ─────────────────────
+  &__hold-ring {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    // Smaller ring to match original game (was 36px)
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 220, 255, 0.85);
+    box-shadow: 0 0 8px rgba(0, 220, 255, 0.5), inset 0 0 6px rgba(0, 220, 255, 0.1);
+    pointer-events: none;
+    z-index: 4; // above fill overlay (z-index 2) so ring stays visible
+    transition: background 0.08s, border-color 0.08s, box-shadow 0.08s;
+
+    &--active {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: white;
+      box-shadow:
+        0 0 14px rgba(0, 200, 255, 1),
+        0 0 32px rgba(0, 200, 255, 0.6),
+        0 0 64px rgba(0, 200, 255, 0.25);
+      animation: holdRingBurst 0.3s cubic-bezier(0.1, 1.0, 0.1, 1.0) forwards;
+    }
+  }
+
+  // ── Secondary beat dots — sit on the center line ───────────────────────
   &__hold-dot {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.65);
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+    background: rgba(0, 210, 255, 0.65);
+    // Outer glow makes it look like a node on the laser line
+    box-shadow: 0 0 6px rgba(0, 210, 255, 0.7), 0 0 12px rgba(0, 200, 255, 0.3);
     pointer-events: none;
+    z-index: 1;
+    // Hidden until the user first taps the tile
+    opacity: 0;
+    transition: opacity 0.15s ease-in;
+
+    // Reveal all dots the moment the tile becomes active (pointer down)
+    .game-tile--hold-active & {
+      opacity: 1;
+    }
+
+    &--fired {
+      // Just dim the dot — the arc dot is responsible for the ripple effect
+      background: rgba(0, 200, 255, 0.2);
+      box-shadow: none;
+    }
+  }
+
+  // ── Lighter-blue fill overlay covering the "played" region below the arc ──
+  // Updated by JS (fillRef.current.style.height) every animation frame.
+  // z-index 2: sits above line + dots (z-index 1) so they disappear under the fill,
+  // but below the arc (z-index 3) and ring (z-index 4) so those stay visible.
+  &__hold-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0; // JS grows this each frame
+    // a linear gradient from transparent to bright blue, from bottom to top 
+    // Solid #1565c0 for the body, hard-cut to transparent for the top 50px.
+    // The transparent strip aligns with the circle dome head (::after) above it.
+        background: linear-gradient(to bottom, transparent 50px, #308af1 50px);
+    pointer-events: none;
+    z-index: 2;
+    // overflow:hidden clips the top half of the circle head, leaving only the dome visible
+    overflow: hidden;
+
+    // ── Circle dome head — radius proportional to tile width ─────────────────
+    //
+    // How the geometry works:
+    //   • width:200% makes the circle 2× the tile width
+    //   • aspect-ratio:1 forces height = width, so it is a TRUE circle
+    //     (radius = tile_width — proportional to lane, consistent on any width)
+    //   • left:-50% centers the 200%-wide element inside the tile
+    //   • top:0 + transform:translateY(-50%) places the circle's CENTER exactly
+    //     at the fill div's top edge
+    //   • overflow:hidden on parent clips the top half of the circle (above fill top)
+    //     → only the bottom half (a convex dome) is visible at the fill boundary
+    //   • As fill height grows, more of the dome is revealed from below until
+    //     the full half-circle (radius = tile_width px) is shown
+    &::after {
+      content: '';
+      position: absolute;
+      left: -50%;
+      width: 200%;
+      aspect-ratio: 1;
+      top: 0;
+      background: #308af1;
+      border-radius: 50%;
+      // Smooth transition so the dome flattens gracefully on auto-complete
+      transition: border-radius 0.25s ease-out;
+    }
+
+    // Applied on auto-complete (within 20px of tile top): dome head flattens to a
+    // plain rectangle, visually sealing the full tile as completed.
+    &--complete::after {
+      border-radius: 0;
+    }
+  }
+
+  // ── Moving arc — tracks the current progress position (updated via DOM ref) ──
+  &__hold-arc {
+    // Zero-height anchor positioned at `bottom: reachedPercent%` via JS.
+    // Children hang off this anchor.
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 3; // above line and dots
+  }
+
+  // ── The bright center dot on the arc ──────────────────────────────────────
+  &__hold-arc-dot {
+    position: absolute;
+    // Sit ABOVE the arc anchor (finger position) so the dot/ring feels centered on the finger.
+    // `bottom: 43px` means the dot's bottom edge is 43px above the anchor line,
+    // placing the dot center ~50px above where the finger touches.
+    bottom: 43px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: white;
+    box-shadow:
+      0 0 6px rgba(255, 255, 255, 0.9),
+      0 0 16px rgba(0, 200, 255, 0.9),
+      0 0 32px rgba(0, 200, 255, 0.4);
+
+    // Expanding ring — hidden at rest, animated on --ripple.
+    // Uses ::before so ::after remains free for the mound glow.
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      // Start collapsed at the dot center; arcRingExpand will scale it outward
+      transform: translate(-50%, -50%) scale(0);
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 200, 255, 0.9);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    // Glowing mound/arc below the dot — radiates outward beneath the held position
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, 0);
+      width: 64px;
+      height: 28px;
+      pointer-events: none;
+    }
+
+    // ── Beat-hit animation ──────────────────────────────────────────────────
+    // Applied via key-based remount so it always plays from frame 0.
+    // Two simultaneous animations:
+    //   arcDotDim   — dims the center dot as the ring expands, then brightens back
+    //   arcRingExpand (on ::before) — hollow ring expands outward and fades
+    &--ripple {
+      animation: arcDotDim 0.45s ease-out forwards;
+
+      &::before {
+        animation: arcRingExpand 0.45s ease-out forwards;
+      }
+    }
   }
 }
 
@@ -308,6 +523,45 @@ $lane-color-map: (
   100% {
     transform: translate(-50%, -50%) scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes holdRingBurst {
+  0% {
+    transform: translateX(-50%) scale(0.75);
+    opacity: 0.5;
+  }
+
+  60% {
+    transform: translateX(-50%) scale(1.18);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+// Center dot dims while the ring expands, then brightens back to full.
+// opacity 1 → 0.2 at 40% → back to 1 at end.
+@keyframes arcDotDim {
+  0%   { opacity: 1; }
+  40%  { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+// Hollow ring starts at dot size and rapidly expands outward while fading.
+// scale(1) = 14px (same as dot), scale(6) = 84px diameter at peak.
+@keyframes arcRingExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(6);
+    opacity: 0;
   }
 }
 

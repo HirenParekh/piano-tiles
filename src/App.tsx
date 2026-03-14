@@ -9,6 +9,7 @@ import type { Tile } from './types/track';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
 import './styles/main.scss';
+import { TileRendererWidget } from './components/TileRendererWidget';
 export default function App() {
   const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
@@ -43,19 +44,23 @@ export default function App() {
     const primaryNote = tile.notes[0];
 
     if (isHold) {
-      // Hold tiles trigger an initial attack and sustain naturally without artificial Tremolo.
+      // Hold tiles trigger an initial attack; merged notes fire position-based via onHoldBeat
       attackNote({ ...primaryNote, duration: primaryNote.duration / speed });
       heldNoteRef.current = primaryNote;
     } else {
       // Tap tiles just trigger once and are bound by the 8-second default release envelope.
       playNote({ ...primaryNote, duration: primaryNote.duration / speed });
+      tile.notes.slice(1).forEach((note) => {
+        const delayMs = Math.round((note.time - primaryNote.time) * 1000 / speed);
+        const id = setTimeout(() => playNote({ ...note, duration: note.duration / speed }), delayMs);
+        holdTimersRef.current.push(id);
+      });
     }
+  };
 
-    tile.notes.slice(1).forEach((note) => {
-      const delayMs = Math.round((note.time - primaryNote.time) * 1000 / speed);
-      const id = setTimeout(() => playNote({ ...note, duration: note.duration / speed }), delayMs);
-      holdTimersRef.current.push(id);
-    });
+  const handleHoldBeat = (notes: ParsedNote[]) => {
+    const speed = speedRef.current;
+    notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
   };
 
   const handleHoldRelease = () => {
@@ -109,7 +114,8 @@ export default function App() {
   const isGameReady = pickedResult !== null && !isExiting;
 
   return (
-    <div className="app-container" style={{ position: 'relative', width: '100%', maxWidth: 'min(1024px, 75vh)', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
+    <div style={{ display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#000', overflow: 'hidden' }}>
+      <div className="app-container" style={{ position: 'relative', flex: 1, maxWidth: 'min(1024px, 75vh)', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
 
       {/* Game Board (Slides in from Right, Slides out to Right) */}
       <div style={{
@@ -131,6 +137,7 @@ export default function App() {
               result={pickedResult}
               onPlayNote={handleTileTap}
               onHoldRelease={handleHoldRelease}
+              onHoldBeat={handleHoldBeat}
               onExit={handleExitGame}
             />
           )
@@ -186,6 +193,8 @@ export default function App() {
         </div>
       </div>
 
+      </div>
+      <TileRendererWidget />
     </div>
   );
 }

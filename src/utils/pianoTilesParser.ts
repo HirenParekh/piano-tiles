@@ -356,7 +356,9 @@ export function buildResultFromPianoTilesSong(
     // mathematically: slotDurationS = 60 / ratio
     const slotDurationS = ratio > 0 ? (60 / ratio) : (baseBeats * (60 / bpm));
 
-    const melodyNotes = sectionNotes.filter(n => n.trackIndex === 0);
+    const melodyNotes = sectionNotes.filter(
+      n => n.trackIndex === 0 && audioScoreIndices.includes(n.trackIndex)
+    );
     const accompNotes = sectionNotes.filter(
       n => n.trackIndex !== 0 && audioScoreIndices.includes(n.trackIndex)
     );

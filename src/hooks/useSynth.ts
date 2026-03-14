@@ -155,6 +155,7 @@ export function useSynth(): UseSynthReturn {
     // Cleanup on unmount
     return () => {
       Object.values(samplersRef.current).forEach(s => s.dispose());
+      samplersRef.current = {};
     };
   }, []);
 
