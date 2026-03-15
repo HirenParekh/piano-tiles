@@ -36,6 +36,8 @@ interface Props {
   onHoldBeat?: (notes: ParsedNote[]) => void;
   /** Called when the player taps the back button to leave the game. */
   onExit?: () => void;
+  /** Playback speed multiplier (e.g. 0.5 = half speed). Defaults to 1. */
+  speedMultiplier?: number;
   /**
    * Which visual skin to render.
    * - 'classic'  polished look matching the original game
@@ -52,9 +54,10 @@ export function GameBoard({
   onHoldBeat,
   onExit,
   skin = 'classic',
+  speedMultiplier = 1,
 }: Props) {
   // Run all game logic once here; both skins receive the same engine object.
-  const engine = useGameBoardEngine({ result, onPlayNote });
+  const engine = useGameBoardEngine({ result, onPlayNote, speedMultiplier });
 
   // Bundle the props that every skin needs
   const skinProps = { engine, onHoldRelease, onHoldBeat, onExit };

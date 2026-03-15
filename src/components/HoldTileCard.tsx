@@ -48,9 +48,6 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
   const rippleAnimRRef = useRef<SVGAnimateElement>(null);
   /** <animate> that drives the ring opacity from 1 to 0. */
   const rippleAnimOpRef = useRef<SVGAnimateElement>(null);
-  /** Vertically-blurred ellipse below the arc dot — comet-tail speed blur effect. */
-  const speedTrailRef = useRef<SVGEllipseElement>(null);
-
   // ── Motion refs (no re-render) ────────────────────────────────────────────
   const pointerYRef = useRef(0);
   const tapYFromBottomRef = useRef(0);
@@ -174,18 +171,6 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
         rippleRingRef.current.setAttribute('cx', dotCX);
       }
 
-      // ── Update speed trail position ────────────────────────────────────
-      // The trail is a vertically-blurred ellipse centered below the arc dot.
-      // It moves in sync with the dot, giving a comet-tail speed-blur feel.
-      // Half-height = 4× dot radius so the trail is proportional at all sizes.
-      if (speedTrailRef.current) {
-        const trailHalfH = arcDotRRef.current * 4;
-        speedTrailRef.current.setAttribute('cx', dotCX);
-        speedTrailRef.current.setAttribute('cy', String(parseFloat(dotCY) + trailHalfH));
-        speedTrailRef.current.setAttribute('rx', String(arcDotRRef.current * 0.65));
-        speedTrailRef.current.setAttribute('ry', String(trailHalfH));
-      }
-
       // ── Beat detection ─────────────────────────────────────────────────
       beats.forEach((beat, idx) => {
         const dotPxFromBottom = tapYFromBottomRef.current + beat.slotOffset * singleTileH;
@@ -280,10 +265,9 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
       {/*
         SVG overlay — covers the full tile.
         Contains:
-          • defs: glow filter (arc dot halo) + speed gradient (fill) + trail blur
+          • defs: glow filter (arc dot halo) + speed gradient (fill)
           • fill path (fill + dome cap, updated each rAF frame)
           • secondary beat dots (% positions, color from React state)
-          • speed trail (comet-tail ellipse below arc dot)
           • ripple ring (expands on beat hit)
           • arc dot (cy updated each rAF frame, glowing)
         z-index 2 puts it above the laser line (z-index 1) but below the ring (z-index 4).
@@ -325,14 +309,6 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
             <stop offset="100%" stopColor="#1a6bc8" />
           </linearGradient>
 
-          {/*
-            Vertical blur for the speed trail ellipse.
-            stdDeviation="2 10" blurs more on Y than X, stretching the glow
-            into a tall streak that reads as downward motion blur.
-          */}
-          <filter id={`trailBlur-${tile.id}`} x="-80%" y="-30%" width="260%" height="160%">
-            <feGaussianBlur stdDeviation="2 10" />
-          </filter>
         </defs>
 
         {/* ── Fill + dome — gradient gives a bright glowing leading edge ── */}
@@ -365,22 +341,6 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
             );
           });
         })()}
-
-        {/*
-          ── Speed trail — comet tail below the arc dot ────────────────────
-          A vertically-blurred ellipse that travels with the arc dot.
-          Placed before the dot so it renders behind it (painter's order).
-          The trail blur filter stretches it into a downward streak.
-        */}
-        {isHeld && (
-          <ellipse
-            ref={speedTrailRef}
-            cx="50%" cy="-100"
-            rx="5" ry="20"
-            fill="rgba(160, 220, 255, 0.45)"
-            filter={`url(#trailBlur-${tile.id})`}
-          />
-        )}
 
         {/*
           ── Ripple ring — expands outward on each beat hit ────────────────

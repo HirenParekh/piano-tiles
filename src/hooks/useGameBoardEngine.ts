@@ -32,9 +32,11 @@ interface Props {
   result: MidiParseResult;
   /** Called when the player taps any tile. Caller (App.tsx) handles audio. */
   onPlayNote: (tile: Tile) => void;
+  /** Playback speed multiplier (e.g. 0.5 = half speed). Defaults to 1. */
+  speedMultiplier?: number;
 }
 
-export function useGameBoardEngine({ result, onPlayNote }: Props) {
+export function useGameBoardEngine({ result, onPlayNote, speedMultiplier = 1 }: Props) {
   // ── Tap state & scroll ref ──────────────────────────────────────────────
   // useGameBoard owns: the Set of tapped tile IDs (for visual feedback) and
   // the ref attached to the scrollable viewport div (needed by useAutoScroll).
@@ -115,7 +117,7 @@ export function useGameBoardEngine({ result, onPlayNote }: Props) {
   // play() is called when the player taps START; it kicks off the rAF loop.
   const { play } = useAutoScroll(scrollRef, {
     pixelsPerSecond: (MIN_HEIGHT / slotDurationS) * scaleRatio,
-    speedMultiplier: 1,
+    speedMultiplier,
     totalHeight: scaledTotalHeight,
     viewportHeight: viewportH,
     scrollSegments: scaledScrollSegments,

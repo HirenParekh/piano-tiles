@@ -24,6 +24,7 @@ export default function App() {
   const [isExiting, setIsExiting] = useState(false);
   const [useCanvas, setUseCanvas] = useState(false);
   const [boardSkin, setBoardSkin] = useState<GameBoardSkin>('classic');
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
 
@@ -116,6 +117,7 @@ export default function App() {
               onHoldBeat={handleHoldBeat}
               onExit={handleExitGame}
               skin={boardSkin}
+              speedMultiplier={speedMultiplier}
             />
           )
         )}
@@ -165,12 +167,28 @@ export default function App() {
             <div style={{ padding: '8px 16px', background: '#f5f5f5', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'center', gap: '24px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
                 <input type="checkbox" checked={useCanvas} onChange={e => setUseCanvas(e.target.checked)} />
-                Experimental Canvas
+                Canvas
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
                 <input type="checkbox" checked={boardSkin === 'debug'} onChange={e => setBoardSkin(e.target.checked ? 'debug' : 'classic')} />
-                Debug Board
+                Debug
               </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+                {[0.25, 0.5, 0.75].map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setSpeedMultiplier(speedMultiplier === v ? 1 : v)}
+                    style={{
+                      padding: '2px 10px', borderRadius: '12px', border: '1px solid #bbb',
+                      background: speedMultiplier === v ? '#333' : '#fff',
+                      color: speedMultiplier === v ? '#fff' : '#555',
+                      cursor: 'pointer', fontSize: '13px', fontFamily: 'Arial, sans-serif',
+                    }}
+                  >
+                    {v * 100}%
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <SongSelection onPlaySong={handlePlaySong} />

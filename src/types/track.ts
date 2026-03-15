@@ -28,6 +28,8 @@ export interface HoldTile extends BaseTile {
 export interface DoubleTile extends BaseTile {
     type: 'DOUBLE';
     rowSpan: 1;
+    /** Notes for the whole pair in sequential play order (shared ref on both tiles). */
+    pairNotes: ParsedNote[];
 }
 
 export type Tile = SingleTile | HoldTile | DoubleTile;

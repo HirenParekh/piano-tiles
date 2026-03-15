@@ -28,6 +28,8 @@ export function useTileAudio({
 }: Options) {
   const holdTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const heldNoteRef = useRef<ParsedNote | null>(null);
+  // Tracks how many taps have fired for each double-tile pair (keyed by shared pairNotes ref).
+  const doublePairTapRef = useRef<WeakMap<ParsedNote[], number>>(new WeakMap());
 
   const handleTileTap = useCallback(async (tile: Tile) => {
     await resumeContext();
@@ -36,6 +38,20 @@ export function useTileAudio({
     holdTimersRef.current = [];
 
     const speed = getSpeed();
+
+    // Double tiles play sequentially: first tap → pairNotes[0], second tap → pairNotes[1],
+    // regardless of which physical tile (left or right) was tapped.
+    if (tile.type === 'DOUBLE') {
+      const pairNotes = tile.pairNotes;
+      const tapIndex = doublePairTapRef.current.get(pairNotes) ?? 0;
+      const noteToPlay = pairNotes[tapIndex];
+      if (noteToPlay) {
+        playNote({ ...noteToPlay, duration: noteToPlay.duration / speed });
+      }
+      doublePairTapRef.current.set(pairNotes, tapIndex + 1);
+      return;
+    }
+
     const isHold = tile.type === 'HOLD';
     const primaryNote = tile.notes[0];
     if (!primaryNote) return;

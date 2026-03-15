@@ -27,6 +27,8 @@ export function useAutoScroll(
   const startTimeRef = useRef<number | null>(null);
   const timeAtPlayRef = useRef<number>(0); // Internal logic time when play() started
   const isPlayingRef = useRef(false);
+  const speedMultiplierRef = useRef(speedMultiplier);
+  speedMultiplierRef.current = speedMultiplier;
 
   const maxScroll = Math.max(0, totalHeight - viewportHeight);
 
@@ -68,7 +70,7 @@ export function useAutoScroll(
     }
 
     const elapsedWall = (timestamp - startTimeRef.current) / 1000;
-    const elapsedGame = elapsedWall * speedMultiplier;
+    const elapsedGame = elapsedWall * speedMultiplierRef.current;
     const currentTime = timeAtPlayRef.current + elapsedGame;
 
     const targetPxFromBottom = timeToPixels(currentTime);
@@ -89,7 +91,7 @@ export function useAutoScroll(
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [speedMultiplier, timeToPixels, maxScroll, scrollRef, stop]);
+  }, [timeToPixels, maxScroll, scrollRef, stop]);
 
   const play = useCallback(() => {
     if (isPlayingRef.current) return;

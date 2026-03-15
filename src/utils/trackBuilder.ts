@@ -35,6 +35,19 @@ export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
     // Sort strictly by starting row
     absTiles.sort((a, b) => a.absRowStart - b.absRowStart);
 
+    // Assign shared pairNotes to adjacent DOUBLE tile pairs (same absRowStart).
+    // Both tiles get the same array reference so useTileAudio can key by it.
+    for (let k = 0; k < absTiles.length - 1; k++) {
+        const a = absTiles[k];
+        const b = absTiles[k + 1];
+        if (a.type === 'DOUBLE' && b.type === 'DOUBLE' && a.absRowStart === b.absRowStart) {
+            const pairNotes = [a.notes[0], b.notes[0]];
+            a.pairNotes = pairNotes;
+            b.pairNotes = pairNotes;
+            k++; // both tiles handled, skip b
+        }
+    }
+
     const maxRow = absTiles.length > 0
         ? Math.max(...absTiles.map(t => t.absRowStart + t.rowSpan))
         : 0;
