@@ -1,15 +1,48 @@
 // ── Classic skin — original-game aesthetic ─────────────────────────────────
+//
+// Layer order (bottom to top):
+//   __bg         z:0  — animated gradient base
+//   __bg-glow    z:0  — slow radial pulse overlay on top of gradient
+//   __bokeh      z:1  — blurred circles (bokehFloat / bokehDrift keyframes)
+//   __lanes      z:2  — thin white lane separators
+//   __viewport   z:3  — scrollable tile canvas (transparent, so bg shows through)
+//   HUD          z:1000 — score + back button
 
 .classic-board {
+
+  // ── Animated gradient background ─────────────────────────────────────────
+  // background-size 400% lets the position animation travel a long way,
+  // producing a clearly visible hue sweep over the 10s cycle.
   &__bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(160deg, #8ec5fc 0%, #a78bfa 40%, #67e8f9 100%);
-    background-size: 300% 300%;
-    animation: classicBgShift 12s ease-in-out infinite;
+    background: linear-gradient(
+      135deg,
+      #4facfe 0%,
+      #9b7fe8 25%,
+      #00f2fe 50%,
+      #a78bfa 75%,
+      #4facfe 100%
+    );
+    background-size: 400% 400%;
+    animation: classicBgShift 10s ease-in-out infinite;
     z-index: 0;
   }
 
+  // ── Radial pulse overlay ──────────────────────────────────────────────────
+  // A large soft glow centered on the board that slowly breathes.
+  // Adds depth without distracting from gameplay.
+  &__bg-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 60%, rgba(255,255,255,0.18) 0%, transparent 70%);
+    animation: classicGlowPulse 5s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  // ── Bokeh container ───────────────────────────────────────────────────────
+  // overflow:hidden clips circles that drift partially off-screen.
   &__bokeh {
     position: absolute;
     inset: 0;
@@ -18,12 +51,21 @@
     overflow: hidden;
   }
 
+  // ── Individual bokeh circles ──────────────────────────────────────────────
+  // Variable properties (size, position, colour, blur, timing) are set via
+  // inline styles in GameBoardClassicSkin.tsx.
+  // The animation name is also set via inline style so we can alternate between
+  // bokehFloat (vertical) and bokehDrift (diagonal) for variety.
   &__bokeh-circle {
     position: absolute;
     border-radius: 50%;
-    animation: bokehPulse ease-in-out infinite alternate;
+    // animation shorthand is split so the name can be overridden per-circle
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
   }
 
+  // ── Lane dividers ─────────────────────────────────────────────────────────
   &__lanes {
     position: absolute;
     inset: 0;
@@ -34,13 +76,15 @@
   }
 
   &__lane {
-    border-right: 1px solid rgba(255, 255, 255, 0.25);
+    // Semi-transparent white — visible against any colour of the gradient
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
 
     &:last-child {
       border-right: none;
     }
   }
 
+  // ── Back button ───────────────────────────────────────────────────────────
   &__back-btn {
     position: absolute;
     left: 16px;
@@ -49,15 +93,17 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.95);
     display: flex;
     align-items: center;
     justify-content: center;
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+    // Drop shadow makes the arrow readable over any gradient colour
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
     transition: opacity 0.3s;
     padding: 4px;
   }
 
+  // ── Score display ─────────────────────────────────────────────────────────
   &__score {
     position: absolute;
     top: 16px;
@@ -74,34 +120,98 @@
     pointer-events: none;
   }
 
+  // ── Scrollable viewport ───────────────────────────────────────────────────
+  // Transparent background so the gradient/bokeh layers show through.
+  // Scrollbar hidden — scrollTop is driven programmatically by useAutoScroll.
   &__viewport {
     position: absolute;
     inset: 0;
     z-index: 3;
     overflow-x: hidden;
+    background: transparent;
 
-    // Hide scrollbar — scroll is driven programmatically
-    &::-webkit-scrollbar {
-      display: none;
-    }
-
+    &::-webkit-scrollbar { display: none; }
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
 
-  // Hide debug note labels in classic skin
+  // ── Floating particle bubbles ─────────────────────────────────────────────
+  // Small white semi-opaque circles that continuously drift upward,
+  // like the bokeh bubbles in the original Piano Tiles 2 background.
+  // Positioned as a separate layer above bokeh but below lane dividers.
+  &__particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1; // same level as bokeh — behind lane lines and tiles
+    overflow: hidden;
+  }
+
+  &__particle {
+    position: absolute;
+    border-radius: 50%;
+    // Soft blur makes them look like out-of-focus bokeh rather than hard circles
+    filter: blur(3px);
+    // background and per-particle sizing/timing set via inline styles
+    animation-name: particleRise;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-fill-mode: none;
+  }
+
+  // ── Hide debug labels in classic mode ─────────────────────────────────────
+  // The note labels (e.g. "g2[L]") are useful in debug skin but cluttering here.
   .game-tile__label {
     display: none;
   }
 }
 
+// ── Background gradient shift ─────────────────────────────────────────────────
+// Moves through the 400% background-size, producing a full hue sweep.
 @keyframes classicBgShift {
-  0%   { background-position: 0% 50%; }
+  0%   { background-position: 0%   50%; }
   50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  100% { background-position: 0%   50%; }
 }
 
-@keyframes bokehPulse {
-  0%   { transform: scale(1)   translateY(0); opacity: 0.8; }
-  100% { transform: scale(1.15) translateY(-24px); opacity: 0.45; }
+// ── Radial glow breathe ───────────────────────────────────────────────────────
+// Subtle brightness pulse on the centre glow overlay.
+@keyframes classicGlowPulse {
+  0%   { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1;   transform: scale(1.08); }
+}
+
+// ── Particle bubble rise ──────────────────────────────────────────────────────
+// All particles start at bottom (top:100%) and travel upward by 110vh.
+// Negative animation-delay staggers each particle so they're at different
+// heights at any moment — no jarring "all restart at once" effect.
+// Opacity fades in near the bottom and out near the top for a soft appearance.
+@keyframes particleRise {
+  0%   { transform: translateY(0);       opacity: 0; }
+  8%   { opacity: 0.35; }
+  85%  { opacity: 0.25; }
+  100% { transform: translateY(-110vh);  opacity: 0; }
+}
+
+// ── Bokeh vertical float ──────────────────────────────────────────────────────
+// Circles drift upward ~120px and grow slightly, then return.
+// animation-direction:alternate means they smoothly reverse.
+@keyframes bokehFloat {
+  0% {
+    transform: translateY(0)     scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(-120px) scale(1.25);
+    opacity: 0.9;
+  }
+}
+
+// ── Bokeh diagonal drift ──────────────────────────────────────────────────────
+// More complex path — circles wander diagonally for organic variety.
+@keyframes bokehDrift {
+  0%   { transform: translate(0,     0)     scale(1);    opacity: 0.5; }
+  33%  { transform: translate(30px,  -90px) scale(1.2);  opacity: 0.85; }
+  66%  { transform: translate(-20px, -150px) scale(1.05); opacity: 0.7; }
+  100% { transform: translate(0,     0)     scale(1);    opacity: 0.5; }
 }

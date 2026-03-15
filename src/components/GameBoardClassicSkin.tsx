@@ -41,18 +41,60 @@ interface Props {
 }
 
 /**
- * Static bokeh circle definitions.
- * Each circle uses the same CSS keyframe (bokehPulse in _game-board-classic.scss)
- * but different size/position/colour/timing so they feel organic rather than uniform.
+ * Small white particle bubbles that continuously float upward, like the
+ * bokeh bubbles visible in the original Piano Tiles 2 background.
+ *
+ * All particles are placed at top:100% (bottom of screen) and travel upward
+ * via the `particleRise` keyframe. Negative animationDelay staggers their
+ * starting position so the screen looks populated immediately on load.
+ *
+ * Formula: a particle with delay=-Ds and duration=Ts starts at height
+ *   (D/T) × 110vh above its base position — naturally distributed.
+ *
+ * Size range: 5–22px (mix of tiny dots and slightly larger orbs, like the game)
+ * Opacity: 0.5–0.9 via the keyframe; color is white with slight blue tint
+ */
+const PARTICLES: { size: number; left: string; duration: number; delay: number }[] = [
+  { size:  6,  left:  '8%', duration:  8, delay:  2 },
+  { size: 14,  left: '18%', duration: 12, delay:  7 },
+  { size:  8,  left: '28%', duration:  9, delay:  4 },
+  { size: 20,  left: '35%', duration: 14, delay: 11 },
+  { size:  5,  left: '45%', duration:  7, delay:  1 },
+  { size: 16,  left: '55%', duration: 11, delay:  9 },
+  { size: 10,  left: '62%', duration: 10, delay:  3 },
+  { size: 22,  left: '72%', duration: 13, delay:  6 },
+  { size:  7,  left: '80%', duration:  8, delay: 12 },
+  { size: 12,  left: '90%', duration: 11, delay:  5 },
+  { size: 18,  left:  '3%', duration: 15, delay:  8 },
+  { size:  9,  left: '50%', duration:  9, delay: 13 },
+  { size: 15,  left: '25%', duration: 12, delay:  0 },
+  { size:  6,  left: '68%', duration:  7, delay: 10 },
+  { size: 11,  left: '42%', duration: 10, delay: 14 },
+  { size: 19,  left: '85%', duration: 16, delay:  2 },
+  { size:  8,  left: '15%', duration:  8, delay:  6 },
+  { size: 13,  left: '58%', duration: 11, delay:  4 },
+];
+
+/**
+ * Bokeh circle definitions.
+ *
+ * Key tuning notes:
+ *   - `blur` kept at 20-35px (not 50-65px) so circles are actually visible
+ *   - `color` opacity 0.6-0.75 so they read against the gradient
+ *   - `size` 200-320px for bold presence
+ *   - `anim` alternates between 'bokehFloat' (vertical) and 'bokehDrift'
+ *     (diagonal) so circles don't all move identically
+ *   - negative `delay` staggers the phase so they're not in sync on load
  */
 const BOKEH_CIRCLES = [
-  { size: 180, left: '10%',  top: '15%', color: 'rgba(120,180,255,0.45)', blur: 55, duration: 18, delay: 0 },
-  { size: 120, left: '70%',  top: '30%', color: 'rgba(160,120,255,0.35)', blur: 45, duration: 22, delay: 4 },
-  { size: 220, left: '40%',  top: '60%', color: 'rgba(80,200,255,0.3)',   blur: 65, duration: 26, delay: 8 },
-  { size: 100, left: '85%',  top: '70%', color: 'rgba(180,140,255,0.4)',  blur: 40, duration: 20, delay: 2 },
-  { size: 160, left: '20%',  top: '80%', color: 'rgba(100,160,255,0.35)', blur: 50, duration: 24, delay: 6 },
-  { size: 140, left: '55%',  top: '10%', color: 'rgba(60,220,255,0.3)',   blur: 48, duration: 28, delay: 10 },
-  { size: 90,  left: '5%',   top: '50%', color: 'rgba(200,180,255,0.35)', blur: 38, duration: 16, delay: 3 },
+  { size: 300, left: '-5%',  top: '10%',  color: 'rgba(100,180,255,0.7)',  blur: 28, duration: 14, delay: 0,  anim: 'bokehFloat' },
+  { size: 220, left: '60%',  top: '5%',   color: 'rgba(190,130,255,0.65)', blur: 30, duration: 18, delay: 3,  anim: 'bokehDrift' },
+  { size: 320, left: '25%',  top: '45%',  color: 'rgba(50,210,255,0.6)',   blur: 32, duration: 22, delay: 7,  anim: 'bokehFloat' },
+  { size: 180, left: '78%',  top: '60%',  color: 'rgba(210,150,255,0.7)',  blur: 22, duration: 16, delay: 5,  anim: 'bokehDrift' },
+  { size: 260, left: '10%',  top: '70%',  color: 'rgba(80,200,255,0.65)',  blur: 26, duration: 20, delay: 9,  anim: 'bokehFloat' },
+  { size: 200, left: '48%',  top: '0%',   color: 'rgba(130,240,255,0.6)',  blur: 24, duration: 25, delay: 11, anim: 'bokehDrift' },
+  { size: 160, left: '-2%',  top: '40%',  color: 'rgba(230,190,255,0.65)', blur: 20, duration: 13, delay: 2,  anim: 'bokehFloat' },
+  { size: 280, left: '70%',  top: '30%',  color: 'rgba(60,200,255,0.55)',  blur: 34, duration: 19, delay: 6,  anim: 'bokehDrift' },
 ];
 
 export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit }: Props) {
@@ -66,10 +108,14 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
       className="classic-board"
       style={{ position: 'relative', height: '100%', width: '100%', overflow: 'hidden' }}
     >
-      {/* ── Background ────────────────────────────────────────────────────
-          CSS gradient that slowly shifts between blue, purple, and cyan
-          using the classicBgShift keyframe defined in _game-board-classic.scss. */}
+      {/* ── Background gradient ───────────────────────────────────────────
+          Shifts slowly through blue/purple/cyan with classicBgShift keyframe. */}
       <div className="classic-board__bg" />
+
+      {/* ── Radial glow overlay ───────────────────────────────────────────
+          A large soft glow centered on the board that slowly breathes,
+          adding depth to the gradient without blocking tile visibility. */}
+      <div className="classic-board__bg-glow" />
 
       {/* ── Bokeh circles ─────────────────────────────────────────────────
           aria-hidden: purely decorative, screen readers should skip.
@@ -87,9 +133,34 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
               top: c.top,
               background: c.color,
               filter: `blur(${c.blur}px)`,
+              // Each circle uses its own keyframe (float vs drift) for variety
+              animationName: c.anim,
               animationDuration: `${c.duration}s`,
               // Negative delay starts each circle at a different phase immediately
               animationDelay: `-${c.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── Floating particle bubbles ─────────────────────────────────────
+          Small white circles that drift upward like snow / bokeh orbs.
+          Each particle is at top:100% (bottom of screen); negative delay
+          places it at a different height so they're distributed immediately. */}
+      <div className="classic-board__particles" aria-hidden>
+        {PARTICLES.map((p, i) => (
+          <div
+            key={i}
+            className="classic-board__particle"
+            style={{
+              width: p.size,
+              height: p.size,
+              left: p.left,
+              top: '100%',
+              // Slightly blue-tinted white, kept semi-transparent so they blend softly
+              background: `rgba(220, 235, 255, 0.5)`,
+              animationDuration: `${p.duration}s`,
+              animationDelay: `-${p.delay}s`,
             }}
           />
         ))}
