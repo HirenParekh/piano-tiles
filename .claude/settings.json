@@ -3,6 +3,9 @@
     "allow": [
       "Bash(rm -rf docs)",
       "Bash(npm run:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\parek\\.claude\\projects\\c--Users-parek-Projects-piano-tiles\\memory"
     ]
   }
 }

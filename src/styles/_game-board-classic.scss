@@ -1,0 +1,107 @@
+// ── Classic skin — original-game aesthetic ─────────────────────────────────
+
+.classic-board {
+  &__bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, #8ec5fc 0%, #a78bfa 40%, #67e8f9 100%);
+    background-size: 300% 300%;
+    animation: classicBgShift 12s ease-in-out infinite;
+    z-index: 0;
+  }
+
+  &__bokeh {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  &__bokeh-circle {
+    position: absolute;
+    border-radius: 50%;
+    animation: bokehPulse ease-in-out infinite alternate;
+  }
+
+  &__lanes {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  &__lane {
+    border-right: 1px solid rgba(255, 255, 255, 0.25);
+
+    &:last-child {
+      border-right: none;
+    }
+  }
+
+  &__back-btn {
+    position: absolute;
+    left: 16px;
+    top: 20px;
+    z-index: 1000;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+    transition: opacity 0.3s;
+    padding: 4px;
+  }
+
+  &__score {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    font-size: 48px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    color: #ff4b4b;
+    -webkit-text-stroke: 1.5px #fff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  &__viewport {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    overflow-x: hidden;
+
+    // Hide scrollbar — scroll is driven programmatically
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  // Hide debug note labels in classic skin
+  .game-tile__label {
+    display: none;
+  }
+}
+
+@keyframes classicBgShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes bokehPulse {
+  0%   { transform: scale(1)   translateY(0); opacity: 0.8; }
+  100% { transform: scale(1.15) translateY(-24px); opacity: 0.45; }
+}

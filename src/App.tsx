@@ -4,6 +4,7 @@ import { usePlayback } from './hooks/usePlayback';
 import { useTileAudio } from './hooks/useTileAudio';
 import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
+import type { GameBoardSkin } from './components/GameBoard';
 import { CanvasGameBoard } from './components/CanvasGameBoard';
 import type { MidiParseResult } from './types/midi';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
@@ -17,6 +18,7 @@ export default function App() {
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [useCanvas, setUseCanvas] = useState(false);
+  const [boardSkin, setBoardSkin] = useState<GameBoardSkin>('classic');
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
 
@@ -107,6 +109,7 @@ export default function App() {
               onHoldRelease={handleHoldRelease}
               onHoldBeat={handleHoldBeat}
               onExit={handleExitGame}
+              skin={boardSkin}
             />
           )
         )}
@@ -151,10 +154,14 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ padding: '8px 16px', textAlign: 'center', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
-            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+          <div style={{ padding: '8px 16px', background: '#f5f5f5', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'center', gap: '24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
               <input type="checkbox" checked={useCanvas} onChange={e => setUseCanvas(e.target.checked)} />
-              Use Experimental Canvas Engine
+              Experimental Canvas
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+              <input type="checkbox" checked={boardSkin === 'debug'} onChange={e => setBoardSkin(e.target.checked ? 'debug' : 'classic')} />
+              Debug Board
             </label>
           </div>
           <SongSelection onPlaySong={handlePlaySong} />
