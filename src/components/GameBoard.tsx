@@ -227,11 +227,12 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onHoldBeat, onExi
                             onRelease={onHoldRelease}
                             onNotePlay={onHoldBeat}
                             className=""
+                            singleTileH={MIN_HEIGHT * scaleRatio}
                             style={{
                               top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%',
                               margin: 0, padding: 0, pointerEvents: 'auto',
                               gridColumn: tile.lane + 1,
-                              gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`
+                              gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`,
                             }}
                           />
                           : <GameTileCard

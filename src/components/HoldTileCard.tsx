@@ -22,12 +22,14 @@ interface Props {
   onNotePlay?: (notes: ParsedNote[]) => void;
   style?: React.CSSProperties;
   className?: string;
+  /** Height of a single slot in px (MIN_HEIGHT × scaleRatio). Used for the background gradient. */
+  singleTileH?: number;
 }
 
 // How many px above the anchor the arc dot center sits
 const DOT_OFFSET_PX = 50;
 
-export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '' }: Props) {
+export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100 }: Props) {
   // ── React state ──────────────────────────────────────────────────────────
   const [isHeld, setIsHeld] = useState(false);
   const [firedDots, setFiredDots] = useState<Set<number>>(new Set());
@@ -227,7 +229,7 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     <div
       ref={divRef}
       className={`game-tile game-tile--hold${isHeld ? ' game-tile--hold-active' : ''}${tapped ? ' game-tile--tapped' : ''} ${className}`}
-      style={{ ...style, overflow: 'hidden' }}
+      style={{ ...style, overflow: 'hidden', background: `linear-gradient(to top, #000000 ${singleTileH * 0.4}px, #0e3a6e ${singleTileH}px, #1565c0 100%)` }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handleRelease}

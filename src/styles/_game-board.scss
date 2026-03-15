@@ -282,8 +282,8 @@ $lane-color-map: (
   }
 
   &--hold {
-    // Black at the bottom (ring area), blue in the upper body — matches original game
-    background: linear-gradient(to top, #000000 0%, #000000 15%, #0e3a6e 55%, #1565c0 100%);
+    // Background gradient applied as inline style from GameBoard (dynamic, based on scaleRatio).
+    // Black zone = 40% of single tile height, dark-blue transition over next 60%, bright blue above.
     border: 1px solid rgba(0, 200, 255, 0.2);
     overflow: visible; // Allow ring glow to bleed outside tile bounds
     touch-action: none; // Prevent browser scroll from swallowing pointermove while swiping
@@ -318,7 +318,7 @@ $lane-color-map: (
     transform: translateX(-50%);
     top: 0;
     // Stops at ring center: ring bottom:8px + height:24px / 2 = 20px from tile bottom
-    bottom: 20px;
+    bottom: 45px;
     width: 2px;
     // More visible at the top (blue area), fades as it approaches the black bottom
     background: linear-gradient(
@@ -335,7 +335,7 @@ $lane-color-map: (
   // ── Ring at the bottom — the "tap here" indicator ─────────────────────
   &__hold-ring {
     position: absolute;
-    bottom: 8px;
+    bottom: 33px;
     left: 50%;
     transform: translateX(-50%);
     // Smaller ring to match original game (was 36px)

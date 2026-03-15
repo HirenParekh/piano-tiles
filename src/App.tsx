@@ -18,6 +18,7 @@ export default function App() {
   const [isExiting, setIsExiting] = useState(false);
   const [useCanvas, setUseCanvas] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isWidgetOpen, setIsWidgetOpen] = useState(false);
 
   const playbackNotes = useMemo(
     () => pickedResult?.notes ?? [],
@@ -47,6 +48,15 @@ export default function App() {
       // Hold tiles trigger an initial attack; merged notes fire position-based via onHoldBeat
       attackNote({ ...primaryNote, duration: primaryNote.duration / speed });
       heldNoteRef.current = primaryNote;
+      // Also play any bass notes that co-start with the primary note (same slot, not secondary beats)
+      console.log('[hold tap] tile.notes:', tile.notes.map(n => `${n.pt2Notation ?? n.name} slot=${n.slotStart}`), 'primary slot:', primaryNote.slotStart);
+      tile.notes.slice(1).forEach(note => {
+        const delta = Math.abs(note.slotStart - primaryNote.slotStart);
+        console.log('[hold tap] note', note.pt2Notation ?? note.name, 'delta:', delta, 'plays:', delta < 0.0001);
+        if (delta < 0.0001) {
+          playNote({ ...note, duration: note.duration / speed });
+        }
+      });
     } else {
       // Tap tiles just trigger once and are bound by the 8-second default release envelope.
       playNote({ ...primaryNote, duration: primaryNote.duration / speed });
@@ -194,7 +204,39 @@ export default function App() {
       </div>
 
       </div>
-      <TileRendererWidget />
+
+      {/* Dev widget toggle button — fixed to right edge */}
+      <button
+        onClick={() => setIsWidgetOpen(o => !o)}
+        style={{
+          position: 'fixed', right: isWidgetOpen ? '95vw' : 0, top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 100,
+          background: '#1a1a2e', color: '#00cfff',
+          border: '1px solid rgba(0,207,255,0.4)',
+          borderRight: 'none',
+          borderRadius: '6px 0 0 6px',
+          padding: '12px 6px', cursor: 'pointer', writingMode: 'vertical-rl',
+          fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.1em',
+          transition: 'right 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+        }}
+      >
+        {isWidgetOpen ? '▶ CLOSE' : '◀ DEV'}
+      </button>
+
+      {/* Sliding dev panel */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, width: '95vw', height: '100vh',
+        zIndex: 99,
+        transform: isWidgetOpen ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+        background: '#0d0d1a',
+        borderLeft: '1px solid rgba(0,207,255,0.25)',
+        boxShadow: isWidgetOpen ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
+        overflowY: 'auto',
+      }}>
+        <TileRendererWidget />
+      </div>
     </div>
   );
 }
