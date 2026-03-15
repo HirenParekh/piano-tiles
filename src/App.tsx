@@ -12,6 +12,11 @@ import songCatalog from './songCatalog.json';
 import './styles/main.scss';
 import { TileRendererWidget } from './components/TileRendererWidget';
 export default function App() {
+  // Show dev-only UI (Debug Board, canvas toggle, TileRendererWidget) only when
+  // the URL contains ?ui=dev_mode. This keeps the prod experience clean without
+  // requiring a separate build flag.
+  const isDevMode = new URLSearchParams(window.location.search).get('ui') === 'dev_mode';
+
   const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
   // Song picked from the Library tab
@@ -59,7 +64,8 @@ export default function App() {
   const handlePlaySong = async (id: string) => {
     try {
       setIsLoadingFiles(true);
-      const res = await fetch(`${import.meta.env.BASE_URL}songs/${encodeURIComponent(id)}.json`);
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const res = await fetch(`${base}/songs/${encodeURIComponent(id)}.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ptJson = await res.json();
 
@@ -154,54 +160,60 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ padding: '8px 16px', background: '#f5f5f5', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'center', gap: '24px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
-              <input type="checkbox" checked={useCanvas} onChange={e => setUseCanvas(e.target.checked)} />
-              Experimental Canvas
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
-              <input type="checkbox" checked={boardSkin === 'debug'} onChange={e => setBoardSkin(e.target.checked ? 'debug' : 'classic')} />
-              Debug Board
-            </label>
-          </div>
+          {/* Dev toolbar — only visible with ?ui=dev_mode in the URL */}
+          {isDevMode && (
+            <div style={{ padding: '8px 16px', background: '#f5f5f5', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'center', gap: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+                <input type="checkbox" checked={useCanvas} onChange={e => setUseCanvas(e.target.checked)} />
+                Experimental Canvas
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+                <input type="checkbox" checked={boardSkin === 'debug'} onChange={e => setBoardSkin(e.target.checked ? 'debug' : 'classic')} />
+                Debug Board
+              </label>
+            </div>
+          )}
           <SongSelection onPlaySong={handlePlaySong} />
         </div>
       </div>
 
       </div>
 
-      {/* Dev widget toggle button — fixed to right edge */}
-      <button
-        onClick={() => setIsWidgetOpen(o => !o)}
-        style={{
-          position: 'fixed', right: isWidgetOpen ? '95vw' : 0, top: '50%',
-          transform: 'translateY(-50%)',
-          zIndex: 100,
-          background: '#1a1a2e', color: '#00cfff',
-          border: '1px solid rgba(0,207,255,0.4)',
-          borderRight: 'none',
-          borderRadius: '6px 0 0 6px',
-          padding: '12px 6px', cursor: 'pointer', writingMode: 'vertical-rl',
-          fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.1em',
-          transition: 'right 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
-        }}
-      >
-        {isWidgetOpen ? '▶ CLOSE' : '◀ DEV'}
-      </button>
+      {/* Dev widget toggle + sliding panel — only rendered with ?ui=dev_mode */}
+      {isDevMode && (
+        <>
+          <button
+            onClick={() => setIsWidgetOpen(o => !o)}
+            style={{
+              position: 'fixed', right: isWidgetOpen ? '95vw' : 0, top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 100,
+              background: '#1a1a2e', color: '#00cfff',
+              border: '1px solid rgba(0,207,255,0.4)',
+              borderRight: 'none',
+              borderRadius: '6px 0 0 6px',
+              padding: '12px 6px', cursor: 'pointer', writingMode: 'vertical-rl',
+              fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.1em',
+              transition: 'right 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+          >
+            {isWidgetOpen ? '▶ CLOSE' : '◀ DEV'}
+          </button>
 
-      {/* Sliding dev panel */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, width: '95vw', height: '100vh',
-        zIndex: 99,
-        transform: isWidgetOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
-        background: '#0d0d1a',
-        borderLeft: '1px solid rgba(0,207,255,0.25)',
-        boxShadow: isWidgetOpen ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
-        overflowY: 'auto',
-      }}>
-        <TileRendererWidget />
-      </div>
+          <div style={{
+            position: 'fixed', top: 0, right: 0, width: '95vw', height: '100vh',
+            zIndex: 99,
+            transform: isWidgetOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+            background: '#0d0d1a',
+            borderLeft: '1px solid rgba(0,207,255,0.25)',
+            boxShadow: isWidgetOpen ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
+            overflowY: 'auto',
+          }}>
+            <TileRendererWidget />
+          </div>
+        </>
+      )}
     </div>
   );
 }

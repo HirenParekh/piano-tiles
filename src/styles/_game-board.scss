@@ -265,7 +265,7 @@ $lane-color-map: (
   &--tapped {
     cursor: default;
     pointer-events: none;
-    opacity: 0.3; // Let the ripple hold the weight of the animation, drop overall opacity just slightly
+    opacity: 0.1; // Let the ripple hold the weight of the animation, drop overall opacity just slightly
 
     &::after {
       opacity: 1;

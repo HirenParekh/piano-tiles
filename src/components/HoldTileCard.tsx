@@ -48,6 +48,8 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
   const rippleAnimRRef = useRef<SVGAnimateElement>(null);
   /** <animate> that drives the ring opacity from 1 to 0. */
   const rippleAnimOpRef = useRef<SVGAnimateElement>(null);
+  /** Vertically-blurred ellipse below the arc dot — comet-tail speed blur effect. */
+  const speedTrailRef = useRef<SVGEllipseElement>(null);
 
   // ── Motion refs (no re-render) ────────────────────────────────────────────
   const pointerYRef = useRef(0);
@@ -57,6 +59,9 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
   const rafRef = useRef<number>(0);
   const maxProgressRef = useRef(0);
   const reachedPercentRef = useRef(0);
+  // Arc dot radius computed once at hold-start from tile width so it scales
+  // with the lane width instead of being a fixed 7px on all screen sizes.
+  const arcDotRRef = useRef(7);
 
   const onNotePlayRef = useRef(onNotePlay);
   useEffect(() => { onNotePlayRef.current = onNotePlay; }, [onNotePlay]);
@@ -88,9 +93,10 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     firedSetRef.current = new Set([...firedSetRef.current, idx]);
     setFiredDots(new Set(firedSetRef.current));
     setArcHitKey(prev => prev + 1);
-    // Scale ripple to tile width so it looks proportional on all screen sizes.
-    if (rippleAnimRRef.current && divRef.current) {
-      const toR = Math.round(divRef.current.clientWidth * 0.45);
+    // Scale ripple from arc-dot size outward — proportional to tile width.
+    if (rippleAnimRRef.current) {
+      const toR = Math.round((divRef.current?.clientWidth ?? 60) * 0.45);
+      rippleAnimRRef.current.setAttribute('from', String(arcDotRRef.current));
       rippleAnimRRef.current.setAttribute('to', String(toR));
     }
     // Trigger the SVG expanding ring — beginElement() restarts the animation
@@ -155,14 +161,29 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
 
       // ── Update arc dot + ripple ring position (same point: dome apex) ──
       const dotCX = String(W / 2);
-      const dotCY = String(Math.max(7, dotY));
+      // Keep the dot at least arcDotR px from the top edge so it doesn't clip
+      const dotCY = String(Math.max(arcDotRRef.current, dotY));
       if (arcDotRef.current) {
         arcDotRef.current.setAttribute('cy', dotCY);
         arcDotRef.current.setAttribute('cx', dotCX);
+        // r is set every frame so it stays correct after key-remount on beat hit
+        arcDotRef.current.setAttribute('r', String(arcDotRRef.current));
       }
       if (rippleRingRef.current) {
         rippleRingRef.current.setAttribute('cy', dotCY);
         rippleRingRef.current.setAttribute('cx', dotCX);
+      }
+
+      // ── Update speed trail position ────────────────────────────────────
+      // The trail is a vertically-blurred ellipse centered below the arc dot.
+      // It moves in sync with the dot, giving a comet-tail speed-blur feel.
+      // Half-height = 4× dot radius so the trail is proportional at all sizes.
+      if (speedTrailRef.current) {
+        const trailHalfH = arcDotRRef.current * 4;
+        speedTrailRef.current.setAttribute('cx', dotCX);
+        speedTrailRef.current.setAttribute('cy', String(parseFloat(dotCY) + trailHalfH));
+        speedTrailRef.current.setAttribute('rx', String(arcDotRRef.current * 0.65));
+        speedTrailRef.current.setAttribute('ry', String(trailHalfH));
       }
 
       // ── Beat detection ─────────────────────────────────────────────────
@@ -189,6 +210,8 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     pointerYRef.current = e.clientY;
     const tapRect = divRef.current!.getBoundingClientRect();
     tapYFromBottomRef.current = tapRect.bottom - e.clientY;
+    // ~6% of lane width; clamp to at least 5px so it's always visible
+    arcDotRRef.current = Math.min(10, Math.round(tapRect.width * 0.06));
     setTapYFromBottom(tapRect.bottom - e.clientY);
     firedSetRef.current = new Set();
     reachedPercentRef.current = 0;
@@ -257,9 +280,12 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
       {/*
         SVG overlay — covers the full tile.
         Contains:
+          • defs: glow filter (arc dot halo) + speed gradient (fill) + trail blur
           • fill path (fill + dome cap, updated each rAF frame)
           • secondary beat dots (% positions, color from React state)
-          • arc dot (cy updated each rAF frame)
+          • speed trail (comet-tail ellipse below arc dot)
+          • ripple ring (expands on beat hit)
+          • arc dot (cy updated each rAF frame, glowing)
         z-index 2 puts it above the laser line (z-index 1) but below the ring (z-index 4).
       */}
       <svg
@@ -268,16 +294,61 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
         height="100%"
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* ── Fill + dome ──────────────────────────────────────────────── */}
+        <defs>
+          {/*
+            Glow filter for the arc dot.
+            feGaussianBlur creates a soft cyan halo; feMerge layers it behind the sharp dot.
+            Wide filter region (300%×300%) prevents the bloom from being clipped at edges.
+          */}
+          <filter id={`arcGlow-${tile.id}`} x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/*
+            Speed gradient for the fill path.
+            Top (dome apex) is bright cyan-white — the leading edge of the fill.
+            It fades to the base blue below, giving the impression of the fill
+            rushing upward with a glowing front.
+          */}
+          {/*
+            Speed gradient for the fill path — bright light blue at the dome
+            apex (leading edge), fading to base blue at the bottom.
+          */}
+          <linearGradient id={`fillGrad-${tile.id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="rgba(70, 170, 235, 1.0)" />
+            <stop offset="8%"   stopColor="rgba(55, 150, 225, 0.99)" />
+            <stop offset="35%"  stopColor="#308af1" />
+            <stop offset="100%" stopColor="#1a6bc8" />
+          </linearGradient>
+
+          {/*
+            Vertical blur for the speed trail ellipse.
+            stdDeviation="2 10" blurs more on Y than X, stretching the glow
+            into a tall streak that reads as downward motion blur.
+          */}
+          <filter id={`trailBlur-${tile.id}`} x="-80%" y="-30%" width="260%" height="160%">
+            <feGaussianBlur stdDeviation="2 10" />
+          </filter>
+        </defs>
+
+        {/* ── Fill + dome — gradient gives a bright glowing leading edge ── */}
         <path
           ref={fillPathRef}
           d=""
-          fill="#308af1"
+          fill={`url(#fillGrad-${tile.id})`}
         />
 
         {/* ── Secondary beat dots — shown only while holding ───────────── */}
         {isHeld && (() => {
           const tileH = divRef.current?.clientHeight ?? 0;
+          const tileW = divRef.current?.clientWidth ?? 0;
+          // Dot radius is proportional to tile width — looks correct at all screen sizes.
+          // ~3% of lane width gives a dot that's clearly visible but not overwhelming.
+          const dotR = Math.round(tileW * 0.03)
           return secondaryBeats.map((beat, idx) => {
             const dotPxFromBottom = tapYFromBottom + beat.slotOffset * singleTileH;
             if (dotPxFromBottom > tileH) return null; // doesn't fit
@@ -287,12 +358,29 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
                 key={idx}
                 cx="50%"
                 cy={cy}
-                r="3"
-                fill={firedDots.has(idx) ? 'rgba(0,200,255,0.2)' : 'rgba(0,210,255,0.65)'}
+                r={dotR}
+                // Bright cyan when pending, dim when already fired
+                fill={firedDots.has(idx) ? 'rgba(0,200,255,0.2)' : 'rgba(120,220,255,0.9)'}
               />
             );
           });
         })()}
+
+        {/*
+          ── Speed trail — comet tail below the arc dot ────────────────────
+          A vertically-blurred ellipse that travels with the arc dot.
+          Placed before the dot so it renders behind it (painter's order).
+          The trail blur filter stretches it into a downward streak.
+        */}
+        {isHeld && (
+          <ellipse
+            ref={speedTrailRef}
+            cx="50%" cy="-100"
+            rx="5" ry="20"
+            fill="rgba(160, 220, 255, 0.45)"
+            filter={`url(#trailBlur-${tile.id})`}
+          />
+        )}
 
         {/*
           ── Ripple ring — expands outward on each beat hit ────────────────
@@ -335,6 +423,8 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
             cy="-100"
             r="7"
             fill="white"
+            // Glow filter adds a bright cyan bloom around the dot
+            filter={`url(#arcGlow-${tile.id})`}
             className={arcHitKey > 0 ? 'svg-arc-dot svg-arc-dot--ripple' : 'svg-arc-dot'}
           />
         )}

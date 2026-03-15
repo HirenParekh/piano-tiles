@@ -175,7 +175,7 @@ export function useSynth(): UseSynthReturn {
         samplers[instr] = new WebAudioSampler(rawContext, volDb, release);
       }
 
-      const baseUrl = `${import.meta.env.BASE_URL}music/${instr}/`;
+      const baseUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/music/${instr}/`;
       promises.push(samplers[instr].load(urls, baseUrl));
     }
 

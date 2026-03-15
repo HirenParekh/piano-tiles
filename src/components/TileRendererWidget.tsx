@@ -17,8 +17,8 @@ const defaultJson = `{
       "bpm": 100,
       "baseBeats": 0.5,
       "scores": [
-                "g2[L],e3[L],d3[L],c3[L],g2[KL],5<g2[M],g2[M]>;g2[L],e3[L],d3[L],c3[L],a2[KL],5<a2[M],a2[M]>;a2[L],f3[L],e3[L],d3[L],b2[KL],5<g3[M],g3[M]>;g3[L],g3[L],f3[L],d3[L],e3[KL],5<g2[M],g2[M]>;g2[L],e3[L],d3[L],c3[L],g2[KL],5<g2[M],g2[M]>;g2[L],e3[L],d3[L],c3[L],a2[KL],5<a2[M],a2[M]>;a2[L],f3[L],e3[L],d3[L],g3[L],g3[L],g3[L],g3[L];a3[L],g3[L],f3[L],d3[L],c3[J];",
-                "c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];c1[L],e1[L],g[L],e1[L],c1[L],f1[L],a[L],f1[L];c1[L],f1[L],a[L],f1[L],d1[L],g1[L],b[L],g1[L];c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],U;c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];c1[L],e1[L],g[L],e1[L],c1[L],f1[L],a[L],f1[L];c1[L],f1[L],a[L],f1[L],b[L],g1[L],g[L],g1[L];b[L],f1[L],g[L],f1[L],c1[L],e1[L],c1[K];"
+                "5<#d2[M],#c2[M]>,U,(#a1.#f2)[L],(#a1.#f2)[L],5<#d2[M],#c2[M]>,U,(#a1.#f2)[L],(#a1.#f2)[L];5<#d2[M],#c2[M]>,U,(#a1.#f2)[L],U,(#a1.#f2)[L],U,(b1.f2)[L],(b1.f2)[L];5<#d2[M],#c2[M]>,U,(b1.f2)[L],(b1.f2)[L],5<#d2[M],#c2[M]>,U,(b1.f2)[L],(b1.f2)[L];5<#d2[M],#c2[M]>,U,(b1.f2)[L],U,(b1.f2)[L],U,(#a1.#f2)[L],(#a1.#f2)[L];5<#d2[M],#c2[M]>,#a2[L],(#a1.#f2)[L],(#a1.#f2)[L],5<#d2[M],#c2[M]>,#a2[L],(#a1.#f2)[L],(#a1.#f2)[L];5<#d2[M],#c2[M]>,#a2[L],(#a1.#f2)[L],#c3[L],(#a1.#f2)[L],#d3[L],(b1.f2)[L],(b1.f2)[L];5<#d2[M],#c2[M]>,#d3[L],(b1.f2)[L],(b1.f2)[L],5<#d2[M],#c2[M]>,#d3[L],(b1.f2)[L],(b1.f2)[L];5<#d2[M],#c2[M]>,#d3[L],(b1.f2)[L],#c3[L],(b1.f2)[L],#a2[L],(#a1.#f2)[L],(#a1.#f2)[L];5<#d2[M],#c2[M]>,",
+                "U,#f1[L],U,T,#f1[L],U,T;#f1[L],U,#d1[L],U,#c1[L],U,T;#c1[L],U,T,#c1[L],U,T;#c1[L],U,#d1[L],U,#f1[L],U,T;S,S;S,S;S,S;S,S;"
             ]
     }
   ]

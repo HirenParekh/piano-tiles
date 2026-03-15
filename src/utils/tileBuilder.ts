@@ -126,72 +126,118 @@ export function buildTilesFromNotes(
         };
     };
 
+    const laneEndSlots = [0, 0, 0, 0];
+
+    const computeGroupEndSlot = (group: ParsedNote[]): number => {
+        let end = group[0].slotStart;
+        for (const n of group) {
+            if (n.slotStart + n.slotSpan > end) end = n.slotStart + n.slotSpan;
+        }
+        return end;
+    };
+
     const tiles: GameTile[] = [];
     let gi = 0;
     while (gi < groups.length) {
         const group = groups[gi];
         const primaryNote = group[0];
+        const slotStart = primaryNote.slotStart;
         const isDouble = primaryNote.tileType === 'DOUBLE';
 
         // Detect a double pair: two consecutive DOUBLE groups at the same slotStart
         const nextGroup = gi + 1 < groups.length ? groups[gi + 1] : null;
         const isDoublePair = isDouble && nextGroup &&
             nextGroup[0].tileType === 'DOUBLE' &&
-            Math.abs(nextGroup[0].slotStart - primaryNote.slotStart) < 0.0001;
+            Math.abs(nextGroup[0].slotStart - slotStart) < 0.0001;
 
         if (isDoublePair && nextGroup) {
-            // Alternate between lane pairs (0,2) and (1,3)
+            const endSlotA = computeGroupEndSlot(group);
+            const endSlotB = computeGroupEndSlot(nextGroup);
+
+            // Find lanes that are free at this slotStart
+            const freeLanes = [0, 1, 2, 3].filter(l => slotStart >= laneEndSlots[l] - 0.0001);
+
+            // Try preferred alternating pair first, then alternate pair, preferring pairs that avoid lastLane
             const pairIdx = lastDoublePairIdx === 0 ? 1 : 0;
-            lastDoublePairIdx = pairIdx;
-            const [laneA, laneB] = pairIdx === 0 ? [0, 2] : [1, 3];
+            const altPairIdx = pairIdx === 0 ? 1 : 0;
+            const [prefA, prefB] = pairIdx === 0 ? [0, 2] : [1, 3];
+            const [altA, altB] = altPairIdx === 0 ? [0, 2] : [1, 3];
+
+            const pairFree = (a: number, b: number) => freeLanes.includes(a) && freeLanes.includes(b);
+            const pairAvoidsLast = (a: number, b: number) => a !== lastLane && b !== lastLane;
+
+            let laneA: number, laneB: number;
+            let chosenPairIdx: number;
+            if (pairFree(prefA, prefB) && pairAvoidsLast(prefA, prefB)) {
+                laneA = prefA; laneB = prefB; chosenPairIdx = pairIdx;
+            } else if (pairFree(altA, altB) && pairAvoidsLast(altA, altB)) {
+                laneA = altA; laneB = altB; chosenPairIdx = altPairIdx;
+            } else if (pairFree(prefA, prefB)) {
+                laneA = prefA; laneB = prefB; chosenPairIdx = pairIdx;
+            } else if (pairFree(altA, altB)) {
+                laneA = altA; laneB = altB; chosenPairIdx = altPairIdx;
+            } else {
+                // No standard pair free; pick any two free lanes avoiding lastLane if possible
+                if (freeLanes.length >= 2) {
+                    const freeNoLast = freeLanes.filter(l => l !== lastLane);
+                    if (freeNoLast.length >= 2) {
+                        laneA = freeNoLast[0]; laneB = freeNoLast[1];
+                    } else {
+                        laneA = freeLanes[0]; laneB = freeLanes[1];
+                    }
+                } else if (freeLanes.length === 1) {
+                    laneA = freeLanes[0];
+                    laneB = [0, 1, 2, 3]
+                        .filter(l => l !== laneA)
+                        .sort((a, b) => laneEndSlots[a] - laneEndSlots[b])[0];
+                } else {
+                    const sorted = [0, 1, 2, 3].sort((a, b) => laneEndSlots[a] - laneEndSlots[b]);
+                    laneA = sorted[0]; laneB = sorted[1];
+                }
+                chosenPairIdx = -1;
+            }
+            lastDoublePairIdx = chosenPairIdx;
+
             tiles.push(makeTile(group, gi, laneA));
             tiles.push(makeTile(nextGroup, gi + 1, laneB));
-            // Next single tile should avoid both double lanes
-            lastLane = laneA; // collision avoidance picks away from this
+            laneEndSlots[laneA] = Math.max(laneEndSlots[laneA], endSlotA);
+            laneEndSlots[laneB] = Math.max(laneEndSlots[laneB], endSlotB);
+            lastLane = laneA;
             gi += 2;
         } else {
-            // Single tile: avoid same lane as last, also avoid double pair lanes if adjacent
+            const endSlot = computeGroupEndSlot(group);
+
+            // Prefer free lanes (not occupied at slotStart), avoiding lastLane and last double pair lanes
             const excludeLanes: number[] = lastDoublePairIdx >= 0
                 ? (lastDoublePairIdx === 0 ? [0, 2] : [1, 3])
                 : [];
-            let lane = Math.floor(Math.random() * LANE_COUNT);
-            let attempts = 0;
-            while ((lane === lastLane || excludeLanes.includes(lane)) && attempts < LANE_COUNT) {
-                lane = (lane + 1) % LANE_COUNT;
-                attempts++;
+            const freeLanes = [0, 1, 2, 3].filter(l => slotStart >= laneEndSlots[l] - 0.0001);
+
+            let lane: number;
+            const best = freeLanes.filter(l => l !== lastLane && !excludeLanes.includes(l));
+            if (best.length > 0) {
+                lane = best[Math.floor(Math.random() * best.length)];
+            } else {
+                const ok = freeLanes.filter(l => l !== lastLane);
+                if (ok.length > 0) {
+                    lane = ok[Math.floor(Math.random() * ok.length)];
+                } else if (freeLanes.length > 0) {
+                    lane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+                } else {
+                    // All occupied: pick lane with earliest end, prefer not lastLane
+                    const sorted = [0, 1, 2, 3]
+                        .filter(l => l !== lastLane)
+                        .sort((a, b) => laneEndSlots[a] - laneEndSlots[b]);
+                    lane = sorted.length > 0 ? sorted[0] : [0, 1, 2, 3].sort((a, b) => laneEndSlots[a] - laneEndSlots[b])[0];
+                }
             }
+
             lastLane = lane;
             lastDoublePairIdx = -1;
             tiles.push(makeTile(group, gi, lane));
+            laneEndSlots[lane] = Math.max(laneEndSlots[lane], endSlot);
             gi++;
         }
-    }
-
-    const laneEndSlots = [0, 0, 0, 0];
-
-    for (const tile of tiles) {
-        const startSlot = tile.slotStart;
-        let endSlot = startSlot;
-        for (const n of tile.notes) {
-            if (n.slotStart + n.slotSpan > endSlot) {
-                endSlot = n.slotStart + n.slotSpan;
-            }
-        }
-
-        if (startSlot < laneEndSlots[tile.lane]) {
-            const candidates = [0, 1, 2, 3]
-                .filter(l => l !== tile.lane)
-                .sort((a, b) => laneEndSlots[a] - laneEndSlots[b]);
-
-            for (const candidate of candidates) {
-                if (startSlot >= laneEndSlots[candidate]) {
-                    tile.lane = candidate;
-                    break;
-                }
-            }
-        }
-
-        laneEndSlots[tile.lane] = Math.max(laneEndSlots[tile.lane], endSlot);
     }
 
     const totalHeight = buildLayout(tiles);
