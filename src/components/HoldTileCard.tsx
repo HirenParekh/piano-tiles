@@ -34,6 +34,7 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
   const [isHeld, setIsHeld] = useState(false);
   const [firedDots, setFiredDots] = useState<Set<number>>(new Set());
   const [arcHitKey, setArcHitKey] = useState(0);
+  const [tapYFromBottom, setTapYFromBottom] = useState(0);
 
   // ── DOM refs ─────────────────────────────────────────────────────────────
   const divRef = useRef<HTMLDivElement>(null);
@@ -50,6 +51,7 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
 
   // ── Motion refs (no re-render) ────────────────────────────────────────────
   const pointerYRef = useRef(0);
+  const tapYFromBottomRef = useRef(0);
   const isHeldRef = useRef(false);
   const firedSetRef = useRef<Set<number>>(new Set());
   const rafRef = useRef<number>(0);
@@ -61,15 +63,15 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
 
   // ── Beat data ────────────────────────────────────────────────────────────
   const primaryNote = tile.notes[0];
-  const lastNote = tile.notes[tile.notes.length - 1];
-  const totalDuration = lastNote.time + lastNote.duration - primaryNote.time;
 
+  // slotOffset: how many slots above the primary note each beat group starts.
+  // Dot position = tapYFromBottom + slotOffset * singleTileH (px from bottom).
   const secondaryBeats = (() => {
-    const groups = new Map<number, { time: number; notes: ParsedNote[] }>();
+    const groups = new Map<number, { slotStart: number; time: number; notes: ParsedNote[] }>();
     for (const note of tile.notes) {
       if (note.slotStart === primaryNote.slotStart) continue;
       if (!groups.has(note.slotStart)) {
-        groups.set(note.slotStart, { time: note.time, notes: [] });
+        groups.set(note.slotStart, { slotStart: note.slotStart, time: note.time, notes: [] });
       }
       groups.get(note.slotStart)!.notes.push(note);
     }
@@ -77,7 +79,7 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
       .sort((a, b) => a.time - b.time)
       .map(g => ({
         ...g,
-        posPercent: totalDuration > 0 ? ((g.time - primaryNote.time) / totalDuration) * 100 : 0,
+        slotOffset: g.slotStart - primaryNote.slotStart,
       }));
   })();
 
@@ -86,6 +88,11 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     firedSetRef.current = new Set([...firedSetRef.current, idx]);
     setFiredDots(new Set(firedSetRef.current));
     setArcHitKey(prev => prev + 1);
+    // Scale ripple to tile width so it looks proportional on all screen sizes.
+    if (rippleAnimRRef.current && divRef.current) {
+      const toR = Math.round(divRef.current.clientWidth * 0.45);
+      rippleAnimRRef.current.setAttribute('to', String(toR));
+    }
     // Trigger the SVG expanding ring — beginElement() restarts the animation
     // from its `from` value even if a previous run is still in progress.
     rippleAnimRRef.current?.beginElement();
@@ -160,7 +167,10 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
 
       // ── Beat detection ─────────────────────────────────────────────────
       beats.forEach((beat, idx) => {
-        if (!firedSetRef.current.has(idx) && reachedPercent >= beat.posPercent - dotOffsetPercent) {
+        const dotPxFromBottom = tapYFromBottomRef.current + beat.slotOffset * singleTileH;
+        if (dotPxFromBottom > H) return; // doesn't fit in remaining tile, skip
+        const dotPercent = (dotPxFromBottom / H) * 100;
+        if (!firedSetRef.current.has(idx) && reachedPercent >= dotPercent - dotOffsetPercent) {
           fireBeat(idx, beat.notes);
         }
       });
@@ -177,6 +187,9 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     e.currentTarget.setPointerCapture(e.pointerId);
 
     pointerYRef.current = e.clientY;
+    const tapRect = divRef.current!.getBoundingClientRect();
+    tapYFromBottomRef.current = tapRect.bottom - e.clientY;
+    setTapYFromBottom(tapRect.bottom - e.clientY);
     firedSetRef.current = new Set();
     reachedPercentRef.current = 0;
     maxProgressRef.current = 0;
@@ -263,15 +276,23 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
         />
 
         {/* ── Secondary beat dots — shown only while holding ───────────── */}
-        {isHeld && secondaryBeats.map((beat, idx) => (
-          <circle
-            key={idx}
-            cx="50%"
-            cy={`${100 - beat.posPercent}%`}
-            r="3"
-            fill={firedDots.has(idx) ? 'rgba(0,200,255,0.2)' : 'rgba(0,210,255,0.65)'}
-          />
-        ))}
+        {isHeld && (() => {
+          const tileH = divRef.current?.clientHeight ?? 0;
+          return secondaryBeats.map((beat, idx) => {
+            const dotPxFromBottom = tapYFromBottom + beat.slotOffset * singleTileH;
+            if (dotPxFromBottom > tileH) return null; // doesn't fit
+            const cy = tileH - dotPxFromBottom;
+            return (
+              <circle
+                key={idx}
+                cx="50%"
+                cy={cy}
+                r="3"
+                fill={firedDots.has(idx) ? 'rgba(0,200,255,0.2)' : 'rgba(0,210,255,0.65)'}
+              />
+            );
+          });
+        })()}
 
         {/*
           ── Ripple ring — expands outward on each beat hit ────────────────
