@@ -41,6 +41,8 @@ export interface ParsedNote {
   slotSpan: number;
   /** Sub-slot audio offset for @%!~$^& operators (audio-only) */
   arpeggioDelayS?: number;
+  /** Set to 'DOUBLE' for notes that belong to a 5<> double tile pair */
+  tileType?: 'DOUBLE';
 }
 
 // A tile in the game — one or more notes assigned to a lane

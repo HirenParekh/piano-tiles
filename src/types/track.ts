@@ -1,7 +1,7 @@
 import type { ParsedNote } from './midi';
 
 // ── Tiles ─────────────────────────────────────────────────────────────────
-export type TileType = 'SINGLE' | 'HOLD';
+export type TileType = 'SINGLE' | 'HOLD' | 'DOUBLE';
 
 export interface BaseTile {
     id: string;           // Unique identifier for gameplay mapping
@@ -25,7 +25,12 @@ export interface HoldTile extends BaseTile {
     isCompleted: boolean; // Did the user successfully hold it to the end?
 }
 
-export type Tile = SingleTile | HoldTile;
+export interface DoubleTile extends BaseTile {
+    type: 'DOUBLE';
+    rowSpan: 1;
+}
+
+export type Tile = SingleTile | HoldTile | DoubleTile;
 
 
 // ── Cards ─────────────────────────────────────────────────────────────────

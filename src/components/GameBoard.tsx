@@ -3,6 +3,7 @@ import type { MidiParseResult, ParsedNote } from '../types/midi';
 import type { TileCard, Tile } from '../types/track';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
+import { DoubleTileCard } from './DoubleTileCard';
 import { useGameBoard } from '../hooks/useGameBoard';
 import { useAutoScroll } from '../hooks/useAutoScroll';
 import { MIN_HEIGHT } from '../utils/tileBuilder';
@@ -217,38 +218,25 @@ export function GameBoard({ result, onPlayNote, onHoldRelease, onHoldBeat, onExi
                       pointerEvents: 'none',
                       gap: 0
                     }}>
-                      {tc.tiles.map(tile => (
-                        tile.type === 'HOLD'
-                          ? <HoldTileCard
-                            key={tile.id}
-                            tile={tile}
-                            tapped={tappedIds.has(tile.id)}
-                            onTap={tapTile}
-                            onRelease={onHoldRelease}
-                            onNotePlay={onHoldBeat}
-                            className=""
-                            singleTileH={MIN_HEIGHT * scaleRatio}
-                            style={{
-                              top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%',
-                              margin: 0, padding: 0, pointerEvents: 'auto',
-                              gridColumn: tile.lane + 1,
-                              gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`,
-                            }}
-                          />
-                          : <GameTileCard
-                            key={tile.id}
-                            tile={tile}
-                            tapped={tappedIds.has(tile.id)}
-                            onTap={tapTile}
-                            className=""
-                            style={{
-                              top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%',
-                              margin: 0, padding: 0, pointerEvents: 'auto',
-                              gridColumn: tile.lane + 1,
-                              gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`
-                            }}
-                          />
-                      ))}
+                      {tc.tiles.map(tile => {
+                        const gridStyle = {
+                          top: 'auto', left: 'auto', bottom: 'auto', position: 'relative' as const,
+                          height: '100%', width: '100%', margin: 0, padding: 0, pointerEvents: 'auto' as const,
+                          gridColumn: tile.lane + 1,
+                          gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`,
+                        };
+                        if (tile.type === 'HOLD') {
+                          return <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)}
+                            onTap={tapTile} onRelease={onHoldRelease} onNotePlay={onHoldBeat}
+                            className="" singleTileH={MIN_HEIGHT * scaleRatio} style={gridStyle} />;
+                        }
+                        if (tile.type === 'DOUBLE') {
+                          return <DoubleTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)}
+                            onTap={tapTile} className="" style={gridStyle} />;
+                        }
+                        return <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)}
+                          onTap={tapTile} className="" style={gridStyle} />;
+                      })}
                     </div>
                   );
                 }

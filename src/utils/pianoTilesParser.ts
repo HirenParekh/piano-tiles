@@ -121,8 +121,19 @@ function parseScore(
   const beatDurationS = 60 / bpm;
   const slotDurationS = baseBeats * beatDurationS;
 
-  // pt2.cpp ignores N<...> grouping entirely. We strip \d+< and > and effect brackets {}
-  const flat = score
+  // Pre-process 5<n1,n2> double tile groups before flattening.
+  // Each 5<> group becomes a placeholder with no commas so it survives split(',').
+  // All notes inside share the same slotStart; time advances by ONE note's duration.
+  const doubleGroupMap = new Map<string, string[]>();
+  let doubleIdx = 0;
+  const withDoublePlaceholders = score.replace(/5<([^>]*)>/g, (_m, inner: string) => {
+    const key = `__D${doubleIdx++}__`;
+    doubleGroupMap.set(key, inner.split(',').map((s: string) => s.trim()).filter(Boolean));
+    return key;
+  });
+
+  // pt2.cpp ignores N<...> grouping entirely. We strip remaining \d+< and > and effect brackets {}
+  const flat = withDoublePlaceholders
     .replace(/;/g, ',')
     .replace(/\d+</g, '')
     .replace(/>/g, '')
@@ -135,6 +146,38 @@ function parseScore(
   for (let token of tokens) {
     token = token.trim();
     if (!token) continue;
+
+    // Handle 5<> double tile placeholder: all notes at same slotStart, advance by one note duration
+    if (token.startsWith('__D') && token.endsWith('__')) {
+      const noteTokens = doubleGroupMap.get(token) ?? [];
+      if (noteTokens.length > 0) {
+        const slotAdvance = parseBracketBeats(noteTokens[0], 0) / baseBeats;
+        const bracketStr = noteTokens[0].match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
+        for (const noteToken of noteTokens) {
+          const rawName = noteToken.replace(/\[[^\]]*\]$/, '').trim();
+          const parsed = parseNoteName(rawName);
+          if (parsed) {
+            notes.push({
+              midi: parsed.midi,
+              name: parsed.name,
+              time: currentSlot * slotDurationS,
+              duration: Math.max(slotAdvance * slotDurationS, 0.05),
+              velocity: 0.7,
+              trackIndex,
+              trackName,
+              channel: trackIndex,
+              instrument,
+              pt2Notation: rawName + bracketStr,
+              slotStart: currentSlot,
+              slotSpan: slotAdvance,
+              tileType: 'DOUBLE',
+            });
+          }
+        }
+        currentSlot += Math.max(1, slotAdvance);
+      }
+      continue;
+    }
 
     if (token === 'ST') {
       currentSlot += 3 / baseBeats;
@@ -228,7 +271,7 @@ function parseScore(
       }
     }
 
-    currentSlot += bracketSlots;
+    currentSlot += Math.max(1, bracketSlots);
   }
 
   return { notes, totalSlots: currentSlot };

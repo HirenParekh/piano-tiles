@@ -4,6 +4,7 @@ import type { GameTrackData, Card, Tile } from '../types/track';
 export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
     // 1. Map old GameTile array to new Card-based Tile array with absolute track rows
     const absTiles = tiles.map(t => {
+        const isDouble = t.notes.length > 0 && t.notes[0].tileType === 'DOUBLE';
         const rowStart = Math.round(t.slotStart);
         const rowSpan = Math.max(1, Math.round(t.slotSpan));
         const isHold = rowSpan > 1;
@@ -18,7 +19,9 @@ export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
             noteIndices: t.noteIndices,
         };
 
-        if (isHold) {
+        if (isDouble) {
+            base.type = 'DOUBLE';
+        } else if (isHold) {
             base.type = 'HOLD';
             base.isActive = false;
             base.isCompleted = false;

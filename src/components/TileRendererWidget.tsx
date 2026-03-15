@@ -3,6 +3,7 @@ import { buildResultFromPianoTilesSong } from '../utils/pianoTilesParser';
 import { buildTrackFromTiles } from '../utils/trackBuilder';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
+import { DoubleTileCard } from './DoubleTileCard';
 import type { Tile } from '../types/track';
 import { MIN_HEIGHT } from '../utils/tileBuilder';
 import { useSynth } from '../hooks/useSynth';
@@ -16,9 +17,9 @@ const defaultJson = `{
       "bpm": 100,
       "baseBeats": 0.5,
       "scores": [
-        "e3[L],e3[L],e3[K],e3[L],e3[L],e3[K];e3[L],g3[L],c3[L],d3[L],e3[J];f3[L],f3[L],f3[K],f3[L],e3[L],e3[K];e3[L],d3[L],d3[L],c3[L],d3[K],g3[K];e3[L],e3[L],e3[K],e3[L],e3[L],e3[K];e3[L],g3[L],c3[L],d3[L],e3[J];f3[L],f3[L],f3[K],f3[L],e3[L],e3[K];g3[L],g3[L],f3[L],d3[L],c3[J];a3[L],g3[L],f3[L],d3[L],c3[J];",
-        "c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];d1[L],f1[L],b[L],f1[L],d1[L],f1[L],c1[L],e1[L];d1[L],g1[L],g[L],g1[L],b[L],f1[L],g[L],f1[L];c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];d1[L],f1[L],g[L],f1[L],b[L],g1[L],c1[L],g1[L];b[L],g1[L],g[L],g1[L],c1[L],e1[L],c1[L],U;b[L],f1[L],g[L],f1[L],c1[L],e1[L],c1[K];"
-      ]
+                "g2[L],e3[L],d3[L],c3[L],g2[KL],5<g2[M],g2[M]>;g2[L],e3[L],d3[L],c3[L],a2[KL],5<a2[M],a2[M]>;a2[L],f3[L],e3[L],d3[L],b2[KL],5<g3[M],g3[M]>;g3[L],g3[L],f3[L],d3[L],e3[KL],5<g2[M],g2[M]>;g2[L],e3[L],d3[L],c3[L],g2[KL],5<g2[M],g2[M]>;g2[L],e3[L],d3[L],c3[L],a2[KL],5<a2[M],a2[M]>;a2[L],f3[L],e3[L],d3[L],g3[L],g3[L],g3[L],g3[L];a3[L],g3[L],f3[L],d3[L],c3[J];",
+                "c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];c1[L],e1[L],g[L],e1[L],c1[L],f1[L],a[L],f1[L];c1[L],f1[L],a[L],f1[L],d1[L],g1[L],b[L],g1[L];c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],U;c1[L],e1[L],g[L],e1[L],c1[L],e1[L],g[L],e1[L];c1[L],e1[L],g[L],e1[L],c1[L],f1[L],a[L],f1[L];c1[L],f1[L],a[L],f1[L],b[L],g1[L],g[L],g1[L];b[L],f1[L],g[L],f1[L],c1[L],e1[L],c1[K];"
+            ]
     }
   ]
 }`;
@@ -138,13 +139,12 @@ export function TileRendererWidget() {
                           <div style={{ flex: 1, borderRight: '1px dashed #eaeaea' }} />
                           <div style={{ flex: 1 }} />
                         </div>
-                        {tc.tiles.map((tile: Tile) => (
-                          tile.type === 'HOLD' ? (
-                            <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
-                          ) : (
-                            <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
-                          )
-                        ))}
+                        {tc.tiles.map((tile: Tile) => {
+                          const s = { top: 'auto' as const, left: 'auto' as const, bottom: 'auto' as const, position: 'relative' as const, height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` };
+                          if (tile.type === 'HOLD') return <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={s} />;
+                          if (tile.type === 'DOUBLE') return <DoubleTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
+                          return <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
+                        })}
                       </div>
                     );
                   }
@@ -167,13 +167,12 @@ export function TileRendererWidget() {
                           <div style={{ flex: 1, borderRight: '1px dashed #eaeaea' }} />
                           <div style={{ flex: 1 }} />
                         </div>
-                        {tc.tiles.map((tile: Tile) => (
-                          tile.type === 'HOLD' ? (
-                            <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
-                          ) : (
-                            <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
-                          )
-                        ))}
+                        {tc.tiles.map((tile: Tile) => {
+                          const s = { top: 'auto' as const, left: 'auto' as const, bottom: 'auto' as const, position: 'relative' as const, height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` };
+                          if (tile.type === 'HOLD') return <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={s} />;
+                          if (tile.type === 'DOUBLE') return <DoubleTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
+                          return <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
+                        })}
                       </div>
                     );
                   }
