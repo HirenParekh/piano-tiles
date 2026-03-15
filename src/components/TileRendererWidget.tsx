@@ -33,7 +33,6 @@ export function TileRendererWidget() {
       const result = buildResultFromPianoTilesSong(parsedJson, 0, 'Sandbox', [0, 1]);
       const track = buildTrackFromTiles(result.tiles);
 
-      // Extract isolated bass version
       const bassResult = buildResultFromPianoTilesSong(parsedJson, 0, 'Sandbox Bass', [1]);
       const bassTrack = buildTrackFromTiles(bassResult.tiles);
 

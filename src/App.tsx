@@ -9,6 +9,7 @@ import type { Tile } from './types/track';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
 import './styles/main.scss';
+import { TileRendererWidget } from './components/TileRendererWidget';
 export default function App() {
   const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
@@ -193,7 +194,7 @@ export default function App() {
       </div>
 
       </div>
-      {/* <TileRendererWidget /> */}
+      <TileRendererWidget />
     </div>
   );
 }
