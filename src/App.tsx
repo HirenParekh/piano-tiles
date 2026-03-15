@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSynth } from './hooks/useSynth';
 import { usePlayback } from './hooks/usePlayback';
+import { useTileAudio } from './hooks/useTileAudio';
 import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
 import { CanvasGameBoard } from './components/CanvasGameBoard';
-import type { MidiParseResult, ParsedNote } from './types/midi';
-import type { Tile } from './types/track';
+import type { MidiParseResult } from './types/midi';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
 import './styles/main.scss';
@@ -30,57 +30,15 @@ export default function App() {
     playNoteScheduled
   );
 
-  const holdTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const speedRef = useRef(1);
-  const heldNoteRef = useRef<ParsedNote | null>(null);
 
-  const handleTileTap = async (tile: Tile) => {
-    await resumeContext();
-
-    holdTimersRef.current.forEach(clearTimeout);
-    holdTimersRef.current = [];
-
-    const speed = speedRef.current;
-    const isHold = tile.type === 'HOLD';
-    const primaryNote = tile.notes[0];
-
-    if (isHold) {
-      // Hold tiles trigger an initial attack; merged notes fire position-based via onHoldBeat
-      attackNote({ ...primaryNote, duration: primaryNote.duration / speed });
-      heldNoteRef.current = primaryNote;
-      // Also play any bass notes that co-start with the primary note (same slot, not secondary beats)
-      console.log('[hold tap] tile.notes:', tile.notes.map(n => `${n.pt2Notation ?? n.name} slot=${n.slotStart}`), 'primary slot:', primaryNote.slotStart);
-      tile.notes.slice(1).forEach(note => {
-        const delta = Math.abs(note.slotStart - primaryNote.slotStart);
-        console.log('[hold tap] note', note.pt2Notation ?? note.name, 'delta:', delta, 'plays:', delta < 0.0001);
-        if (delta < 0.0001) {
-          playNote({ ...note, duration: note.duration / speed });
-        }
-      });
-    } else {
-      // Tap tiles just trigger once and are bound by the 8-second default release envelope.
-      playNote({ ...primaryNote, duration: primaryNote.duration / speed });
-      tile.notes.slice(1).forEach((note) => {
-        const delayMs = Math.round((note.time - primaryNote.time) * 1000 / speed);
-        const id = setTimeout(() => playNote({ ...note, duration: note.duration / speed }), delayMs);
-        holdTimersRef.current.push(id);
-      });
-    }
-  };
-
-  const handleHoldBeat = (notes: ParsedNote[]) => {
-    const speed = speedRef.current;
-    notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
-  };
-
-  const handleHoldRelease = () => {
-    if (heldNoteRef.current) {
-      releaseNote(heldNoteRef.current);
-      heldNoteRef.current = null;
-    }
-    holdTimersRef.current.forEach(clearTimeout);
-    holdTimersRef.current = [];
-  };
+  const { handleTileTap, handleHoldBeat, handleHoldRelease } = useTileAudio({
+    playNote,
+    attackNote,
+    releaseNote,
+    resumeContext,
+    getSpeed: () => speedRef.current,
+  });
 
   const handleSongSelect = (result: MidiParseResult) => {
     playbackStop();
@@ -165,7 +123,7 @@ export default function App() {
         boxShadow: isGameReady ? 'none' : '0 0 20px rgba(0,0,0,0.5)',
       }}>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          
+
           {isLoadingFiles && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 10,
@@ -174,8 +132,8 @@ export default function App() {
               justifyContent: 'center', alignItems: 'center',
               backdropFilter: 'blur(4px)'
             }}>
-              <div style={{ 
-                width: '40px', height: '40px', 
+              <div style={{
+                width: '40px', height: '40px',
                 border: '4px solid rgba(0,0,0,0.1)',
                 borderLeftColor: '#3498db',
                 borderRadius: '50%',

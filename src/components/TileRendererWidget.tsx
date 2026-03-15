@@ -1,12 +1,12 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { buildResultFromPianoTilesSong } from '../utils/pianoTilesParser';
 import { buildTrackFromTiles } from '../utils/trackBuilder';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
 import type { Tile } from '../types/track';
-import type { ParsedNote } from '../types/midi';
 import { MIN_HEIGHT } from '../utils/tileBuilder';
 import { useSynth } from '../hooks/useSynth';
+import { useTileAudio } from '../hooks/useTileAudio';
 
 const defaultJson = `{
   "baseBpm": 100,
@@ -44,66 +44,25 @@ export function TileRendererWidget() {
 
   const { loadInstruments, playNote, attackNote, releaseNote, resumeContext } = useSynth();
   const [tappedIds, setTappedIds] = useState<Set<string>>(new Set());
-  const holdTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const heldNoteRef = useRef<ParsedNote | null>(null);
 
   useEffect(() => {
     // Ensure piano instrument is loaded as default for the sandbox
     loadInstruments(['piano']);
   }, [loadInstruments]);
 
+  const { handleTileTap, handleHoldBeat, handleHoldRelease } = useTileAudio({
+    playNote,
+    attackNote,
+    releaseNote,
+    resumeContext,
+  });
+
   const handleTap = async (tile: Tile) => {
-    await resumeContext();
+    // Visual flash (springs back after 150 ms)
+    setTappedIds(prev => new Set(prev).add(tile.id));
+    setTimeout(() => setTappedIds(prev => { const n = new Set(prev); n.delete(tile.id); return n; }), 150);
 
-    // flash the visually tapped state
-    setTappedIds(prev => {
-      const next = new Set(prev);
-      next.add(tile.id);
-      return next;
-    });
-
-    // clear the visual tapped state so it springs back visually
-    setTimeout(() => {
-      setTappedIds(prev => {
-        const next = new Set(prev);
-        next.delete(tile.id);
-        return next;
-      });
-    }, 150);
-
-    holdTimersRef.current.forEach(clearTimeout);
-    holdTimersRef.current = [];
-
-    const isHold = tile.type === 'HOLD';
-    const primaryNote = tile.notes[0];
-
-    if (!primaryNote) return;
-
-    if (isHold) {
-      attackNote({ ...primaryNote });
-      heldNoteRef.current = primaryNote;
-      // Merged notes are played position-based via onNotePlay — no timers needed
-    } else {
-      playNote({ ...primaryNote });
-      tile.notes.slice(1).forEach((note) => {
-        const delayMs = Math.round((note.time - primaryNote.time) * 1000);
-        const id = setTimeout(() => playNote({ ...note }), delayMs);
-        holdTimersRef.current.push(id);
-      });
-    }
-  };
-
-  const handleNotePlay = (notes: ParsedNote[]) => {
-    notes.forEach(note => playNote({ ...note }));
-  };
-
-  const handleHoldRelease = () => {
-    if (heldNoteRef.current) {
-      releaseNote(heldNoteRef.current);
-      heldNoteRef.current = null;
-    }
-    holdTimersRef.current.forEach(clearTimeout);
-    holdTimersRef.current = [];
+    await handleTileTap(tile);
   };
 
   return (
@@ -181,7 +140,7 @@ export function TileRendererWidget() {
                         </div>
                         {tc.tiles.map((tile: Tile) => (
                           tile.type === 'HOLD' ? (
-                            <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleNotePlay} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
+                            <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
                           ) : (
                             <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
                           )
@@ -210,7 +169,7 @@ export function TileRendererWidget() {
                         </div>
                         {tc.tiles.map((tile: Tile) => (
                           tile.type === 'HOLD' ? (
-                            <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleNotePlay} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
+                            <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
                           ) : (
                             <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={{ top: 'auto', left: 'auto', bottom: 'auto', position: 'relative', height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` }} />
                           )
