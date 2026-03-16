@@ -21,6 +21,7 @@
  *       - tile-layer (TileLayer component)
  */
 
+import { useCallback } from 'react';
 import type { ParsedNote } from '../types/midi';
 import type { GameBoardEngine } from '../hooks/useGameBoardEngine';
 import { TileLayer } from './TileLayer';
@@ -37,6 +38,11 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
     trackData, scaleRatio, scaledTotalHeight, beatLines,
     started, handleStart, scrollRef, tappedIds, tapTile, viewportH, info,
   } = engine;
+
+  const canvasRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    el.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  }, []);
 
   return (
     <div className="game-board" style={{ position: 'relative', height: '100%', width: '100%', background: '#333' }}>
@@ -97,7 +103,16 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
       >
         {/* Only render the canvas once viewportH is known (avoids a flash at 0px height). */}
         {viewportH > 0 && (
-          <div className="game-board__canvas" style={{ height: scaledTotalHeight }}>
+          <div
+            ref={canvasRef}
+            className="game-board__canvas"
+            style={{ height: scaledTotalHeight, touchAction: 'none' }}
+            onPointerDown={e => e.stopPropagation()}
+            onPointerUp={e => e.stopPropagation()}
+            onPointerMove={e => e.stopPropagation()}
+            onPointerCancel={e => e.stopPropagation()}
+            onContextMenu={e => e.preventDefault()}
+          >
 
             {/* ── Grid layer (behind tiles) ─────────────────────────────────
                 Contains lane dividers and beat lines.

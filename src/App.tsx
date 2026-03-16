@@ -65,6 +65,9 @@ export default function App() {
   const handlePlaySong = async (id: string) => {
     try {
       setIsLoadingFiles(true);
+      // Prime the Web Audio context on this user gesture so the first note
+      // plays with no latency when the player taps START on the board.
+      resumeContext();
       const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       const res = await fetch(`${base}/songs/${encodeURIComponent(id)}.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

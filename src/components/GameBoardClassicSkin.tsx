@@ -29,6 +29,7 @@
  *   different phase — they don't all pulse in sync on page load.
  */
 
+import { useCallback } from 'react';
 import type { ParsedNote } from '../types/midi';
 import type { GameBoardEngine } from '../hooks/useGameBoardEngine';
 import { TileLayer } from './TileLayer';
@@ -102,6 +103,13 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
     trackData, scaleRatio, scaledTotalHeight,
     started, handleStart, scrollRef, tappedIds, tapTile, viewportH, info,
   } = engine;
+
+  // Attach a non-passive touchstart listener to the canvas so iOS Safari's
+  // text-selection magnifier is suppressed even when CSS user-select fails.
+  const canvasRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    el.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  }, []);
 
   return (
     <div
@@ -214,7 +222,15 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
         {/* Guard: don't render the canvas until viewportH is measured.
             scaleRatio depends on viewportH; rendering at 0 causes wrong tile sizes. */}
         {viewportH > 0 && (
-          <div style={{ height: scaledTotalHeight, position: 'relative', width: '100%' }}>
+          <div
+            ref={canvasRef}
+            style={{ height: scaledTotalHeight, position: 'relative', width: '100%', touchAction: 'none' }}
+            onPointerDown={e => e.stopPropagation()}
+            onPointerUp={e => e.stopPropagation()}
+            onPointerMove={e => e.stopPropagation()}
+            onPointerCancel={e => e.stopPropagation()}
+            onContextMenu={e => e.preventDefault()}
+          >
             {/*
              * TileLayer handles all card types (INFO, START, TILE, FINISH, EMPTY).
              * The .classic-board .game-tile__label { display:none } rule in

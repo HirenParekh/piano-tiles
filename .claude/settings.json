@@ -2,10 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(rm -rf docs)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "WebFetch(domain:gemini.google.com)",
+      "Bash(sed 's/<[^>]*>//g')",
+      "Bash(python3:*)",
+      "Bash(grep -v \"^[[:space:]]*$\")",
+      "Bash(LC_ALL=C.UTF-8 grep -o '<p data-path[^<]*</p>' '/c/Users/parek/Projects/piano-tiles/public/conversation_with_agent.html')"
     ],
     "additionalDirectories": [
-      "c:\\Users\\parek\\.claude\\projects\\c--Users-parek-Projects-piano-tiles\\memory"
+      "c:\\Users\\parek\\.claude\\projects\\c--Users-parek-Projects-piano-tiles\\memory",
+      "C:\\Users\\parek\\Projects\\piano-tiles\\public"
     ]
   }
 }

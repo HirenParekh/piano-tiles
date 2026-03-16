@@ -218,6 +218,7 @@ $lane-color-map: (
   left: 0px;
   right: 0px;
   cursor: pointer;
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;
