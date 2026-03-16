@@ -4,8 +4,6 @@ import type {
     InstrumentCategory,
 } from '../types/midi';
 
-const LANE_COUNT = 4;
-
 export const MIN_HEIGHT = 100;
 const LAYOUT_PAD_TOP = 160;
 

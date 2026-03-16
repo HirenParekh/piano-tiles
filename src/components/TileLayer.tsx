@@ -24,6 +24,7 @@
  *   correct lane and row span without absolute positioning.
  */
 
+import { useMemo } from 'react';
 import type { ParsedNote } from '../types/midi';
 import type { Card, Tile, TileCard } from '../types/track';
 import { GameTileCard } from './GameTileCard';
@@ -68,6 +69,33 @@ export function TileLayer({
   onHoldBeat,
   songName,
 }: Props) {
+  // Build stable style objects keyed by tile.id — computed once per song load
+  // since `cards` is stable for the song's lifetime. This lets React.memo on
+  // tile card components do a meaningful shallow prop comparison.
+  const tileStyleMap = useMemo(() => {
+    const map = new Map<string, React.CSSProperties>();
+    for (const card of cards) {
+      if (card.type !== 'TILE') continue;
+      const tc = card as TileCard;
+      for (const tile of tc.tiles) {
+        map.set(tile.id, {
+          top: 'auto',
+          left: 'auto',
+          bottom: 'auto',
+          position: 'relative',
+          height: '100%',
+          width: '100%',
+          margin: 0,
+          padding: 0,
+          pointerEvents: 'auto',
+          gridColumn: tile.lane + 1,
+          gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`,
+        });
+      }
+    }
+    return map;
+  }, [cards]);
+
   return (
     /*
      * column-reverse so Card index 0 (INFO) sits at the visual bottom
@@ -184,27 +212,6 @@ export function TileLayer({
               }}
             >
               {tc.tiles.map(tile => {
-                /*
-                 * Grid placement:
-                 *   gridColumn = lane index + 1 (1-based CSS grid)
-                 *   gridRow    = inverted because the card uses normal row direction
-                 *                (row 1 = visual top) but tile.rowStart counts from
-                 *                the card's bottom. Formula: (span - rowStart - rowSpan + 1)
-                 */
-                const gridStyle = {
-                  top: 'auto',
-                  left: 'auto',
-                  bottom: 'auto',
-                  position: 'relative' as const,
-                  height: '100%',
-                  width: '100%',
-                  margin: 0,
-                  padding: 0,
-                  pointerEvents: 'auto' as const,
-                  gridColumn: tile.lane + 1,
-                  gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}`,
-                };
-
                 // Each tile type has its own card component:
                 //   HOLD   — multi-row tile with laser line, ring, and beat dots
                 //   DOUBLE — simultaneous pair tiles (always rowSpan=1)
@@ -219,8 +226,8 @@ export function TileLayer({
                       onRelease={onHoldRelease}
                       onNotePlay={onHoldBeat}
                       className=""
-                      singleTileH={MIN_HEIGHT * scaleRatio} // needed for beat dot spacing
-                      style={gridStyle}
+                      singleTileH={MIN_HEIGHT * scaleRatio}
+                      style={tileStyleMap.get(tile.id)}
                     />
                   );
                 }
@@ -232,7 +239,7 @@ export function TileLayer({
                       tapped={tappedIds.has(tile.id)}
                       onTap={tapTile}
                       className=""
-                      style={gridStyle}
+                      style={tileStyleMap.get(tile.id)}
                     />
                   );
                 }
@@ -244,7 +251,7 @@ export function TileLayer({
                     tapped={tappedIds.has(tile.id)}
                     onTap={tapTile}
                     className=""
-                    style={gridStyle}
+                    style={tileStyleMap.get(tile.id)}
                   />
                 );
               })}

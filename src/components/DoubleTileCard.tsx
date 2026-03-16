@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Tile } from '../types/track';
 
 interface Props {
@@ -8,7 +9,7 @@ interface Props {
   className?: string;
 }
 
-export function DoubleTileCard({ tile, tapped, onTap, style, className = '' }: Props) {
+export const DoubleTileCard = memo(function DoubleTileCard({ tile, tapped, onTap, style, className = '' }: Props) {
   return (
     <div
       className={`game-tile game-tile--double ${tapped ? 'game-tile--tapped' : ''} ${className}`}
@@ -25,4 +26,4 @@ export function DoubleTileCard({ tile, tapped, onTap, style, className = '' }: P
       </span>
     </div>
   );
-}
+});

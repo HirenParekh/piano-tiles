@@ -10,7 +10,7 @@
  *   Arc sweeps counter-clockwise (sweep-flag 0), apex at the arc dot center.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import type { Tile } from '../types/track';
 import type { ParsedNote } from '../types/midi';
 
@@ -29,7 +29,7 @@ interface Props {
 // How many px above the anchor the arc dot center sits
 const DOT_OFFSET_PX = 50;
 
-export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100 }: Props) {
+export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100 }: Props) {
   // ── React state ──────────────────────────────────────────────────────────
   const [isHeld, setIsHeld] = useState(false);
   const [firedDots, setFiredDots] = useState<Set<number>>(new Set());
@@ -59,6 +59,10 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
   // Arc dot radius computed once at hold-start from tile width so it scales
   // with the lane width instead of being a fixed 7px on all screen sizes.
   const arcDotRRef = useRef(7);
+  // Tile dimensions cached at hold-start — W/H don't change during a hold,
+  // so we avoid calling getBoundingClientRect() for them every rAF frame.
+  const cachedWRef = useRef(0);
+  const cachedHRef = useRef(0);
 
   const onNotePlayRef = useRef(onNotePlay);
   useEffect(() => { onNotePlayRef.current = onNotePlay; }, [onNotePlay]);
@@ -68,7 +72,8 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
 
   // slotOffset: how many slots above the primary note each beat group starts.
   // Dot position = tapYFromBottom + slotOffset * singleTileH (px from bottom).
-  const secondaryBeats = (() => {
+  // tile.notes is stable (immutable track data), so this computes once per tile.
+  const secondaryBeats = useMemo(() => {
     const groups = new Map<number, { slotStart: number; time: number; notes: ParsedNote[] }>();
     for (const note of tile.notes) {
       if (note.slotStart === primaryNote.slotStart) continue;
@@ -83,7 +88,7 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
         ...g,
         slotOffset: g.slotStart - primaryNote.slotStart,
       }));
-  })();
+  }, [tile.notes, primaryNote.slotStart]);
 
   // ── Beat fire ────────────────────────────────────────────────────────────
   const fireBeat = (idx: number, notes: ParsedNote[]) => {
@@ -108,11 +113,13 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     const loop = () => {
       if (!isHeldRef.current || !divRef.current) return;
 
-      const rect = divRef.current.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
+      // W and H are cached at hold-start (tile dimensions don't change during hold).
+      // Only .bottom needs a live query since the tile moves with the scroll.
+      const W = cachedWRef.current;
+      const H = cachedHRef.current;
+      const bottom = divRef.current.getBoundingClientRect().bottom;
 
-      const reachedPercent = (rect.bottom - pointerYRef.current) / H * 100;
+      const reachedPercent = (bottom - pointerYRef.current) / H * 100;
       reachedPercentRef.current = reachedPercent;
 
       const dotOffsetPercent = (DOT_OFFSET_PX / H) * 100;
@@ -195,6 +202,9 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
     pointerYRef.current = e.clientY;
     const tapRect = divRef.current!.getBoundingClientRect();
     tapYFromBottomRef.current = tapRect.bottom - e.clientY;
+    // Cache W/H for the rAF loop — tile dimensions are fixed during a hold
+    cachedWRef.current = tapRect.width;
+    cachedHRef.current = tapRect.height;
     // ~6% of lane width; clamp to at least 5px so it's always visible
     arcDotRRef.current = Math.min(10, Math.round(tapRect.width * 0.06));
     setTapYFromBottom(tapRect.bottom - e.clientY);
@@ -227,9 +237,8 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
 
     // Auto-complete: if within 20px of top, seal the tile with a full rectangle
     if (fillPathRef.current && divRef.current) {
-      const rect = divRef.current.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
+      const W = cachedWRef.current;
+      const H = cachedHRef.current;
       const dotOffsetPercent = (DOT_OFFSET_PX / H) * 100;
       const remainingPx = (100 - maxProgressRef.current - dotOffsetPercent) / 100 * H;
       if (remainingPx <= 20) {
@@ -394,4 +403,14 @@ export function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style
       {!tapped && !isHeld && <div className="game-tile__hold-ring" />}
     </div>
   );
-}
+}, (prev, next) =>
+  // Skip re-render unless a meaningful prop changed.
+  // `style` is intentionally excluded — values are derived from immutable tile
+  // properties and are structurally identical across renders for the same tile.
+  prev.tapped === next.tapped &&
+  prev.tile === next.tile &&
+  prev.singleTileH === next.singleTileH &&
+  prev.onTap === next.onTap &&
+  prev.onRelease === next.onRelease &&
+  prev.onNotePlay === next.onNotePlay
+);

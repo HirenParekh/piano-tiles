@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Tile } from '../types/track';
 
 interface Props {
@@ -8,7 +9,7 @@ interface Props {
   className?: string;
 }
 
-export function GameTileCard({ tile, tapped, onTap, style, className = '' }: Props) {
+export const GameTileCard = memo(function GameTileCard({ tile, tapped, onTap, style, className = '' }: Props) {
   const noteNum = tile.noteIndices[0];
   const startS = tile.notes[0].time.toFixed(3);
   const endS = (tile.notes[0].time + tile.notes[0].duration).toFixed(3);
@@ -32,4 +33,4 @@ export function GameTileCard({ tile, tapped, onTap, style, className = '' }: Pro
       </span>
     </div>
   );
-}
+});
