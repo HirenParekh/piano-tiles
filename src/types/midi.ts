@@ -28,6 +28,8 @@ export interface ParsedNote {
   arpeggioDelayS?: number;
   /** Set to 'DOUBLE' for notes that belong to a 5<> double tile pair */
   tileType?: 'DOUBLE';
+  /** Pre-resolved AudioBuffer — bound at instrument load time for zero-overhead tap playback */
+  buffer?: AudioBuffer;
 }
 
 // A tile in the game — one or more notes assigned to a lane

@@ -54,33 +54,21 @@ class WebAudioSampler {
     this.loaded = true;
   }
 
-  getNearestBuffer(midi: number): { buffer: AudioBuffer | null, detune: number } {
-    if (this.buffers.size === 0) return { buffer: null, detune: 0 };
-    if (this.buffers.has(midi)) return { buffer: this.buffers.get(midi)!, detune: 0 };
-
-    let nearest = -1;
-    let minDiff = Infinity;
-    for (const loadedMidi of this.buffers.keys()) {
-      const diff = Math.abs(midi - loadedMidi);
-      if (diff < minDiff) {
-        minDiff = diff;
-        nearest = loadedMidi;
-      }
+  resolveNotes(notes: ParsedNote[]) {
+    for (const note of notes) {
+      const buf = this.buffers.get(note.midi);
+      if (buf) note.buffer = buf;
     }
-    return { buffer: this.buffers.get(nearest)!, detune: midi - nearest };
   }
 
-  triggerAttack(midi: number, name: string, time: number, velocity: number = 0.8) {
+  triggerAttack(note: ParsedNote, time: number, velocity: number = 0.8) {
     if (!this.loaded) return;
-    const { buffer, detune } = this.getNearestBuffer(midi);
+    const buffer = note.buffer ?? this.buffers.get(note.midi);
     if (!buffer) return;
 
     // Direct C++ Native AudioBufferSourceNode allocation (Fastest possible playback)
     const source = this.context.createBufferSource();
     source.buffer = buffer;
-    if (detune !== 0) {
-      source.playbackRate.value = Math.pow(2, detune / 12);
-    }
 
     const gainNode = this.context.createGain();
     gainNode.gain.setValueAtTime(velocity, time);
@@ -93,7 +81,7 @@ class WebAudioSampler {
     // Cleanup GC for finished long-notes
     this._cleanupVoices(time);
 
-    const voice = { source, gain: gainNode, name, stopTime: time + buffer.duration, stopped: false };
+    const voice = { source, gain: gainNode, name: note.name, stopTime: time + buffer.duration, stopped: false };
     this.activeVoices.add(voice);
 
     source.onended = () => {
@@ -101,7 +89,8 @@ class WebAudioSampler {
     };
   }
 
-  triggerRelease(name: string, time: number) {
+  triggerRelease(note: ParsedNote, time: number) {
+    const name = note.name;
     for (const voice of this.activeVoices) {
       if (voice.name === name && !voice.stopped) {
         voice.stopped = true;
@@ -116,9 +105,9 @@ class WebAudioSampler {
     }
   }
 
-  triggerAttackRelease(midi: number, name: string, duration: number, time: number, velocity: number = 0.8) {
-    this.triggerAttack(midi, name, time, velocity);
-    this.triggerRelease(name, time + duration);
+  triggerAttackRelease(note: ParsedNote, duration: number, time: number, velocity: number = 0.8) {
+    this.triggerAttack(note, time, velocity);
+    this.triggerRelease(note, time + duration);
   }
 
   _cleanupVoices(time: number) {
@@ -137,6 +126,7 @@ class WebAudioSampler {
 
 export interface UseSynthReturn {
   loadInstruments: (instruments: string[]) => Promise<void>;
+  resolveNotes: (notes: ParsedNote[]) => void;
   playNote: (note: ParsedNote) => void;
   attackNote: (note: ParsedNote) => void;
   releaseNote: (note: ParsedNote) => void;
@@ -199,28 +189,36 @@ export function useSynth(): UseSynthReturn {
     const sampler = getSampler(note);
     if (!sampler || !sampler.loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    sampler.triggerAttackRelease(note.midi, note.name, 8, rawContext.currentTime, velocity);
+    sampler.triggerAttackRelease(note, 8, rawContext.currentTime, velocity);
   }, [rawContext]);
 
   const attackNote = useCallback((note: ParsedNote) => {
     const sampler = getSampler(note);
     if (!sampler || !sampler.loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    sampler.triggerAttack(note.midi, note.name, rawContext.currentTime, velocity);
+    sampler.triggerAttack(note, rawContext.currentTime, velocity);
   }, [rawContext]);
 
   const releaseNote = useCallback((note: ParsedNote) => {
     const sampler = getSampler(note);
     if (!sampler || !sampler.loaded) return;
-    sampler.triggerRelease(note.name, rawContext.currentTime + 0.1);
+    sampler.triggerRelease(note, rawContext.currentTime + 0.1);
   }, [rawContext]);
 
   const playNoteScheduled = useCallback((note: ParsedNote, time: number) => {
     const sampler = getSampler(note);
     if (!sampler || !sampler.loaded) return;
     const velocity = Math.max(note.velocity, 0.3);
-    sampler.triggerAttackRelease(note.midi, note.name, 8, time, velocity);
+    sampler.triggerAttackRelease(note, 8, time, velocity);
   }, []);
 
-  return { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
+  const resolveNotes = useCallback((notes: ParsedNote[]) => {
+    const samplers = samplersRef.current;
+    for (const instr of Object.keys(samplers)) {
+      const instrNotes = notes.filter(n => (n.instrument || 'piano') === instr);
+      if (instrNotes.length > 0) samplers[instr].resolveNotes(instrNotes);
+    }
+  }, []);
+
+  return { loadInstruments, resolveNotes, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
 }

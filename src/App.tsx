@@ -17,7 +17,7 @@ export default function App() {
   // requiring a separate build flag.
   const isDevMode = new URLSearchParams(window.location.search).get('ui') === 'dev_mode';
 
-  const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
+  const { loadInstruments, resolveNotes, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext } = useSynth();
 
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
@@ -81,6 +81,7 @@ export default function App() {
       if (requiredInstruments.length === 0) requiredInstruments.push('piano');
 
       await loadInstruments(requiredInstruments);
+      resolveNotes(result.notes);
 
       handleSongSelect(result);
     } catch (err) {
