@@ -1,3 +1,5 @@
+export type InstrumentCategory = 'piano' | 'keyboard' | 'other';
+
 // Represents a single parsed note from a MIDI file
 export interface ParsedNote {
   /** MIDI note number (0–127) */
