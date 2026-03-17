@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePianoTilesNotes } from '../src/utils/pianoTilesParser';
+import { buildResultFromPianoTilesSong } from '../src/utils/pianoTilesParser';
 
 describe('pianoTilesParser.ts - Core Note Tokenization', () => {
     it('parses single notes with basic exact durations', () => {
@@ -12,7 +12,7 @@ describe('pianoTilesParser.ts - Core Note Tokenization', () => {
             }]
         };
 
-        const { notes } = parsePianoTilesNotes(song);
+        const { notes } = buildResultFromPianoTilesSong(song);
 
         expect(notes).toHaveLength(3);
 
@@ -41,7 +41,7 @@ describe('pianoTilesParser.ts - Core Note Tokenization', () => {
                 scores: ["T, e1[K]"]
             }]
         };
-        const { notes } = parsePianoTilesNotes(song);
+        const { notes } = buildResultFromPianoTilesSong(song);
         expect(notes).toHaveLength(1);
         expect(notes[0].name).toBe('E4');
         // First slot skipped correctly by the "T" rest
@@ -57,7 +57,7 @@ describe('pianoTilesParser.ts - Core Note Tokenization', () => {
                 scores: ["(c1@e1@g1)[K]"]
             }]
         };
-        const { notes } = parsePianoTilesNotes(song);
+        const { notes } = buildResultFromPianoTilesSong(song);
         expect(notes).toHaveLength(3);
 
         // All arpeggios MUST start on the exact same theoretical Layout slot

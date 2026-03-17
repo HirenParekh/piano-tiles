@@ -19,12 +19,16 @@ export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
             noteIndices: t.noteIndices,
         };
 
+        const hasArpeggio = t.notes.some(n => (n.arpeggioDelayS ?? 0) > 0);
+
         if (isDouble) {
             base.type = 'DOUBLE';
         } else if (isHold) {
             base.type = 'HOLD';
             base.isActive = false;
             base.isCompleted = false;
+        } else if (hasArpeggio) {
+            base.type = 'ARPEGGIO';
         } else {
             base.type = 'SINGLE';
         }

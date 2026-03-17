@@ -1,18 +1,3 @@
-export type InstrumentCategory = 'piano' | 'keyboard' | 'other';
-
-// Metadata about a single MIDI track, before note extraction
-export interface TrackMeta {
-  index: number;
-  name: string;
-  program: number | null;
-  instrName: string;
-  category: InstrumentCategory;
-  noteCount: number;
-  channel: number;
-  /** Whether this track was auto-detected as piano/keyboard */
-  autoSelected: boolean;
-}
-
 // Represents a single parsed note from a MIDI file
 export interface ParsedNote {
   /** MIDI note number (0–127) */
@@ -101,7 +86,6 @@ export interface MidiInfo {
 // Full result from the MIDI parser
 export interface MidiParseResult {
   info: MidiInfo;
-  tracks: TrackMeta[];
   notes: ParsedNote[];
   tiles: GameTile[];
   /** Total canvas height in px — computed by buildSequentialLayout */

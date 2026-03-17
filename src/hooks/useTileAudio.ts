@@ -65,13 +65,22 @@ export function useTileAudio({
           playNote({ ...note, duration: note.duration / speed });
         }
       });
-    } else {
-      playNote({ ...primaryNote, duration: primaryNote.duration / speed });
-      tile.notes.slice(1).forEach(note => {
+    } else if (tile.type === 'ARPEGGIO') {
+      // Notes have staggered arpeggioDelayS — fire each with a setTimeout offset.
+      // The first note always has delayMs=0 and plays immediately.
+      tile.notes.forEach(note => {
         const delayMs = Math.round((note.time - primaryNote.time) * 1000 / speed);
-        const id = setTimeout(() => playNote({ ...note, duration: note.duration / speed }), delayMs);
-        holdTimersRef.current.push(id);
+        if (delayMs === 0) {
+          playNote({ ...note, duration: note.duration / speed });
+        } else {
+          const id = setTimeout(() => playNote({ ...note, duration: note.duration / speed }), delayMs);
+          holdTimersRef.current.push(id);
+        }
       });
+    } else {
+      // SINGLE: all notes play in the same JS tick — true polyphony, no event loop gap.
+      // The Web Audio engine creates independent voices for each, so they play simultaneously.
+      tile.notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
     }
   }, [attackNote, playNote, resumeContext, getSpeed]);
 

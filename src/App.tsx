@@ -75,7 +75,7 @@ export default function App() {
 
       const catalogEntry = songCatalog.find(s => s.id === id);
       const result = buildResultFromPianoTilesSong(ptJson, 0, id, [0, 1], catalogEntry as any);
-
+      console.log('Parsed MIDI result:', result);
       // Extract unique instruments required by this song, default to piano just in case
       const requiredInstruments = Array.from(new Set(result.notes.map(n => n.instrument || 'piano')));
       if (requiredInstruments.length === 0) requiredInstruments.push('piano');

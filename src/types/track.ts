@@ -1,7 +1,7 @@
 import type { ParsedNote } from './midi';
 
 // ── Tiles ─────────────────────────────────────────────────────────────────
-export type TileType = 'SINGLE' | 'HOLD' | 'DOUBLE';
+export type TileType = 'SINGLE' | 'HOLD' | 'DOUBLE' | 'ARPEGGIO';
 
 export interface BaseTile {
     id: string;           // Unique identifier for gameplay mapping
@@ -32,7 +32,13 @@ export interface DoubleTile extends BaseTile {
     pairNotes: ParsedNote[];
 }
 
-export type Tile = SingleTile | HoldTile | DoubleTile;
+/** Visually identical to SINGLE; audio plays notes with arpeggioDelayS stagger via setTimeout. */
+export interface ArpeggioTile extends BaseTile {
+    type: 'ARPEGGIO';
+    rowSpan: 1;
+}
+
+export type Tile = SingleTile | HoldTile | DoubleTile | ArpeggioTile;
 
 
 // ── Cards ─────────────────────────────────────────────────────────────────

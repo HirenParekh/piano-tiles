@@ -213,9 +213,10 @@ export function TileLayer({
             >
               {tc.tiles.map(tile => {
                 // Each tile type has its own card component:
-                //   HOLD   — multi-row tile with laser line, ring, and beat dots
-                //   DOUBLE — simultaneous pair tiles (always rowSpan=1)
-                //   SINGLE — standard one-row tile
+                //   HOLD     — multi-row tile with laser line, ring, and beat dots
+                //   DOUBLE   — simultaneous pair tiles (always rowSpan=1)
+                //   SINGLE   — standard one-row tile, all notes play simultaneously
+                //   ARPEGGIO — same visual as SINGLE; notes stagger via arpeggioDelayS
                 if (tile.type === 'HOLD') {
                   return (
                     <HoldTileCard

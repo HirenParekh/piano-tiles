@@ -1,4 +1,4 @@
-import type { ParsedNote, MidiParseResult, TrackMeta, GameTile, ScrollSegment } from '../types/midi';
+import type { ParsedNote, MidiParseResult, GameTile, ScrollSegment } from '../types/midi';
 import { buildTilesFromNotes } from './tileBuilder';
 
 export interface CatalogEntry {
@@ -22,7 +22,7 @@ export interface PianoTilesSong {
   audition?: { start: number[]; end: number[] };
 }
 
-export interface PianoTilesMusic {
+interface PianoTilesMusic {
   id: number;
   bpm: number;
   baseBeats: number;
@@ -75,14 +75,24 @@ function parseNoteName(raw: string): { midi: number; name: string } | null {
   return { midi, name: `${noteName}${toneOctave}` };
 }
 
-// ── Tokeniser & Duration tables ──────────────────────────────────────────────
+// ── Duration tables ──────────────────────────────────────────────────────────
 
-/** Rest token letter → beat duration (standalone tokens Q–Y, S = stop) */
+/**
+ * Rest token letter → beat duration.
+ * These are standalone tokens (e.g. "T", "U") that advance the timeline without creating a tile.
+ *   Q=8  R=4  S=2  T=1  U=0.5  V=0.25  W=0.125  X=0.0625  Y=0.03125 beats
+ * Multiple letters can be combined: "QR" = 12 beats, "TU" = 1.5 beats.
+ */
 const REST_BEATS: Record<string, number> = {
   Q: 8, R: 4, S: 2, T: 1, U: 0.5, V: 0.25, W: 0.125, X: 0.0625, Y: 0.03125,
 };
 
-/** Bracket letter → beat duration (inside [...]) */
+/**
+ * Bracket letter → beat duration (inside [...] after a note or chord).
+ * Controls how long a tile is held and how much time advances after it.
+ *   H=8  I=4  J=2  K=1  L=0.5  M=0.25  N=0.125  O=0.0625  P=0.03125 beats
+ * Multiple letters can combine: "[KL]" = 1.5 beats, "[LM]" = 0.75 beats.
+ */
 const BRACKET_BEATS: Record<string, number> = {
   H: 8, I: 4, J: 2, K: 1, L: 0.5, M: 0.25, N: 0.125, O: 0.0625, P: 0.03125,
 };
@@ -99,15 +109,385 @@ function parseBracketBeats(token: string, fallbackBeats: number): number {
   return beats > 0 ? beats : fallbackBeats;
 }
 
-// ── Score string parser ─────────────────────────────────────────────────────
+
+// ── Token type system ────────────────────────────────────────────────────────
+//
+// Every token in a score string falls into exactly one of these categories.
+// Adding support for a new token type means:
+//   1. Add a label here (with ✓/✗ and description)
+//   2. Add a case to classifyToken()
+//   3. Add a handler function handleXxx()
+//   4. Add a case to dispatchToken()
+//
+// Currently supported (✓) and known-unsupported (✗):
+//
+//   ✓ SIMPLE_NOTE   c1[L], #d2[M]          — single pitch, one tile, advances by bracketSlots
+//   ✓ CHORD         (a1.b1)[L]             — multiple pitches, one tile slot, optional arpeggio
+//   ✓ DOUBLE_GROUP  5<a[M],b[M]>           — two simultaneous tiles (pre-processed to __Dxx__)
+//   ✓ REST          T, U, V, Q, R, W, X, Y — advance timeline, no tile produced
+//   ✓ STOP          ST                     — special stop marker, advance 3 beats
+//   ✗ UNKNOWN       anything else          — logs a warning, shows alert popup, skips token
+
+type TokenType = 'SIMPLE_NOTE' | 'CHORD' | 'DOUBLE_GROUP' | 'REST' | 'STOP' | 'UNKNOWN';
+
+
+// ── Parse context ────────────────────────────────────────────────────────────
+//
+// Passed into every handler instead of repeating individual parameters.
+// currentSlot is the only field that changes; the rest are constant for a track.
+
+interface ParseContext {
+  currentSlot: number;
+  bpm: number;
+  baseBeats: number;
+  slotDurationS: number;  // seconds per 1 slot = baseBeats * (60 / bpm)
+  beatDurationS: number;  // seconds per 1 beat = 60 / bpm
+  trackIndex: number;
+  trackName: string;
+  instrument: string;
+}
+
+
+// ── Handler return type ──────────────────────────────────────────────────────
+
+interface TokenResult {
+  notes: ParsedNote[];   // notes to add to the track (empty for rests/stop)
+  slotsAdvanced: number; // how many slots to move currentSlot forward
+}
+
+
+// ── Token classification ─────────────────────────────────────────────────────
+
+/**
+ * Classify a single pre-processed token into its TokenType.
+ * This is the single routing decision for the entire parse loop.
+ */
+function classifyToken(token: string): TokenType {
+  // 5<> double groups were pre-processed into __Dxx__ placeholders
+  if (token.startsWith('__D') && token.endsWith('__')) return 'DOUBLE_GROUP';
+
+  // Stop marker — must check before REST since it starts with 'S'
+  if (token === 'ST') return 'STOP';
+
+  // Standalone rest letters only (no note letters, no brackets)
+  // REST_BEATS covers Q R S T U V W X Y; multiple letters can combine (e.g. "TU")
+  if (/^[QRSTUVWXY]+$/.test(token)) return 'REST';
+
+  // Chord: token wrapped in parentheses, e.g. "(a1.b1)[L]" or "(#a1.#f2)[L]"
+  if (token.startsWith('(')) return 'CHORD';
+
+  // Simple note: starts with optional # then a note letter, followed by a bracket
+  // Examples: "c1[L]", "#d2[M]", "e3[KL]"
+  if (/^#?[a-gA-G]/.test(token) && /\[[HIJKLMNOP]+\]$/.test(token)) return 'SIMPLE_NOTE';
+
+  return 'UNKNOWN';
+}
+
+
+// ── Arpeggio delay calculator ─────────────────────────────────────────────────
+//
+// Arpeggio operators sit between notes inside a chord or note sequence.
+// They control how quickly successive notes are staggered in time (audio-only effect).
+// The tile slot position (slotStart) is unaffected — only the audio `time` field changes.
+//
+// Operator reference:
+//   .        — subtle stagger (dot articulation)
+//   @ (x1)   — quick arpeggio across the full duration ÷ 10
+//   @ (x2+)  — faster arpeggio: duration ÷ (10 × (count-1))
+//   %        — moderate arpeggio: 30% of duration ÷ count
+//   !        — slower arpeggio: 15% of duration ÷ count
+//   ~ or $   — sweep arpeggio: duration ÷ (count+1)
+//   ^ or &   — ornament/trill: very fast, fixed at beatDuration ÷ 24
+
+function computeArpeggioDelay(
+  opCounts: Record<string, number>,
+  bracketSlots: number,
+  beatDurationS: number,
+  slotDurationS: number,
+): number {
+  const fullDurationS = bracketSlots * slotDurationS;
+
+  if (opCounts['@'] > 0) {
+    const count = opCounts['@'];
+    return fullDurationS / (count === 1 ? 10 : 10 * (count - 1));
+  }
+  if (opCounts['%'] > 0) {
+    return (3 * fullDurationS) / (10 * opCounts['%']);
+  }
+  if (opCounts['!'] > 0) {
+    return (3 * fullDurationS) / (20 * opCounts['!']);
+  }
+  if (opCounts['~'] > 0 || opCounts['$'] > 0) {
+    const count = opCounts['~'] + opCounts['$'];
+    return fullDurationS / (count + 1);
+  }
+  if (opCounts['^'] > 0 || opCounts['&'] > 0) {
+    return beatDurationS / 24;
+  }
+  // '.' operator or no operator: no stagger
+  return 0;
+}
+
+
+// ── Token handlers ────────────────────────────────────────────────────────────
+//
+// Each handler is self-contained: it receives the raw token string + context,
+// and returns the notes it produces plus how many slots to advance.
+// None of them mutate ctx.currentSlot — the caller does that.
+
+/**
+ * STOP token ("ST").
+ * Advances the timeline by 3 beats without producing a tile.
+ * Hardcoded from the original PT2 engine behaviour.
+ *
+ * Example: score segment ending in "ST" to mark a held pause before the next phrase.
+ */
+function handleStop(ctx: ParseContext): TokenResult {
+  return { notes: [], slotsAdvanced: 3 / ctx.baseBeats };
+}
+
+/**
+ * REST token (e.g. "T", "U", "QR").
+ * One or more rest letters that together advance the timeline by their combined beat value.
+ * No tile is produced. Multiple letters can be concatenated: "TU" = 1.5 beats.
+ *
+ * Examples from Little Star bass: "c[L],g[L],T,e[L]" — the T rests 1 beat between notes.
+ */
+function handleRest(token: string, ctx: ParseContext): TokenResult {
+  let restBeats = 0;
+  for (const ch of token) restBeats += REST_BEATS[ch] ?? 0;
+  return { notes: [], slotsAdvanced: restBeats / ctx.baseBeats };
+}
+
+/**
+ * DOUBLE_GROUP token (placeholder "__Dxx__" produced by extractDoubleGroups).
+ * Two or more notes share the same slotStart — they appear as side-by-side tiles.
+ * Timeline advances by only ONE note's bracket duration (they're simultaneous).
+ * All notes in the group are tagged with tileType: 'DOUBLE'.
+ *
+ * Original syntax: "5<g2[M],g2[M]>"
+ * Examples from Jingle Bells difficulty 3: "5<g3[M],g3[M]>", "5<a2[M],a2[M]>"
+ */
+function handleDoubleGroup(
+  placeholder: string,
+  ctx: ParseContext,
+  doubleGroupMap: Map<string, string[]>,
+): TokenResult {
+  const noteTokens = doubleGroupMap.get(placeholder) ?? [];
+  if (noteTokens.length === 0) return { notes: [], slotsAdvanced: 0 };
+
+  // All notes share the same slot advance (from the first note's bracket)
+  const slotAdvance = parseBracketBeats(noteTokens[0], 0) / ctx.baseBeats;
+  const bracketStr = noteTokens[0].match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
+
+  const notes: ParsedNote[] = [];
+  for (const noteToken of noteTokens) {
+    const rawName = noteToken.replace(/\[[^\]]*\]$/, '').trim();
+    const parsed = parseNoteName(rawName);
+    if (parsed) {
+      notes.push({
+        midi: parsed.midi,
+        name: parsed.name,
+        time: ctx.currentSlot * ctx.slotDurationS,
+        duration: Math.max(slotAdvance * ctx.slotDurationS, 0.05),
+        velocity: 0.7,
+        trackIndex: ctx.trackIndex,
+        trackName: ctx.trackName,
+        channel: ctx.trackIndex,
+        instrument: ctx.instrument,
+        pt2Notation: rawName + bracketStr,
+        slotStart: ctx.currentSlot,
+        slotSpan: slotAdvance,
+        tileType: 'DOUBLE',
+      });
+    }
+  }
+
+  return { notes, slotsAdvanced: Math.max(1, slotAdvance) };
+}
+
+/**
+ * SIMPLE_NOTE token (e.g. "c1[L]", "#d2[M]", "e3[KL]").
+ * One pitch + a bracket that defines tile height and timeline advance.
+ * Produces a single ParsedNote with no arpeggio delay.
+ *
+ * Examples from Jingle Bells melody: "e3[L]", "g3[J]", "c3[K]"
+ * Examples from Little Star bass:    "c[L]", "#f1[L]", "g[L]"
+ */
+function handleSimpleNote(token: string, ctx: ParseContext): TokenResult {
+  const bracketBeats = parseBracketBeats(token, 0);
+  const bracketSlots = bracketBeats / ctx.baseBeats;
+  if (bracketSlots === 0) return { notes: [], slotsAdvanced: 0 };
+
+  const rawName = token.replace(/\[[^\]]*\]$/, '').trim();
+  const parsed = parseNoteName(rawName);
+  if (!parsed) return { notes: [], slotsAdvanced: Math.max(1, bracketSlots) };
+
+  const bracketStr = token.match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
+  const note: ParsedNote = {
+    midi: parsed.midi,
+    name: parsed.name,
+    time: ctx.currentSlot * ctx.slotDurationS,
+    duration: Math.max(bracketSlots * ctx.slotDurationS, 0.05),
+    velocity: 0.7,
+    trackIndex: ctx.trackIndex,
+    trackName: ctx.trackName,
+    channel: ctx.trackIndex,
+    instrument: ctx.instrument,
+    pt2Notation: rawName + bracketStr,
+    slotStart: ctx.currentSlot,
+    slotSpan: bracketSlots,
+  };
+
+  return { notes: [note], slotsAdvanced: Math.max(1, bracketSlots) };
+}
+
+/**
+ * CHORD token (e.g. "(a1.b1)[L]", "(#a1.#f2)[L]", "(e1.g1.c2)[L]").
+ * Multiple pitches inside parentheses share the same tile slot.
+ * Arpeggio operators between note names (. @ % ! ~ $ ^ &) stagger the audio timing
+ * of each note — this is audio-only and does NOT affect tile layout.
+ *
+ * The entire chord still advances the timeline by bracketSlots (same as a simple note).
+ *
+ * Examples from Little Star melody: "(e1.g1.c2)[L]", "(d2.g2)[L]", "(a1.e2.a2)[L]"
+ */
+function handleChord(token: string, ctx: ParseContext): TokenResult {
+  const bracketBeats = parseBracketBeats(token, 0);
+  const bracketSlots = bracketBeats / ctx.baseBeats;
+  if (bracketSlots === 0) return { notes: [], slotsAdvanced: 0 };
+
+  // Strip bracket, then strip outer parens to get the inner content
+  const content = token.replace(/\[[^\]]*\]$/, '').trim();
+  const inner = content.replace(/^\((.*)\)$/, '$1');
+
+  // Extract note names and arpeggio operators from the inner content
+  // Note names: optional # + letter + optional octave (e.g. "#a1", "g", "c2")
+  // Operators:  . @ % ! ~ $ ^ &
+  const noteMatches = [...inner.matchAll(/([a-gA-G]#?-?\d*|mute|empty)|([.@%!~$^&])/gi)];
+  const notesToPlay: string[] = [];
+  const ops: string[] = [];
+
+  for (const match of noteMatches) {
+    const str = match[0];
+    if (/^[a-g]/i.test(str) || str === 'mute' || str === 'empty') {
+      notesToPlay.push(str);
+    } else if (/[.@%!~$^&]/.test(str)) {
+      ops.push(str);
+    }
+  }
+
+  if (notesToPlay.length === 0) {
+    return { notes: [], slotsAdvanced: Math.max(1, bracketSlots) };
+  }
+
+  // Count arpeggio operators to compute the per-note stagger delay
+  const opCounts: Record<string, number> = { '.': 0, '@': 0, '%': 0, '!': 0, '~': 0, '$': 0, '^': 0, '&': 0 };
+  for (const op of ops) opCounts[op] = (opCounts[op] || 0) + 1;
+
+  const delayS = computeArpeggioDelay(opCounts, bracketSlots, ctx.beatDurationS, ctx.slotDurationS);
+  const bracketStr = token.match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
+
+  const notes: ParsedNote[] = [];
+  let arpeggioAccumS = 0; // accumulated audio offset for each successive note
+
+  for (let i = 0; i < notesToPlay.length; i++) {
+    const rawName = notesToPlay[i];
+    const parsed = parseNoteName(rawName);
+    if (parsed) {
+      notes.push({
+        midi: parsed.midi,
+        name: parsed.name,
+        time: ctx.currentSlot * ctx.slotDurationS + arpeggioAccumS,
+        duration: Math.max(bracketSlots * ctx.slotDurationS - arpeggioAccumS, 0.05),
+        velocity: 0.7,
+        trackIndex: ctx.trackIndex,
+        trackName: ctx.trackName,
+        channel: ctx.trackIndex,
+        instrument: ctx.instrument,
+        pt2Notation: rawName + bracketStr,
+        slotStart: ctx.currentSlot,
+        slotSpan: bracketSlots,
+        arpeggioDelayS: arpeggioAccumS,
+      });
+    }
+    // Each successive note is shifted further in time (last note gets no further shift)
+    if (i < notesToPlay.length - 1) arpeggioAccumS += delayS;
+  }
+
+  return { notes, slotsAdvanced: Math.max(1, bracketSlots) };
+}
+
+
+// ── Token dispatcher ─────────────────────────────────────────────────────────
+
+/**
+ * Route a classified token to its handler. Returns the combined result.
+ * UNKNOWN tokens return empty and are handled (warned) by the caller.
+ */
+function dispatchToken(
+  type: TokenType,
+  token: string,
+  ctx: ParseContext,
+  doubleGroupMap: Map<string, string[]>,
+): TokenResult {
+  switch (type) {
+    case 'DOUBLE_GROUP': return handleDoubleGroup(token, ctx, doubleGroupMap);
+    case 'STOP':         return handleStop(ctx);
+    case 'REST':         return handleRest(token, ctx);
+    case 'SIMPLE_NOTE':  return handleSimpleNote(token, ctx);
+    case 'CHORD':        return handleChord(token, ctx);
+    case 'UNKNOWN':      return { notes: [], slotsAdvanced: 0 };
+  }
+}
+
+
+// ── Double group pre-processor ───────────────────────────────────────────────
+//
+// 5<note1,note2> groups contain commas which would break the normal token split.
+// We extract them first, replacing each group with a unique placeholder.
+// The main parse loop then handles placeholders as DOUBLE_GROUP tokens.
+
+function extractDoubleGroups(score: string): {
+  processed: string;
+  doubleGroupMap: Map<string, string[]>;
+} {
+  const doubleGroupMap = new Map<string, string[]>();
+  let idx = 0;
+
+  const processed = score.replace(/5<([^>]*)>/g, (_m, inner: string) => {
+    const key = `__D${idx++}__`;
+    doubleGroupMap.set(key, inner.split(',').map((s: string) => s.trim()).filter(Boolean));
+    return key;
+  });
+
+  return { processed, doubleGroupMap };
+}
+
+
+// ── Score string parser ──────────────────────────────────────────────────────
 
 /**
  * Parse one PianoTiles score string into a flat list of ParsedNote events.
  *
- * Implements the exact timing logic from `pt2.cpp`:
- *  - N<...> groups are ignored visually; timing derives from brackets.
- *  - Standalone rest letters Q-Y (+ S = 2 beats) advance the timeline.
- *  - Tokens c1[L] advance the timeline by the bracket length.
+ * Score format overview:
+ *   - Tokens are comma-separated: "c1[L],e1[L],g[L]"
+ *   - Semicolons ";" are phrase/measure separators (cosmetic in the source);
+ *     we split on them first so the loop processes one musical phrase at a time.
+ *   - Each token has a type (see TokenType above). The type determines which
+ *     handler runs and how much the timeline advances.
+ *
+ * Timeline units:
+ *   - currentSlot is the authoritative position counter (integer-ish, float for sub-beats)
+ *   - slotDurationS converts slots to seconds for audio scheduling
+ *   - 1 slot = baseBeats beats = (baseBeats × 60/bpm) seconds
+ *
+ * @param score       Raw score string from the JSON (one track, one music segment)
+ * @param bpm         Tempo of this segment in beats-per-minute
+ * @param baseBeats   How many beats make up one slot (typically 0.5 for most songs)
+ * @param trackIndex  0 = Melody, 1 = Bass, 2+ = extra tracks
+ * @param trackName   Human-readable label for debugging
+ * @param instrument  Instrument name from the JSON (e.g. "piano")
  */
 function parseScore(
   score: string,
@@ -117,197 +497,85 @@ function parseScore(
   trackName: string,
   instrument: string,
 ): { notes: ParsedNote[]; totalSlots: number } {
-  const notes: ParsedNote[] = [];
+
+  // ── Step 1: Pre-process 5<> double groups ──────────────────────────────────
+  // Must happen before any splitting because 5<a[M],b[M]> contains a comma.
+  const { processed, doubleGroupMap } = extractDoubleGroups(score);
+
+  // ── Step 2: Strip structural noise ────────────────────────────────────────
+  // N<...> groupings (e.g. "3<c1[L]>") are purely notational in PT2 — the
+  // engine treats them identically to ungrouped notes. Strip the wrappers.
+  // Effect blocks {n} are decorative and have no timing/tile effect.
+  const cleaned = processed
+    .replace(/\d+</g, '')   // remove N< openers (5< already extracted above)
+    .replace(/>/g, '')      // remove > closers
+    .replace(/\{[^}]*\}/g, ''); // remove {effect} blocks
+
+  // ── Step 3: Build parse context (constant for this track) ─────────────────
   const beatDurationS = 60 / bpm;
   const slotDurationS = baseBeats * beatDurationS;
 
-  // Pre-process 5<n1,n2> double tile groups before flattening.
-  // Each 5<> group becomes a placeholder with no commas so it survives split(',').
-  // All notes inside share the same slotStart; time advances by ONE note's duration.
-  const doubleGroupMap = new Map<string, string[]>();
-  let doubleIdx = 0;
-  const withDoublePlaceholders = score.replace(/5<([^>]*)>/g, (_m, inner: string) => {
-    const key = `__D${doubleIdx++}__`;
-    doubleGroupMap.set(key, inner.split(',').map((s: string) => s.trim()).filter(Boolean));
-    return key;
-  });
+  // ── Step 4: Parse segments (split on ";") then tokens (split on ",") ──────
+  // Semicolons delimit musical phrases. Melody and Bass tend to align at these
+  // boundaries (both phrases sum to the same beat count), but we don't enforce
+  // that here — each track advances its own independent currentSlot counter.
+  const segments = cleaned.split(';');
 
-  // pt2.cpp ignores N<...> grouping entirely. We strip remaining \d+< and > and effect brackets {}
-  const flat = withDoublePlaceholders
-    .replace(/;/g, ',')
-    .replace(/\d+</g, '')
-    .replace(/>/g, '')
-    .replace(/\{[^}]*\}/g, '');
-
-  const tokens = flat.split(',');
-
+  const notes: ParsedNote[] = [];
+  const unknownTokens: string[] = [];
   let currentSlot = 0;
 
-  for (let token of tokens) {
-    token = token.trim();
-    if (!token) continue;
+  for (const segment of segments) {
+    const tokens = segment.split(',');
 
-    // Handle 5<> double tile placeholder: all notes at same slotStart, advance by one note duration
-    if (token.startsWith('__D') && token.endsWith('__')) {
-      const noteTokens = doubleGroupMap.get(token) ?? [];
-      if (noteTokens.length > 0) {
-        const slotAdvance = parseBracketBeats(noteTokens[0], 0) / baseBeats;
-        const bracketStr = noteTokens[0].match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
-        for (const noteToken of noteTokens) {
-          const rawName = noteToken.replace(/\[[^\]]*\]$/, '').trim();
-          const parsed = parseNoteName(rawName);
-          if (parsed) {
-            notes.push({
-              midi: parsed.midi,
-              name: parsed.name,
-              time: currentSlot * slotDurationS,
-              duration: Math.max(slotAdvance * slotDurationS, 0.05),
-              velocity: 0.7,
-              trackIndex,
-              trackName,
-              channel: trackIndex,
-              instrument,
-              pt2Notation: rawName + bracketStr,
-              slotStart: currentSlot,
-              slotSpan: slotAdvance,
-              tileType: 'DOUBLE',
-            });
-          }
-        }
-        currentSlot += Math.max(1, slotAdvance);
-      }
-      continue;
-    }
+    for (let rawToken of tokens) {
+      const token = rawToken.trim();
+      if (!token) continue;
 
-    if (token === 'ST') {
-      currentSlot += 3 / baseBeats;
-      continue;
-    }
+      const type = classifyToken(token);
+      const ctx: ParseContext = {
+        currentSlot,
+        bpm,
+        baseBeats,
+        slotDurationS,
+        beatDurationS,
+        trackIndex,
+        trackName,
+        instrument,
+      };
 
-    if (/^[QRSSTUVWXYZ]+$/.test(token)) {
-      let restBeats = 0;
-      for (const ch of token) restBeats += REST_BEATS[ch] || 0;
-      currentSlot += restBeats / baseBeats;
-      continue;
-    }
-
-    const bracketBeats = parseBracketBeats(token, 0);
-    const bracketSlots = bracketBeats / baseBeats;
-
-    if (bracketSlots === 0) {
-      // Unparseable duration or missing bracket? Just skip
-      continue;
-    }
-
-    const content = token.replace(/\[[^\]]*\]$/, '').trim();
-    const inner = content.replace(/^\((.*)\)$/, '$1');
-
-    const noteMatches = [...inner.matchAll(/([a-gA-G]#?-?\d*|mute|empty)|([.@%!~$^&])/gi)];
-    const notesToPlay: string[] = [];
-    const ops: string[] = [];
-
-    for (const match of noteMatches) {
-      const str = match[0];
-      if (/^[a-g]/i.test(str) || str === 'mute' || str === 'empty') {
-        notesToPlay.push(str);
-      } else if (/[.@%!~$^&]/.test(str)) {
-        ops.push(str);
-      }
-    }
-
-    if (notesToPlay.length === 0) {
-      currentSlot += bracketSlots;
-      continue;
-    }
-
-    const opCounts: Record<string, number> = { '.': 0, '@': 0, '%': 0, '!': 0, '~': 0, '$': 0, '^': 0, '&': 0 };
-    for (const op of ops) opCounts[op] = (opCounts[op] || 0) + 1;
-
-    let delayS = bracketSlots * slotDurationS;
-    if (opCounts['@'] > 0) {
-      const count = opCounts['@'];
-      delayS = delayS / (count === 1 ? 10 : 10 * (count - 1));
-    } else if (opCounts['%'] > 0) {
-      delayS = (3 * delayS) / (10 * opCounts['%']);
-    } else if (opCounts['!'] > 0) {
-      delayS = (3 * delayS) / (20 * opCounts['!']);
-    } else if (opCounts['~'] > 0 || opCounts['$'] > 0) {
-      const count = opCounts['~'] + opCounts['$'];
-      delayS = delayS / (count + 1);
-    } else if (opCounts['^'] > 0 || opCounts['&'] > 0) {
-      // Ornaments oscillate rapidly over a short delay
-      delayS = beatDurationS / 24;
-    } else {
-      delayS = 0;
-    }
-
-    let tokenArpeggioDelayS = 0;
-
-    const bracketStr = token.match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
-
-    for (let i = 0; i < notesToPlay.length; i++) {
-      const rawName = notesToPlay[i];
-      const parsed = parseNoteName(rawName);
-      if (parsed) {
-        notes.push({
-          midi: parsed.midi,
-          name: parsed.name,
-          time: currentSlot * slotDurationS + tokenArpeggioDelayS,
-          duration: Math.max(bracketSlots * slotDurationS - tokenArpeggioDelayS, 0.05),
-          velocity: 0.7,
-          trackIndex,
-          trackName,
-          channel: trackIndex,
-          instrument,
-          pt2Notation: rawName + bracketStr,
-          slotStart: currentSlot,
-          slotSpan: bracketSlots,
-          arpeggioDelayS: tokenArpeggioDelayS,
-        });
+      if (type === 'UNKNOWN') {
+        unknownTokens.push(token);
+        continue;
       }
 
-      if (i < notesToPlay.length - 1) {
-        tokenArpeggioDelayS += delayS;
-      }
+      const result = dispatchToken(type, token, ctx, doubleGroupMap);
+      notes.push(...result.notes);
+      currentSlot += result.slotsAdvanced;
     }
+  }
 
-    currentSlot += Math.max(1, bracketSlots);
+  // ── Step 5: Report unknown tokens (once per track, not per token) ──────────
+  if (unknownTokens.length > 0) {
+    const unique = [...new Set(unknownTokens)];
+    const msg = `[PianoTiles Parser] Unknown tokens in "${trackName}" — not yet supported:\n${unique.join(', ')}`;
+    console.warn(msg);
+    if (typeof window !== 'undefined') {
+      window.alert(msg);
+    }
   }
 
   return { notes, totalSlots: currentSlot };
 }
 
+
 // ── Public API ───────────────────────────────────────────────────────────────
-
-/**
- * Parse a PianoTiles song JSON into a sorted ParsedNote[] array.
- * @param song     The parsed JSON object.
- * @param musicIndex  Difficulty level index (0 = easiest).
- */
-export function parsePianoTilesNotes(
-  song: PianoTilesSong,
-  musicIndex = 0,
-): { notes: ParsedNote[]; bpm: number } {
-  const music = song.musics[musicIndex] ?? song.musics[0];
-  const { bpm, baseBeats, scores, instruments, alternatives } = music;
-
-  const allNotes: ParsedNote[] = [];
-
-  scores.forEach((score, i) => {
-    const trackName = i === 0 ? 'Melody' : i === 1 ? 'Bass' : `Track ${i + 1}`;
-    const instr = (alternatives?.[i] || instruments?.[i] || 'piano').toLowerCase();
-    allNotes.push(...parseScore(score, bpm, baseBeats, i, trackName, instr).notes);
-  });
-
-  allNotes.sort((a, b) => a.time - b.time);
-  return { notes: allNotes, bpm };
-}
 
 /**
  * Build a complete MidiParseResult from a PianoTiles song JSON.
  * This acts as the core engine translating the strict PT2 JSON format into the physical
  * Layout and Note data used by the React GameBoard and the Tone.js Synth.
- * 
+ *
  * Process flow:
  * 1. Iterates over all `musics` segments (milestones) chronologically.
  * 2. Parses the literal bracket heights (e.g. [L] = 0.5 beats) and temporal delays into ParsedNotes.
@@ -395,7 +663,7 @@ export function buildResultFromPianoTilesSong(
 
     sectionNotes.sort((a, b) => a.time - b.time);
 
-    // The precalculated ratio is essentially effectiveBpm. 
+    // The precalculated ratio is essentially effectiveBpm.
     // mathematically: slotDurationS = 60 / ratio
     const slotDurationS = ratio > 0 ? (60 / ratio) : (baseBeats * (60 / bpm));
 
@@ -478,17 +746,6 @@ export function buildResultFromPianoTilesSong(
       ? allNotes[allNotes.length - 1].time + allNotes[allNotes.length - 1].duration
       : 0;
 
-  const tracks: TrackMeta[] = Array.from({ length: maxTrackCount }).map((_, i) => ({
-    index: i,
-    name: i === 0 ? 'Melody' : i === 1 ? 'Bass' : `Track ${i + 1}`,
-    program: 0,
-    instrName: 'Acoustic Grand Piano',
-    category: 'piano' as const,
-    noteCount: allNotes.filter(n => n.trackIndex === i).length,
-    channel: i,
-    autoSelected: true,
-  }));
-
   return {
     info: {
       name: songName,
@@ -500,7 +757,6 @@ export function buildResultFromPianoTilesSong(
       totalNotes: allNotes.length,
       scrollSegments,
     },
-    tracks,
     notes: allNotes,
     tiles: allTiles,
     totalHeight: finalTotalHeight,
