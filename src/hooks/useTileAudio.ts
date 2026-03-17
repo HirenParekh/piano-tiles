@@ -78,9 +78,12 @@ export function useTileAudio({
         }
       });
     } else {
-      // SINGLE: all notes play in the same JS tick — true polyphony, no event loop gap.
-      // The Web Audio engine creates independent voices for each, so they play simultaneously.
-      tile.notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
+      // SINGLE: if pre-merged chord buffer exists, play once; else play each note separately.
+      if (tile.notes.length > 1 && tile.notes[0]?.mergedBuffer) {
+        playNote({ ...tile.notes[0], duration: tile.notes[0].duration / speed });
+      } else {
+        tile.notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
+      }
     }
   }, [attackNote, playNote, resumeContext, getSpeed]);
 

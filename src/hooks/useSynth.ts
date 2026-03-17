@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import * as Tone from 'tone';
-import type { ParsedNote } from '../types/midi';
+import type { ParsedNote, GameTile } from '../types/midi';
 import musicUrls from '../music_urls.json';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -61,9 +61,25 @@ class WebAudioSampler {
     }
   }
 
+  async mergeNotes(notes: ParsedNote[]): Promise<void> {
+    const buffers = notes.map(n => n.buffer).filter(Boolean) as AudioBuffer[];
+    if (buffers.length < 2) return;
+    const length = Math.max(...buffers.map(b => b.length));
+    const sampleRate = buffers[0].sampleRate;
+    const channels = Math.max(...buffers.map(b => b.numberOfChannels));
+    const offline = new OfflineAudioContext(channels, length, sampleRate);
+    for (const buf of buffers) {
+      const src = offline.createBufferSource();
+      src.buffer = buf;
+      src.connect(offline.destination);
+      src.start(0);
+    }
+    notes[0].mergedBuffer = await offline.startRendering();
+  }
+
   triggerAttack(note: ParsedNote, time: number, velocity: number = 0.8) {
     if (!this.loaded) return;
-    const buffer = note.buffer ?? this.buffers.get(note.midi);
+    const buffer = note.mergedBuffer ?? note.buffer ?? this.buffers.get(note.midi);
     if (!buffer) return;
 
     // Direct C++ Native AudioBufferSourceNode allocation (Fastest possible playback)
@@ -127,6 +143,7 @@ class WebAudioSampler {
 export interface UseSynthReturn {
   loadInstruments: (instruments: string[]) => Promise<void>;
   resolveNotes: (notes: ParsedNote[]) => void;
+  resolveChords: (gameTiles: GameTile[]) => Promise<void>;
   playNote: (note: ParsedNote) => void;
   attackNote: (note: ParsedNote) => void;
   releaseNote: (note: ParsedNote) => void;
@@ -220,5 +237,18 @@ export function useSynth(): UseSynthReturn {
     }
   }, []);
 
-  return { loadInstruments, resolveNotes, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
+  const resolveChords = useCallback(async (gameTiles: GameTile[]) => {
+    const promises: Promise<void>[] = [];
+    for (const tile of gameTiles) {
+      if (tile.notes.length < 2) continue;
+      const allSameSlot = tile.notes.every(n => Math.abs(n.slotStart - tile.notes[0].slotStart) < 0.001);
+      if (!allSameSlot) continue;
+      const instr = tile.notes[0].instrument || 'piano';
+      const sampler = samplersRef.current[instr];
+      if (sampler) promises.push(sampler.mergeNotes(tile.notes));
+    }
+    await Promise.all(promises);
+  }, []);
+
+  return { loadInstruments, resolveNotes, resolveChords, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
 }

@@ -30,6 +30,8 @@ export interface ParsedNote {
   tileType?: 'DOUBLE';
   /** Pre-resolved AudioBuffer — bound at instrument load time for zero-overhead tap playback */
   buffer?: AudioBuffer;
+  /** Pre-merged AudioBuffer for chord tiles (SINGLE with 2+ notes) — play once instead of N times */
+  mergedBuffer?: AudioBuffer;
 }
 
 // A tile in the game — one or more notes assigned to a lane
