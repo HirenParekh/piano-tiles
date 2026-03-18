@@ -35,7 +35,7 @@ interface Props {
 
 export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }: Props) {
   const {
-    trackData, scaleRatio, scaledTotalHeight, beatLines,
+    trackData, scaleRatio, scaledTotalHeight, beatLines, speedMultiplier,
     started, handleStart, scrollRef, tappedIds, tapTile, viewportH, info,
   } = engine;
 
@@ -152,6 +152,8 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
                 onHoldRelease={onHoldRelease}
                 onHoldBeat={onHoldBeat}
                 songName={info.name}
+                speed={speedMultiplier}
+                scrollRef={scrollRef}
               />
             </div>
 

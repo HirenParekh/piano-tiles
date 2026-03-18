@@ -24,30 +24,40 @@ interface Props {
   className?: string;
   /** Height of a single slot in px (MIN_HEIGHT × scaleRatio). Used for the background gradient. */
   singleTileH?: number;
+  /** Playback speed multiplier — scales beat animation duration. Defaults to 1. */
+  speed?: number;
+  /** Ref to the scrollable viewport div. Used to read canvas transform instead of
+   *  calling getBoundingClientRect() every rAF frame, avoiding forced reflows. */
+  scrollRef?: React.RefObject<HTMLDivElement>;
 }
 
 // How many px above the anchor the arc dot center sits
 const DOT_OFFSET_PX = 50;
 
-export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100 }: Props) {
+export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100, speed = 1, scrollRef }: Props) {
   // ── React state ──────────────────────────────────────────────────────────
   const [isHeld, setIsHeld] = useState(false);
   const [firedDots, setFiredDots] = useState<Set<number>>(new Set());
-  const [arcHitKey, setArcHitKey] = useState(0);
   const [tapYFromBottom, setTapYFromBottom] = useState(0);
 
   // ── DOM refs ─────────────────────────────────────────────────────────────
   const divRef = useRef<HTMLDivElement>(null);
   /** The SVG <path> that draws the fill + dome cap. Updated each rAF frame. */
   const fillPathRef = useRef<SVGPathElement>(null);
-  /** The SVG <circle> that is the bright arc dot. cy updated each rAF frame. */
+  /** The SVG <circle> for the transient beat-hit dot. cx/cy updated each rAF frame; invisible between beats. */
   const arcDotRef = useRef<SVGCircleElement>(null);
-  /** Expanding ring circle — position synced each frame, animation triggered on beat hit. */
+  /** <animate> that drives the arc dot radius: grows from static-dot size to arc-dot size, then shrinks to 0. */
+  const arcDotAnimRRef = useRef<SVGAnimateElement>(null);
+  /** <animate> that drives the arc dot opacity: 0 → 1 → 0 (appear on beat, disappear after). */
+  const arcDotAnimOpRef = useRef<SVGAnimateElement>(null);
+  /** Thick blurred glow ring — the soft outer spread of the ripple. */
   const rippleRingRef = useRef<SVGCircleElement>(null);
-  /** <animate> that drives the ring radius from dot-size to large. */
   const rippleAnimRRef = useRef<SVGAnimateElement>(null);
-  /** <animate> that drives the ring opacity from 1 to 0. */
   const rippleAnimOpRef = useRef<SVGAnimateElement>(null);
+  /** Thin sharp edge ring — drawn on top of the glow to give a crisp inner boundary. */
+  const rippleEdgeRef = useRef<SVGCircleElement>(null);
+  const rippleEdgeAnimRRef = useRef<SVGAnimateElement>(null);
+  const rippleEdgeAnimOpRef = useRef<SVGAnimateElement>(null);
   // ── Motion refs (no re-render) ────────────────────────────────────────────
   const pointerYRef = useRef(0);
   const tapYFromBottomRef = useRef(0);
@@ -63,6 +73,11 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
   // so we avoid calling getBoundingClientRect() for them every rAF frame.
   const cachedWRef = useRef(0);
   const cachedHRef = useRef(0);
+  // Reflow-free bottom tracking: cache tile bottom + canvas Y at hold-start,
+  // then derive live bottom from canvas style.transform each frame (no reflow).
+  const cachedTileBottomAtStartRef = useRef(0);
+  const cachedCanvasYAtStartRef = useRef(0);
+  const cachedCanvasElRef = useRef<HTMLElement | null>(null);
 
   const onNotePlayRef = useRef(onNotePlay);
   useEffect(() => { onNotePlayRef.current = onNotePlay; }, [onNotePlay]);
@@ -94,17 +109,53 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
   const fireBeat = (idx: number, notes: ParsedNote[]) => {
     firedSetRef.current = new Set([...firedSetRef.current, idx]);
     setFiredDots(new Set(firedSetRef.current));
-    setArcHitKey(prev => prev + 1);
-    // Scale ripple from arc-dot size outward — proportional to tile width.
-    if (rippleAnimRRef.current) {
-      const toR = Math.round((divRef.current?.clientWidth ?? 60) * 0.45);
-      rippleAnimRRef.current.setAttribute('from', String(arcDotRRef.current));
-      rippleAnimRRef.current.setAttribute('to', String(toR));
+
+    const W = divRef.current?.clientWidth ?? 60;
+    const arcR = arcDotRRef.current;
+    // Static dot radius matches what's rendered in secondaryBeats below (~3% of width)
+    const staticR = Math.round(W * 0.03);
+    // Animation duration scales inversely with speed so fast songs feel snappy
+    const dur = `${(0.2 / speed).toFixed(3)}s`;
+
+    // Arc dot burst: grow from static-dot size → arc-dot size → shrink to 0
+    if (arcDotAnimRRef.current) {
+      arcDotAnimRRef.current.setAttribute('values', `${staticR};${arcR};${arcR};0`);
+      arcDotAnimRRef.current.setAttribute('keyTimes', '0;0.2;0.65;1');
+      arcDotAnimRRef.current.setAttribute('dur', dur);
+      arcDotAnimRRef.current.beginElement();
     }
-    // Trigger the SVG expanding ring — beginElement() restarts the animation
-    // from its `from` value even if a previous run is still in progress.
+    if (arcDotAnimOpRef.current) {
+      arcDotAnimOpRef.current.setAttribute('dur', dur);
+      arcDotAnimOpRef.current.beginElement();
+    }
+
+    // Scale ripple from arc-dot size outward — proportional to tile width.
+    const fromR = Math.round(arcR * 3); // starts already outside the dot
+    const toR = Math.round(W * 0.3);
+
+    // Glow ring (thick, blurred)
+    if (rippleAnimRRef.current) {
+      rippleAnimRRef.current.setAttribute('from', String(fromR));
+      rippleAnimRRef.current.setAttribute('to', String(toR));
+      rippleAnimRRef.current.setAttribute('dur', dur);
+    }
+    if (rippleAnimOpRef.current) {
+      rippleAnimOpRef.current.setAttribute('dur', dur);
+    }
     rippleAnimRRef.current?.beginElement();
     rippleAnimOpRef.current?.beginElement();
+
+    // Edge ring (thin, sharp) — same r range, slightly faster fade
+    if (rippleEdgeAnimRRef.current) {
+      rippleEdgeAnimRRef.current.setAttribute('from', String(fromR));
+      rippleEdgeAnimRRef.current.setAttribute('to', String(toR));
+      rippleEdgeAnimRRef.current.setAttribute('dur', dur);
+    }
+    if (rippleEdgeAnimOpRef.current) {
+      rippleEdgeAnimOpRef.current.setAttribute('dur', dur);
+    }
+    rippleEdgeAnimRRef.current?.beginElement();
+    rippleEdgeAnimOpRef.current?.beginElement();
     onNotePlayRef.current?.(notes);
   };
 
@@ -113,11 +164,18 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
     const loop = () => {
       if (!isHeldRef.current || !divRef.current) return;
 
-      // W and H are cached at hold-start (tile dimensions don't change during hold).
-      // Only .bottom needs a live query since the tile moves with the scroll.
       const W = cachedWRef.current;
       const H = cachedHRef.current;
-      const bottom = divRef.current.getBoundingClientRect().bottom;
+      // Reflow-free bottom: tile bottom at hold-start + how much the canvas has
+      // scrolled since then (delta of translate3d Y). Falls back to
+      // getBoundingClientRect() if scrollRef wasn't provided (e.g. sandbox widget).
+      let bottom: number;
+      if (cachedCanvasElRef.current) {
+        const canvasY = parseFloat(cachedCanvasElRef.current.style.transform.split(',')[1]) || 0;
+        bottom = cachedTileBottomAtStartRef.current + (canvasY - cachedCanvasYAtStartRef.current);
+      } else {
+        bottom = divRef.current.getBoundingClientRect().bottom;
+      }
 
       const reachedPercent = (bottom - pointerYRef.current) / H * 100;
       reachedPercentRef.current = reachedPercent;
@@ -170,12 +228,15 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
       if (arcDotRef.current) {
         arcDotRef.current.setAttribute('cy', dotCY);
         arcDotRef.current.setAttribute('cx', dotCX);
-        // r is set every frame so it stays correct after key-remount on beat hit
-        arcDotRef.current.setAttribute('r', String(arcDotRRef.current));
+        // Note: r and opacity are controlled by SVG <animate> — not set here
       }
       if (rippleRingRef.current) {
         rippleRingRef.current.setAttribute('cy', dotCY);
         rippleRingRef.current.setAttribute('cx', dotCX);
+      }
+      if (rippleEdgeRef.current) {
+        rippleEdgeRef.current.setAttribute('cy', dotCY);
+        rippleEdgeRef.current.setAttribute('cx', dotCX);
       }
 
       // ── Beat detection ─────────────────────────────────────────────────
@@ -207,6 +268,12 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
     cachedHRef.current = tapRect.height;
     // ~6% of lane width; clamp to at least 5px so it's always visible
     arcDotRRef.current = Math.min(10, Math.round(tapRect.width * 0.06));
+    // Cache canvas element + starting positions for reflow-free bottom tracking.
+    // style.transform = "translate3d(0, Ypx, 0)" — split(',')[1] extracts Y.
+    const canvasEl = (scrollRef?.current?.firstElementChild as HTMLElement) ?? null;
+    cachedCanvasElRef.current = canvasEl;
+    cachedTileBottomAtStartRef.current = tapRect.bottom;
+    cachedCanvasYAtStartRef.current = parseFloat(canvasEl?.style.transform.split(',')[1] ?? '0') || 0;
     setTapYFromBottom(tapRect.bottom - e.clientY);
     firedSetRef.current = new Set();
     reachedPercentRef.current = 0;
@@ -214,8 +281,12 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
     isHeldRef.current = true;
     setIsHeld(true);
     setFiredDots(new Set());
-    setArcHitKey(0);
 
+    // Reset arc dot to invisible so it only appears on beat hits
+    if (arcDotRef.current) {
+      arcDotRef.current.setAttribute('r', '0');
+      arcDotRef.current.setAttribute('opacity', '0');
+    }
     // Clear the fill path so it starts empty
     if (fillPathRef.current) fillPathRef.current.setAttribute('d', '');
 
@@ -232,7 +303,6 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
     cancelAnimationFrame(rafRef.current);
     setIsHeld(false);
     setFiredDots(new Set());
-    setArcHitKey(0);
     firedSetRef.current = new Set();
 
     // Auto-complete: if within 20px of top, seal the tile with a full rectangle
@@ -276,9 +346,9 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
         Contains:
           • defs: glow filter (arc dot halo) + speed gradient (fill)
           • fill path (fill + dome cap, updated each rAF frame)
-          • secondary beat dots (% positions, color from React state)
+          • secondary beat dots (static indicators; disappear when arc fires them)
           • ripple ring (expands on beat hit)
-          • arc dot (cy updated each rAF frame, glowing)
+          • arc dot (transient: invisible between beats, bursts on beat hit via SVG animate)
         z-index 2 puts it above the laser line (z-index 1) but below the ring (z-index 4).
       */}
       <svg
@@ -289,24 +359,19 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
       >
         <defs>
           {/*
-            Glow filter for the arc dot.
-            feGaussianBlur creates a soft cyan halo; feMerge layers it behind the sharp dot.
-            Wide filter region (300%×300%) prevents the bloom from being clipped at edges.
+            Arc dot filter: pure Gaussian blur — no sharp circle on top.
+            The circle becomes a soft, cloud-like glow blob.
+            Wide region prevents clipping at the tile edges.
           */}
-          <filter id={`arcGlow-${tile.id}`} x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+          <filter id={`arcGlow-${tile.id}`} x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" />
           </filter>
 
-          {/*
-            Speed gradient for the fill path.
-            Top (dome apex) is bright cyan-white — the leading edge of the fill.
-            It fades to the base blue below, giving the impression of the fill
-            rushing upward with a glowing front.
-          */}
+          {/* Ripple glow filter: pure blur for the thick background ring. */}
+          <filter id={`rippleGlow-${tile.id}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+          </filter>
+
           {/*
             Speed gradient for the fill path — bright light blue at the dome
             apex (leading edge), fading to base blue at the bottom.
@@ -327,7 +392,9 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
           fill={`url(#fillGrad-${tile.id})`}
         />
 
-        {/* ── Secondary beat dots — shown only while holding ───────────── */}
+        {/* ── Secondary beat dots — static indicators for upcoming notes ── */}
+        {/* Each dot disappears (opacity 0) the moment the arc fires it,    */}
+        {/* giving the illusion that the arc "picks up" the dot as it passes. */}
         {isHeld && (() => {
           const tileH = divRef.current?.clientHeight ?? 0;
           const tileW = divRef.current?.clientWidth ?? 0;
@@ -344,58 +411,90 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
                 cx="50%"
                 cy={cy}
                 r={dotR}
-                // Bright cyan when pending, dim when already fired
-                fill={firedDots.has(idx) ? 'rgba(0,200,255,0.2)' : 'rgba(120,220,255,0.9)'}
+                fill="rgba(120,220,255,0.9)"
+                // Disappear immediately when fired — the arc dot burst takes over visually
+                opacity={firedDots.has(idx) ? 0 : 1}
               />
             );
           });
         })()}
 
         {/*
-          ── Ripple ring — expands outward on each beat hit ────────────────
-          Position (cx/cy) is synced with the arc dot every rAF frame.
-          The two <animate> children are triggered imperatively via
-          beginElement() in fireBeat — no React key remounting needed.
-            r:       7 → 42  (expands from dot radius to ~3× size)
-            opacity: 1 → 0   (fades out as it expands)
-          begin="indefinite" means the animation only runs when beginElement()
-          is called, and restarts cleanly if called again mid-flight.
+          ── Ripple ring — two layers for a blue→transparent gradient feel ──
+          Layer 1 (glow): thick blurred stroke — the soft outer spread.
+          Layer 2 (edge): thin sharp stroke on top — the crisp inner boundary.
+          Together they read as a single ring that's solid blue at the inner
+          edge and fades to nothing outward.
         */}
         {isHeld && (
-          <circle ref={rippleRingRef} cx="50%" cy="-100" r="7"
-            fill="none" stroke="rgba(0,200,255,0.9)" strokeWidth="2" opacity="0"
-          >
-            <animate ref={rippleAnimRRef}
-              attributeName="r" from="7" to="42"
-              dur="0.45s" begin="indefinite" fill="freeze"
-            />
-            <animate ref={rippleAnimOpRef}
-              attributeName="opacity" from="1" to="0"
-              dur="0.45s" begin="indefinite" fill="freeze"
-            />
-          </circle>
+          <>
+            {/* Glow layer — thick, blurred, lower opacity */}
+            <circle ref={rippleRingRef} cx="50%" cy="-100" r="7"
+              fill="none" stroke="rgba(100,200,255,0.55)" strokeWidth="8" opacity="0"
+              filter={`url(#rippleGlow-${tile.id})`}
+            >
+              <animate ref={rippleAnimRRef}
+                attributeName="r" from="7" to="42"
+                dur="0.45s" begin="indefinite" fill="freeze"
+              />
+              <animate ref={rippleAnimOpRef}
+                attributeName="opacity" from="1" to="0"
+                dur="0.45s" begin="indefinite" fill="freeze"
+              />
+            </circle>
+            {/* Edge layer — thin, sharp, higher opacity */}
+            <circle ref={rippleEdgeRef} cx="50%" cy="-100" r="7"
+              fill="none" stroke="rgba(160,225,255,0.9)" strokeWidth="1" opacity="0"
+            >
+              <animate ref={rippleEdgeAnimRRef}
+                attributeName="r" from="7" to="42"
+                dur="0.45s" begin="indefinite" fill="freeze"
+              />
+              <animate ref={rippleEdgeAnimOpRef}
+                attributeName="opacity" from="0.9" to="0"
+                dur="0.45s" begin="indefinite" fill="freeze"
+              />
+            </circle>
+          </>
         )}
 
         {/*
-          ── Moving arc dot ───────────────────────────────────────────────
-          cx/cy are updated each frame via arcDotRef.
-          Initially placed off-screen (cy=-100) so the first rAF frame
-          moves it into position before it's visible.
-          key=arcHitKey remounts the element on each beat hit, restarting
-          the CSS svgArcDotDim animation (dim → brighten).
+          ── Arc dot — transient beat-hit indicator ────────────────────────
+          Invisible by default (r=0, opacity=0). On each beat hit, fireBeat()
+          calls beginElement() on both <animate> children:
+            r:       staticDotR → arcDotR → 0  (grows from static dot, then shrinks away)
+            opacity: 0 → 1 → 0                 (flashes bright, then fades out)
+          fill="freeze" holds the final value (r=0, opacity=0) between beats.
+          cx/cy are updated each rAF frame so it's always at the dome apex.
         */}
         {isHeld && (
           <circle
-            key={arcHitKey}
             ref={arcDotRef}
             cx="50%"
             cy="-100"
-            r="7"
-            fill="white"
-            // Glow filter adds a bright cyan bloom around the dot
+            r="0"
+            opacity="0"
+            fill="rgba(160, 230, 255, 0.8)"
             filter={`url(#arcGlow-${tile.id})`}
-            className={arcHitKey > 0 ? 'svg-arc-dot svg-arc-dot--ripple' : 'svg-arc-dot'}
-          />
+          >
+            {/* r: grow from static-dot size → larger (blur softens edges so we go bigger) → shrink to 0 */}
+            <animate ref={arcDotAnimRRef}
+              attributeName="r"
+              values="3;12;12;0"
+              keyTimes="0;0.2;0.65;1"
+              dur="0.45s"
+              begin="indefinite"
+              fill="freeze"
+            />
+            <animate ref={arcDotAnimOpRef}
+              attributeName="opacity"
+              values="0.85;0.85;0"
+              keyTimes="0;0.55;1"
+              dur="0.45s"
+              begin="indefinite"
+              fill="freeze"
+            />
+          </circle>
         )}
       </svg>
 

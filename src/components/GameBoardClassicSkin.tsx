@@ -100,7 +100,7 @@ const BOKEH_CIRCLES = [
 
 export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit }: Props) {
   const {
-    trackData, scaleRatio, scaledTotalHeight,
+    trackData, scaleRatio, scaledTotalHeight, speedMultiplier,
     started, handleStart, scrollRef, tappedIds, tapTile, viewportH, info,
   } = engine;
 
@@ -246,6 +246,8 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
               onHoldRelease={onHoldRelease}
               onHoldBeat={onHoldBeat}
               songName={info.name}
+              speed={speedMultiplier}
+              scrollRef={scrollRef}
             />
           </div>
         )}

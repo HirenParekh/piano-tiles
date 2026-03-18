@@ -139,6 +139,7 @@ export function useGameBoardEngine({ result, onPlayNote, speedMultiplier = 1 }: 
   // Everything a skin needs to render and interact with the game.
   return {
     trackData,       // Card[] for TileLayer rendering
+    speedMultiplier, // Playback speed (1 = normal); used by HoldTileCard for animation timing
     scaleRatio,      // Multiply slot-px values by this to get CSS px
     scaledTotalHeight, // CSS height of the full canvas div
     beatLines,       // Debug-only: horizontal grid lines with beat/time labels
