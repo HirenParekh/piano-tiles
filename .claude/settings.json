@@ -7,7 +7,16 @@
       "Bash(sed 's/<[^>]*>//g')",
       "Bash(python3:*)",
       "Bash(grep -v \"^[[:space:]]*$\")",
-      "Bash(LC_ALL=C.UTF-8 grep -o '<p data-path[^<]*</p>' '/c/Users/parek/Projects/piano-tiles/public/conversation_with_agent.html')"
+      "Bash(LC_ALL=C.UTF-8 grep -o '<p data-path[^<]*</p>' '/c/Users/parek/Projects/piano-tiles/public/conversation_with_agent.html')",
+      "Read(//c/Users/parek/Projects/**)",
+      "Bash(python -:*)",
+      "Bash(python android-tools/build_apk.py)",
+      "Bash(java -jar uber-apk-signer.jar --apks piano-tiles-modified.apk --allowResign --overwrite)",
+      "Bash(c:/Users/parek/Projects/piano-tiles/android-tools/platform-tools/adb.exe install:*)",
+      "Read(//dev/**)",
+      "Bash(java -jar android-tools/uber-apk-signer.jar --apks android-tools/piano-tiles-modified.apk --allowResign --overwrite)",
+      "Bash(android-tools/platform-tools/adb.exe install:*)",
+      "Bash(c:/Users/parek/Projects/piano-tiles/android-tools/platform-tools/adb.exe shell:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\parek\\.claude\\projects\\c--Users-parek-Projects-piano-tiles\\memory",

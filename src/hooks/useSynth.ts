@@ -148,6 +148,7 @@ export interface UseSynthReturn {
   attackNote: (note: ParsedNote) => void;
   releaseNote: (note: ParsedNote) => void;
   playNoteScheduled: (note: ParsedNote, time: number) => void;
+  getAudioTime: () => number;
   resumeContext: () => Promise<void>;
 }
 
@@ -250,5 +251,7 @@ export function useSynth(): UseSynthReturn {
     await Promise.all(promises);
   }, []);
 
-  return { loadInstruments, resolveNotes, resolveChords, playNote, attackNote, releaseNote, playNoteScheduled, resumeContext };
+  const getAudioTime = useCallback(() => rawContext.currentTime, [rawContext]);
+
+  return { loadInstruments, resolveNotes, resolveChords, playNote, attackNote, releaseNote, playNoteScheduled, getAudioTime, resumeContext };
 }

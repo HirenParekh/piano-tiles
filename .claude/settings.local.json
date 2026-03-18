@@ -34,7 +34,13 @@
       "Bash(/c/Users/parek/Projects/piano-tiles/android-tools/platform-tools/adb.exe devices)",
       "Bash(python build_apk.py)",
       "Bash(java -jar uber-apk-signer.jar --apks piano-tiles-modified.apk)",
-      "Bash(./platform-tools/adb.exe install -r piano-tiles-modified-aligned-debugSigned.apk)"
+      "Bash(./platform-tools/adb.exe install -r piano-tiles-modified-aligned-debugSigned.apk)",
+      "Bash(c:/Users/parek/Projects/piano-tiles/android-tools/platform-tools/adb.exe logcat:*)",
+      "Bash(find c:/Users/parek/Projects/piano-tiles/PianoTilesKooApps/ -name *.so)",
+      "Bash(python3.exe --version)",
+      "Bash(python.exe --version)",
+      "Bash(py --version)",
+      "Bash(py -:*)"
     ]
   }
 }

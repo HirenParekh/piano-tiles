@@ -43,7 +43,7 @@ export function TileRendererWidget() {
     }
   }, [jsonStr]);
 
-  const { loadInstruments, playNote, attackNote, releaseNote, resumeContext } = useSynth();
+  const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, getAudioTime, resumeContext } = useSynth();
   const [tappedIds, setTappedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -56,6 +56,8 @@ export function TileRendererWidget() {
     attackNote,
     releaseNote,
     resumeContext,
+    playNoteScheduled,
+    getAudioTime,
   });
 
   const handleTap = async (tile: Tile) => {

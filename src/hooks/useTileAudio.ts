@@ -9,6 +9,8 @@ interface Options {
   resumeContext: () => Promise<void>;
   /** Playback speed multiplier (default 1). Can be a ref or a stable value. */
   getSpeed?: () => number;
+  playNoteScheduled?: (note: ParsedNote, time: number) => void;
+  getAudioTime?: () => number;
 }
 
 /**
@@ -25,11 +27,15 @@ export function useTileAudio({
   releaseNote,
   resumeContext,
   getSpeed = () => 1,
+  playNoteScheduled,
+  getAudioTime,
 }: Options) {
   const holdTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const heldNoteRef = useRef<ParsedNote | null>(null);
   // Tracks how many taps have fired for each double-tile pair (keyed by shared pairNotes ref).
   const doublePairTapRef = useRef<WeakMap<ParsedNote[], number>>(new WeakMap());
+  // Tracks the Web Audio time when note 0 of each pair was tapped, for scheduling note 1.
+  const doubleFirstTapTimeRef = useRef<WeakMap<ParsedNote[], number>>(new WeakMap());
 
   const handleTileTap = useCallback(async (tile: Tile) => {
     await resumeContext();
@@ -41,12 +47,29 @@ export function useTileAudio({
 
     // Double tiles play sequentially: first tap → pairNotes[0], second tap → pairNotes[1],
     // regardless of which physical tile (left or right) was tapped.
+    // The second note is always scheduled at firstTapTime + note0.duration/speed so it
+    // plays after the correct beat gap even when both tiles are tapped simultaneously.
     if (tile.type === 'DOUBLE') {
       const pairNotes = tile.pairNotes;
       const tapIndex = doublePairTapRef.current.get(pairNotes) ?? 0;
       const noteToPlay = pairNotes[tapIndex];
       if (noteToPlay) {
-        playNote({ ...noteToPlay, duration: noteToPlay.duration / speed });
+        if (tapIndex === 0) {
+          playNote({ ...noteToPlay, duration: noteToPlay.duration / speed });
+          if (getAudioTime) doubleFirstTapTimeRef.current.set(pairNotes, getAudioTime());
+        } else {
+          const firstTapTime = doubleFirstTapTimeRef.current.get(pairNotes) ?? 0;
+          const note0Duration = (pairNotes[0]?.duration ?? 0) / speed;
+          const scheduledTime = Math.max(
+            getAudioTime ? getAudioTime() : 0,
+            firstTapTime + note0Duration
+          );
+          if (playNoteScheduled) {
+            playNoteScheduled({ ...noteToPlay, duration: noteToPlay.duration / speed }, scheduledTime);
+          } else {
+            playNote({ ...noteToPlay, duration: noteToPlay.duration / speed });
+          }
+        }
       }
       doublePairTapRef.current.set(pairNotes, tapIndex + 1);
       return;
@@ -85,7 +108,7 @@ export function useTileAudio({
         tile.notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
       }
     }
-  }, [attackNote, playNote, resumeContext, getSpeed]);
+  }, [attackNote, playNote, resumeContext, getSpeed, playNoteScheduled, getAudioTime]);
 
   const handleHoldBeat = useCallback((notes: ParsedNote[]) => {
     const speed = getSpeed();

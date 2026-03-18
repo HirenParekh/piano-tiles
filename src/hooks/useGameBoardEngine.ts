@@ -74,6 +74,10 @@ export function useGameBoardEngine({ result, onPlayNote, speedMultiplier = 1 }: 
   // Every pixel measurement derived from slot positions is multiplied by this.
   const scaleRatio = (viewportH / 4) / MIN_HEIGHT;
 
+  useEffect(() => {
+    document.documentElement.style.setProperty('--tile-unit', `${MIN_HEIGHT * scaleRatio}px`);
+  }, [scaleRatio]);
+
   // Total canvas height in CSS pixels — the full scrollable content height
   const scaledTotalHeight = trackData.totalRows * MIN_HEIGHT * scaleRatio;
 
