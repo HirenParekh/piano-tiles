@@ -37,8 +37,10 @@ class WebAudioSampler {
     this.masterGain.connect(context.destination);
   }
 
-  async load(urls: Record<string, string>, baseUrl: string) {
+  async load(urls: Record<string, string>, baseUrl: string, options?: LoadOptions) {
     if (this.loaded) return;
+    const total = Object.keys(urls).length;
+    let loadedCount = 0;
     const promises = Object.entries(urls).map(async ([key, fileName]) => {
       const midi = parseKeyToMidi(key);
       try {
@@ -48,6 +50,8 @@ class WebAudioSampler {
         this.buffers.set(midi, audioBuffer);
       } catch (e) {
         console.error(`Failed to load ${fileName}`, e);
+      } finally {
+        options?.onFileLoaded?.(++loadedCount, total);
       }
     });
     await Promise.all(promises);
@@ -140,8 +144,12 @@ class WebAudioSampler {
   }
 }
 
+export interface LoadOptions {
+  onFileLoaded?: (loaded: number, total: number) => void;
+}
+
 export interface UseSynthReturn {
-  loadInstruments: (instruments: string[]) => Promise<void>;
+  loadInstruments: (instruments: string[], options?: LoadOptions) => Promise<void>;
   resolveNotes: (notes: ParsedNote[]) => void;
   resolveChords: (gameTiles: GameTile[]) => Promise<void>;
   playNote: (note: ParsedNote) => void;
@@ -167,7 +175,7 @@ export function useSynth(): UseSynthReturn {
     };
   }, []);
 
-  const loadInstruments = useCallback(async (instruments: string[]) => {
+  const loadInstruments = useCallback(async (instruments: string[], options?: LoadOptions) => {
     const samplers = samplersRef.current;
     const promises: Promise<void>[] = [];
 
@@ -184,7 +192,7 @@ export function useSynth(): UseSynthReturn {
       }
 
       const baseUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/music/${instr}/`;
-      promises.push(samplers[instr].load(urls, baseUrl));
+      promises.push(samplers[instr].load(urls, baseUrl, options));
     }
 
     await Promise.all(promises);

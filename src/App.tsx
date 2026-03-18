@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSynth } from './hooks/useSynth';
+import { usePreload } from './hooks/usePreload';
 import { usePlayback } from './hooks/usePlayback';
 import { useTileAudio } from './hooks/useTileAudio';
+import { HomeScreen } from './components/HomeScreen';
 import { SongSelection } from './components/SongSelection';
 import { GameBoard } from './components/GameBoard';
 import type { GameBoardSkin } from './components/GameBoard';
@@ -11,6 +13,8 @@ import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
 import './styles/main.scss';
 import { TileRendererWidget } from './components/TileRendererWidget';
+
+type AppScreen = 'home' | 'selection' | 'game';
 export default function App() {
   // Show dev-only UI (Debug Board, canvas toggle, TileRendererWidget) only when
   // the URL contains ?ui=dev_mode. This keeps the prod experience clean without
@@ -18,6 +22,10 @@ export default function App() {
   const isDevMode = new URLSearchParams(window.location.search).get('ui') === 'dev_mode';
 
   const { loadInstruments, resolveNotes, resolveChords, playNote, attackNote, releaseNote, playNoteScheduled, getAudioTime, resumeContext } = useSynth();
+
+  const preload = usePreload(loadInstruments);
+
+  const [screen, setScreen] = useState<AppScreen>('home');
 
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
@@ -61,7 +69,13 @@ export default function App() {
     setTimeout(() => {
       setPickedResult(null);
       setIsExiting(false);
+      setScreen('selection');
     }, 500);
+  };
+
+  const handleHomePlay = () => {
+    resumeContext();
+    setScreen('selection');
   };
 
   const handlePlaySong = async (id: string) => {
@@ -87,6 +101,7 @@ export default function App() {
       await resolveChords(result.tiles);
 
       handleSongSelect(result);
+      setScreen('game');
     } catch (err) {
       console.error('Failed to load song:', err);
       alert('Failed to load song: ' + id);
@@ -95,13 +110,13 @@ export default function App() {
     }
   };
 
-  const isGameReady = pickedResult !== null && !isExiting;
+  const isGameReady = screen === 'game' && !isExiting;
 
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#000', overflow: 'hidden' }}>
       <div className="app-container" style={{ position: 'relative', flex: 1, maxWidth: 'min(1024px, 75vh)', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
 
-      {/* Game Board (Slides in from Right, Slides out to Right) */}
+      {/* Game Board — z:1, slides in from right */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 1,
         background: '#000',
@@ -130,14 +145,14 @@ export default function App() {
         )}
       </div>
 
-      {/* Song Selection Screen (Top Layer sliding off to the Left) */}
+      {/* Song Selection — z:2, slides left when game starts */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 2,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         background: '#fff',
         transform: isGameReady ? 'translateX(-100%)' : 'translateX(0)',
         transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
-        pointerEvents: isGameReady || isLoadingFiles ? 'none' : 'auto',
+        pointerEvents: screen === 'selection' && !isLoadingFiles ? 'auto' : 'none',
         boxShadow: isGameReady ? 'none' : '0 0 20px rgba(0,0,0,0.5)',
       }}>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -200,6 +215,23 @@ export default function App() {
           )}
           <SongSelection onPlaySong={handlePlaySong} />
         </div>
+      </div>
+
+      {/* Home Screen — z:3, slides left after PLAY is clicked */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 3,
+        transform: screen === 'home' ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+        pointerEvents: screen === 'home' ? 'auto' : 'none',
+      }}>
+        <HomeScreen
+          progress={preload.progress}
+          statusMessage={preload.statusMessage}
+          isComplete={preload.isComplete}
+          error={preload.error}
+          onPlay={handleHomePlay}
+          onRetry={preload.retry}
+        />
       </div>
 
       </div>

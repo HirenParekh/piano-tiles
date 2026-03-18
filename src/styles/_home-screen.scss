@@ -1,0 +1,170 @@
+@use 'variables' as *;
+
+.home-screen {
+  position: absolute;
+  inset: 0;
+  // Exact same gradient + animation as the classic game board background
+  background: linear-gradient(
+    135deg,
+    #4facfe 0%,
+    #9b7fe8 25%,
+    #00f2fe 50%,
+    #a78bfa 75%,
+    #4facfe 100%
+  );
+  background-size: 400% 400%;
+  animation: classicBgShift 10s ease-in-out infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+
+  // Same radial glow overlay as the classic board
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 60%, rgba(255,255,255,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  &__hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__title {
+    font-size: clamp(2.8rem, 10vw, 5.5rem);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    margin: 0;
+    line-height: 1;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  &__title-accent {
+    animation: homeTitleGlow 3s ease-in-out infinite;
+  }
+
+  &__tagline {
+    font-size: clamp(0.6rem, 2vw, 0.75rem);
+    font-weight: 600;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0;
+  }
+
+  &__loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    width: min(300px, 72%);
+    position: relative;
+    z-index: 1;
+  }
+
+  &__progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  // Same colour language as the hold tile fill: #1565c0 → #308af1 → cyan glow
+  &__progress-fill {
+    height: 100%;
+    border-radius: 8px;
+    background: linear-gradient(to right, #1565c0 0%, #308af1 60%, #00dcff 100%);
+    box-shadow: 0 0 12px rgba(0, 220, 255, 0.55), 0 0 4px rgba(48, 138, 241, 0.8);
+    transition: width 0.25s ease;
+  }
+
+  &__status {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    letter-spacing: 0.03em;
+    margin: 0;
+    height: 1.2em;
+  }
+
+  &__error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__error-msg {
+    font-size: 0.72rem;
+    color: #ffe0e4;
+    letter-spacing: 0.03em;
+  }
+
+  &__retry-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 0.4rem 1.2rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.28);
+    }
+  }
+
+  // Same style as the song card play button
+  &__play-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #fff;
+    background: #1aaeea;
+    border: 2.5px solid rgba(255, 255, 255, 0.75);
+    border-radius: 20px;
+    padding: 0.85rem 3.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(26, 174, 234, 0.35);
+    transition: opacity 0.6s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    z-index: 1;
+
+    &:hover {
+      background: #0d9ed8;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), 0 3px 8px rgba(26, 174, 234, 0.45);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+@keyframes homeTitleGlow {
+  0%, 100% { text-shadow: 0 4px 24px rgba(0, 0, 0, 0.25); }
+  50%       { text-shadow: 0 4px 40px rgba(255, 255, 255, 0.4), 0 0 60px rgba(255, 255, 255, 0.18); }
+}
