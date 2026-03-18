@@ -240,14 +240,8 @@ $lane-color-map: (
   &::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.35);
-    transform: translate(-50%, -50%) scale(0);
+    inset: 0;
     pointer-events: none;
-    opacity: 0;
   }
 
   &__label {
@@ -275,11 +269,19 @@ $lane-color-map: (
   &--tapped {
     cursor: default;
     pointer-events: none;
-    opacity: 0.1; // Let the ripple hold the weight of the animation, drop overall opacity just slightly
 
-    &::after {
-      opacity: 1;
-      animation: tapRipple 0.15s cubic-bezier(0.1, 1.0, 0.1, 1.0) forwards;
+    // Rectangular dissolve from center: two mask layers XOR'd.
+    // Layer 1 (full coverage) minus layer 2 (growing centered rect) = expanding transparent hole.
+    &:not(.game-tile--hold) {
+      mask-image: linear-gradient(black, black), linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9));
+      -webkit-mask-image: linear-gradient(black, black), linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9));
+      mask-position: 0 0, 50% 50%;
+      -webkit-mask-position: 0 0, 50% 50%;
+      mask-repeat: no-repeat;
+      -webkit-mask-repeat: no-repeat;
+      mask-composite: exclude;
+      -webkit-mask-composite: xor;
+      animation: rectTapDissolve 0.18s cubic-bezier(0.05, 0.9, 0.3, 1.0) forwards;
     }
   }
 
@@ -299,11 +301,7 @@ $lane-color-map: (
     touch-action: none; // Prevent browser scroll from swallowing pointermove while swiping
 
     &.game-tile--tapped {
-      opacity: 1; // Ring handles tap feedback — suppress the generic opacity flash
-
-      &::after {
-        display: none;
-      }
+      // Ring handles tap feedback — no extra effect needed
     }
   }
 
@@ -524,15 +522,14 @@ $lane-color-map: (
   }
 }
 
-@keyframes tapRipple {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 1;
+@keyframes rectTapDissolve {
+  from {
+    mask-size: 100% 100%, 75% 75%;
+    -webkit-mask-size: 100% 100%, 75% 75%;
   }
-
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
+  to {
+    mask-size: 100% 100%, 100% 100%;
+    -webkit-mask-size: 100% 100%, 100% 100%;
   }
 }
 
