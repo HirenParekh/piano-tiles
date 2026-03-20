@@ -40,7 +40,7 @@ export function useGameBoardEngine({ result, onPlayNote, speedMultiplier = 1 }: 
   // ── Tap state & scroll ref ──────────────────────────────────────────────
   // useGameBoard owns: the Set of tapped tile IDs (for visual feedback) and
   // the ref attached to the scrollable viewport div (needed by useAutoScroll).
-  const { tappedIds, tapTile, scrollRef } = useGameBoard(onPlayNote);
+  const { tapTile, scrollRef, scoreElRef } = useGameBoard(onPlayNote);
 
   // Whether the player has tapped START — gates auto-scroll and touch-action
   const [started, setStarted] = useState(false);
@@ -146,7 +146,7 @@ export function useGameBoardEngine({ result, onPlayNote, speedMultiplier = 1 }: 
     started,         // Has the player tapped START?
     handleStart,     // Call on START tile pointer-down
     scrollRef,       // Attach to the scrollable viewport div
-    tappedIds,       // Set<tileId> — controls tapped visual state on tiles
+    scoreElRef,      // Attach to the score display element — updated directly, no React state
     tapTile,         // Call when a tile is tapped
     viewportH,       // CSS height of the visible scroll window
     slotDurationS,   // Seconds per slot (for reference; audio timing is upstream)

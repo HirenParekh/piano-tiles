@@ -40,7 +40,14 @@
       "Bash(python3.exe --version)",
       "Bash(python.exe --version)",
       "Bash(py --version)",
-      "Bash(py -:*)"
+      "Bash(py -:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:github.com)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "mcp__chrome-devtools__new_page"
     ]
   }
 }

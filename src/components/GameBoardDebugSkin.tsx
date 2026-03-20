@@ -36,7 +36,7 @@ interface Props {
 export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }: Props) {
   const {
     trackData, scaleRatio, scaledTotalHeight, beatLines, speedMultiplier,
-    started, handleStart, scrollRef, tappedIds, tapTile, viewportH, info,
+    started, handleStart, scrollRef, scoreElRef, tapTile, viewportH, info,
   } = engine;
 
   const canvasRef = useCallback((el: HTMLDivElement | null) => {
@@ -82,7 +82,7 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
           textShadow: '0px 2px 4px rgba(0,0,0,0.5)',
           fontFamily: 'Arial, sans-serif', lineHeight: 1, marginTop: 8,
         }}>
-          {tappedIds.size}
+          <span ref={scoreElRef}>0</span>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
           <div
             ref={canvasRef}
             className="game-board__canvas"
-            style={{ height: scaledTotalHeight, touchAction: 'none' }}
+            style={{ height: scaledTotalHeight, touchAction: 'none', willChange: 'transform' }}
             onPointerDown={e => e.stopPropagation()}
             onPointerUp={e => e.stopPropagation()}
             onPointerMove={e => e.stopPropagation()}
@@ -145,7 +145,6 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
               <TileLayer
                 cards={trackData.cards}
                 scaleRatio={scaleRatio}
-                tappedIds={tappedIds}
                 tapTile={tapTile}
                 started={started}
                 onStart={handleStart}

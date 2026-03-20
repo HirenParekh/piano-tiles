@@ -1,13 +1,11 @@
 interface HomeScreenProps {
   progress: number;
   statusMessage: string;
-  isComplete: boolean;
   error: string | null;
-  onPlay: () => void;
   onRetry: () => void;
 }
 
-export function HomeScreen({ progress, statusMessage, isComplete, error, onPlay, onRetry }: HomeScreenProps) {
+export function HomeScreen({ progress, statusMessage, error, onRetry }: HomeScreenProps) {
   return (
     <div className="home-screen">
       <div className="home-screen__hero">
@@ -37,13 +35,6 @@ export function HomeScreen({ progress, statusMessage, isComplete, error, onPlay,
         )}
       </div>
 
-      <button
-        className="home-screen__play-btn"
-        style={{ opacity: isComplete ? 1 : 0, pointerEvents: isComplete ? 'auto' : 'none' }}
-        onClick={onPlay}
-      >
-        PLAY
-      </button>
     </div>
   );
 }

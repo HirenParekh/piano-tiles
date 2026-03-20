@@ -3,20 +3,20 @@ import type { Tile } from '../types/track';
 
 interface Props {
   tile: Tile;
-  tapped: boolean;
   onTap: (tile: Tile) => void;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export const GameTileCard = memo(function GameTileCard({ tile, tapped, onTap, style, className = '' }: Props) {
+export const GameTileCard = memo(function GameTileCard({ tile, onTap, style, className = '' }: Props) {
   const noteNum = tile.noteIndices[0];
   const startS = tile.notes[0].time.toFixed(3);
   const endS = (tile.notes[0].time + tile.notes[0].duration).toFixed(3);
   const durationMs = Math.round(tile.notes[0].duration * 1000);
   return (
     <div
-      className={`game-tile ${tapped ? 'game-tile--tapped' : ''} ${className}`}
+      className={`game-tile ${className}`}
+      data-tile-id={tile.id}
       style={{ ...style }}
       onPointerDown={(e) => {
         e.preventDefault();

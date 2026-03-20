@@ -16,7 +16,6 @@ import type { ParsedNote } from '../types/midi';
 
 interface Props {
   tile: Tile;
-  tapped: boolean;
   onTap: (tile: Tile) => void;
   onRelease?: () => void;
   onNotePlay?: (notes: ParsedNote[]) => void;
@@ -34,8 +33,9 @@ interface Props {
 // How many px above the anchor the arc dot center sits
 const DOT_OFFSET_PX = 50;
 
-export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100, speed = 1, scrollRef }: Props) {
+export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100, speed = 1, scrollRef }: Props) {
   // ── React state ──────────────────────────────────────────────────────────
+  const [isTapped, setIsTapped] = useState(false);
   const [isHeld, setIsHeld] = useState(false);
   const [firedDots, setFiredDots] = useState<Set<number>>(new Set());
   const [tapYFromBottom, setTapYFromBottom] = useState(0);
@@ -110,7 +110,7 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
     firedSetRef.current = new Set([...firedSetRef.current, idx]);
     setFiredDots(new Set(firedSetRef.current));
 
-    const W = divRef.current?.clientWidth ?? 60;
+    const W = cachedWRef.current || divRef.current?.clientWidth || 60;
     const arcR = arcDotRRef.current;
     // Static dot radius matches what's rendered in secondaryBeats below (~3% of width)
     const staticR = Math.round(W * 0.03);
@@ -256,7 +256,7 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
 
   // ── Pointer handlers ─────────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (tapped) return;
+    if (isTapped) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
 
@@ -290,6 +290,7 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
     // Clear the fill path so it starts empty
     if (fillPathRef.current) fillPathRef.current.setAttribute('d', '');
 
+    setIsTapped(true);
     startRAF(secondaryBeats);
     onTap(tile);
   };
@@ -328,7 +329,8 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
   return (
     <div
       ref={divRef}
-      className={`game-tile game-tile--hold${isHeld ? ' game-tile--hold-active' : ''}${tapped ? ' game-tile--tapped' : ''} ${className}`}
+      className={`game-tile game-tile--hold${isHeld ? ' game-tile--hold-active' : ''}${isTapped ? ' game-tile--tapped' : ''} ${className}`}
+      data-tile-id={tile.id}
       style={{ ...style, overflow: 'visible', background: `linear-gradient(to top, #000000 ${singleTileH * 0.4}px, #0e3a6e ${singleTileH}px, #1565c0 100%)` }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -396,8 +398,8 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
         {/* Each dot disappears (opacity 0) the moment the arc fires it,    */}
         {/* giving the illusion that the arc "picks up" the dot as it passes. */}
         {isHeld && (() => {
-          const tileH = divRef.current?.clientHeight ?? 0;
-          const tileW = divRef.current?.clientWidth ?? 0;
+          const tileH = cachedHRef.current || divRef.current?.clientHeight || 0;
+          const tileW = cachedWRef.current || divRef.current?.clientWidth || 0;
           // Dot radius is proportional to tile width — looks correct at all screen sizes.
           // ~3% of lane width gives a dot that's clearly visible but not overwhelming.
           const dotR = Math.round(tileW * 0.03)
@@ -499,14 +501,14 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, tapped, onTap, on
       </svg>
 
       {/* Tap ring at the bottom — hidden once held or tapped */}
-      {!tapped && !isHeld && <div className="game-tile__hold-ring" />}
+      {!isTapped && !isHeld && <div className="game-tile__hold-ring" />}
     </div>
   );
 }, (prev, next) =>
   // Skip re-render unless a meaningful prop changed.
   // `style` is intentionally excluded — values are derived from immutable tile
   // properties and are structurally identical across renders for the same tile.
-  prev.tapped === next.tapped &&
+  // `tapped` removed — now managed as local state (isTapped) inside this component.
   prev.tile === next.tile &&
   prev.singleTileH === next.singleTileH &&
   prev.onTap === next.onTap &&

@@ -3,16 +3,16 @@ import type { Tile } from '../types/track';
 
 interface Props {
   tile: Tile;
-  tapped: boolean;
   onTap: (tile: Tile) => void;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export const DoubleTileCard = memo(function DoubleTileCard({ tile, tapped, onTap, style, className = '' }: Props) {
+export const DoubleTileCard = memo(function DoubleTileCard({ tile, onTap, style, className = '' }: Props) {
   return (
     <div
-      className={`game-tile game-tile--double ${tapped ? 'game-tile--tapped' : ''} ${className}`}
+      className={`game-tile game-tile--double ${className}`}
+      data-tile-id={tile.id}
       style={{ ...style }}
       onPointerDown={(e) => {
         e.preventDefault();

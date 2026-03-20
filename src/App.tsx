@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSynth } from './hooks/useSynth';
 import { usePreload } from './hooks/usePreload';
 import { usePlayback } from './hooks/usePlayback';
@@ -73,10 +73,11 @@ export default function App() {
     }, 500);
   };
 
-  const handleHomePlay = () => {
-    resumeContext();
-    setScreen('selection');
-  };
+  useEffect(() => {
+    if (preload.isComplete && screen === 'home') {
+      setScreen('selection');
+    }
+  }, [preload.isComplete, screen]);
 
   const handlePlaySong = async (id: string) => {
     try {
@@ -227,9 +228,7 @@ export default function App() {
         <HomeScreen
           progress={preload.progress}
           statusMessage={preload.statusMessage}
-          isComplete={preload.isComplete}
           error={preload.error}
-          onPlay={handleHomePlay}
           onRetry={preload.retry}
         />
       </div>
