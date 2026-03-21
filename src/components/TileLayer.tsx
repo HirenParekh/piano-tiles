@@ -54,8 +54,7 @@ interface Props {
   songName?: string;
   /** Playback speed multiplier — scales hold-tile beat animations. Defaults to 1. */
   speed?: number;
-  /** Viewport scroll ref — forwarded to HoldTileCard for reflow-free position tracking. */
-  scrollRef?: React.RefObject<HTMLDivElement>;
+  // scrollRef removed — HoldTileCard progress is now time-based
 }
 
 const LANE_COUNT = 4;
@@ -70,7 +69,6 @@ export const TileLayer = memo(function TileLayer({
   onHoldBeat,
   songName,
   speed = 1,
-  scrollRef,
 }: Props) {
   // Build stable style objects keyed by tile.id — computed once per song load
   // since `cards` is stable for the song's lifetime. This lets React.memo on
@@ -231,7 +229,6 @@ export const TileLayer = memo(function TileLayer({
                       className=""
                       singleTileH={MIN_HEIGHT * scaleRatio}
                       speed={speed}
-                      scrollRef={scrollRef}
                       style={tileStyleMap.get(tile.id)}
                     />
                   );

@@ -246,7 +246,6 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
               onHoldBeat={onHoldBeat}
               songName={info.name}
               speed={speedMultiplier}
-              scrollRef={scrollRef}
             />
           </div>
         )}

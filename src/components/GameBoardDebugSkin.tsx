@@ -152,7 +152,6 @@ export function GameBoardDebugSkin({ engine, onHoldRelease, onHoldBeat, onExit }
                 onHoldBeat={onHoldBeat}
                 songName={info.name}
                 speed={speedMultiplier}
-                scrollRef={scrollRef}
               />
             </div>
 

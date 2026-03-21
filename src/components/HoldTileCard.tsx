@@ -25,15 +25,13 @@ interface Props {
   singleTileH?: number;
   /** Playback speed multiplier — scales beat animation duration. Defaults to 1. */
   speed?: number;
-  /** Ref to the scrollable viewport div. Used to read canvas transform instead of
-   *  calling getBoundingClientRect() every rAF frame, avoiding forced reflows. */
-  scrollRef?: React.RefObject<HTMLDivElement>;
+  // scrollRef removed — progress is now time-based, no scroll tracking needed
 }
 
 // How many px above the anchor the arc dot center sits
 const DOT_OFFSET_PX = 50;
 
-export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100, speed = 1, scrollRef }: Props) {
+export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease, onNotePlay, style, className = '', singleTileH = 100, speed = 1 }: Props) {
   // ── React state ──────────────────────────────────────────────────────────
   const [isTapped, setIsTapped] = useState(false);
   const [isHeld, setIsHeld] = useState(false);
@@ -46,20 +44,11 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
   const fillPathRef = useRef<SVGPathElement>(null);
   /** The SVG <circle> for the transient beat-hit dot. cx/cy updated each rAF frame; invisible between beats. */
   const arcDotRef = useRef<SVGCircleElement>(null);
-  /** <animate> that drives the arc dot radius: grows from static-dot size to arc-dot size, then shrinks to 0. */
-  const arcDotAnimRRef = useRef<SVGAnimateElement>(null);
-  /** <animate> that drives the arc dot opacity: 0 → 1 → 0 (appear on beat, disappear after). */
-  const arcDotAnimOpRef = useRef<SVGAnimateElement>(null);
   /** Thick blurred glow ring — the soft outer spread of the ripple. */
   const rippleRingRef = useRef<SVGCircleElement>(null);
-  const rippleAnimRRef = useRef<SVGAnimateElement>(null);
-  const rippleAnimOpRef = useRef<SVGAnimateElement>(null);
   /** Thin sharp edge ring — drawn on top of the glow to give a crisp inner boundary. */
   const rippleEdgeRef = useRef<SVGCircleElement>(null);
-  const rippleEdgeAnimRRef = useRef<SVGAnimateElement>(null);
-  const rippleEdgeAnimOpRef = useRef<SVGAnimateElement>(null);
   // ── Motion refs (no re-render) ────────────────────────────────────────────
-  const pointerYRef = useRef(0);
   const tapYFromBottomRef = useRef(0);
   const isHeldRef = useRef(false);
   const firedSetRef = useRef<Set<number>>(new Set());
@@ -69,15 +58,12 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
   // Arc dot radius computed once at hold-start from tile width so it scales
   // with the lane width instead of being a fixed 7px on all screen sizes.
   const arcDotRRef = useRef(7);
-  // Tile dimensions cached at hold-start — W/H don't change during a hold,
-  // so we avoid calling getBoundingClientRect() for them every rAF frame.
+  // Tile dimensions cached at hold-start — W/H don't change during a hold.
   const cachedWRef = useRef(0);
   const cachedHRef = useRef(0);
-  // Reflow-free bottom tracking: cache tile bottom + canvas Y at hold-start,
-  // then derive live bottom from canvas style.transform each frame (no reflow).
-  const cachedTileBottomAtStartRef = useRef(0);
-  const cachedCanvasYAtStartRef = useRef(0);
-  const cachedCanvasElRef = useRef<HTMLElement | null>(null);
+  // Time-based progress: record start time + total duration at hold-start.
+  const startTimeRef = useRef(0);
+  const totalDurationSRef = useRef(1);
 
   const onNotePlayRef = useRef(onNotePlay);
   useEffect(() => { onNotePlayRef.current = onNotePlay; }, [onNotePlay]);
@@ -115,96 +101,69 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
     // Static dot radius matches what's rendered in secondaryBeats below (~3% of width)
     const staticR = Math.round(W * 0.03);
     // Animation duration scales inversely with speed so fast songs feel snappy
-    const dur = `${(0.2 / speed).toFixed(3)}s`;
+    const durMs = (0.2 / speed) * 1000;
 
     // Arc dot burst: grow from static-dot size → arc-dot size → shrink to 0
-    if (arcDotAnimRRef.current) {
-      arcDotAnimRRef.current.setAttribute('values', `${staticR};${arcR};${arcR};0`);
-      arcDotAnimRRef.current.setAttribute('keyTimes', '0;0.2;0.65;1');
-      arcDotAnimRRef.current.setAttribute('dur', dur);
-      arcDotAnimRRef.current.beginElement();
-    }
-    if (arcDotAnimOpRef.current) {
-      arcDotAnimOpRef.current.setAttribute('dur', dur);
-      arcDotAnimOpRef.current.beginElement();
-    }
+    arcDotRef.current?.animate([
+      { r: `${staticR}px`, opacity: '0.85',  offset: 0    },
+      { r: `${arcR}px`,   opacity: '0.85',  offset: 0.2  },
+      { r: `${arcR}px`,   opacity: '0.85',  offset: 0.65 },
+      { r: '0px',         opacity: '0',     offset: 1    },
+    ], { duration: durMs, fill: 'forwards' });
 
     // Scale ripple from arc-dot size outward — proportional to tile width.
     const fromR = Math.round(arcR * 3); // starts already outside the dot
     const toR = Math.round(W * 0.3);
 
     // Glow ring (thick, blurred)
-    if (rippleAnimRRef.current) {
-      rippleAnimRRef.current.setAttribute('from', String(fromR));
-      rippleAnimRRef.current.setAttribute('to', String(toR));
-      rippleAnimRRef.current.setAttribute('dur', dur);
-    }
-    if (rippleAnimOpRef.current) {
-      rippleAnimOpRef.current.setAttribute('dur', dur);
-    }
-    rippleAnimRRef.current?.beginElement();
-    rippleAnimOpRef.current?.beginElement();
+    rippleRingRef.current?.animate([
+      { r: `${fromR}px`, opacity: '1', offset: 0 },
+      { r: `${toR}px`,   opacity: '0', offset: 1 },
+    ], { duration: durMs, fill: 'forwards' });
 
-    // Edge ring (thin, sharp) — same r range, slightly faster fade
-    if (rippleEdgeAnimRRef.current) {
-      rippleEdgeAnimRRef.current.setAttribute('from', String(fromR));
-      rippleEdgeAnimRRef.current.setAttribute('to', String(toR));
-      rippleEdgeAnimRRef.current.setAttribute('dur', dur);
-    }
-    if (rippleEdgeAnimOpRef.current) {
-      rippleEdgeAnimOpRef.current.setAttribute('dur', dur);
-    }
-    rippleEdgeAnimRRef.current?.beginElement();
-    rippleEdgeAnimOpRef.current?.beginElement();
+    // Edge ring (thin, sharp)
+    rippleEdgeRef.current?.animate([
+      { r: `${fromR}px`, opacity: '0.9', offset: 0 },
+      { r: `${toR}px`,   opacity: '0',   offset: 1 },
+    ], { duration: durMs, fill: 'forwards' });
+
     onNotePlayRef.current?.(notes);
   };
 
   // ── rAF loop ─────────────────────────────────────────────────────────────
   const startRAF = (beats: typeof secondaryBeats) => {
-    const loop = () => {
+    // W, H, initialPercent, dotOffsetPercent are constants for this hold session.
+    const W = cachedWRef.current;
+    const H = cachedHRef.current;
+    const initialPercent = (tapYFromBottomRef.current / H) * 100;
+    const dotOffsetPercent = (DOT_OFFSET_PX / H) * 100;
+
+    // Use the rAF timestamp (scheduled frame time) rather than performance.now()
+    // (execution time) — gives more consistent elapsed values under CPU load.
+    const loop = (timestamp: DOMHighResTimeStamp) => {
       if (!isHeldRef.current || !divRef.current) return;
 
-      const W = cachedWRef.current;
-      const H = cachedHRef.current;
-      // Reflow-free bottom: tile bottom at hold-start + how much the canvas has
-      // scrolled since then (delta of translate3d Y). Falls back to
-      // getBoundingClientRect() if scrollRef wasn't provided (e.g. sandbox widget).
-      let bottom: number;
-      if (cachedCanvasElRef.current) {
-        const canvasY = parseFloat(cachedCanvasElRef.current.style.transform.split(',')[1]) || 0;
-        bottom = cachedTileBottomAtStartRef.current + (canvasY - cachedCanvasYAtStartRef.current);
-      } else {
-        bottom = divRef.current.getBoundingClientRect().bottom;
-      }
-
-      const reachedPercent = (bottom - pointerYRef.current) / H * 100;
+      // Time-based progress: start at tap position, advance at note's rate.
+      // initialPercent mirrors the old scroll-based (tile.bottom - pointerY)/H at t=0.
+      const elapsed = (timestamp - startTimeRef.current) / 1000;
+      const reachedPercent = initialPercent + (elapsed / totalDurationSRef.current) * 100;
       reachedPercentRef.current = reachedPercent;
 
-      const dotOffsetPercent = (DOT_OFFSET_PX / H) * 100;
       const clampedPercent = Math.max(0, Math.min(100 - dotOffsetPercent, reachedPercent));
       maxProgressRef.current = Math.max(maxProgressRef.current, clampedPercent);
       const displayPercent = maxProgressRef.current;
 
       // ── SVG coordinates (y = 0 at top, y = H at bottom) ───────────────
-      // Anchor: the raw "bottom: displayPercent%" position in pixel space
+      // Round to integers — sub-pixel float values cause the SVG renderer to
+      // alternate its antialiasing rounding, which looks like the arc shaking.
       const anchorY = H * (1 - displayPercent / 100);
-
-      // The arc dot (glow dot) center — DOT_OFFSET_PX above the anchor.
+      // The arc dot center sits DOT_OFFSET_PX above the anchor.
       // This is ALSO the dome apex: the topmost point of the fill shape.
-      const dotY = anchorY - DOT_OFFSET_PX;
-
-      // Dome radius matches V1's CSS: use the full tile width as the circle
-      // radius. This gives a very shallow dome: sagitta ≈ 0.134 × W (≈ 8 px
-      // for a 60 px lane) — the same subtle curve the CSS version produces.
+      const dotY = Math.round(anchorY - DOT_OFFSET_PX);
+      // Dome radius = W (shallow arc: sagitta ≈ 0.134 × W).
       const domeR = W;
-      // Sagitta = how far the dome arc sits above fillTopY (= dome height).
-      // For a chord of length W and radius domeR:
-      //   s = r − √(r² − (W/2)²)
       const sagitta = domeR - Math.sqrt(domeR * domeR - (W * W) / 4);
-
-      // The rectangle part of the fill ends at fillTopY.
-      // The dome arc rises from fillTopY up to dotY (the apex).
-      const fillTopY = dotY + sagitta;
+      const fillTopY = Math.round(dotY + sagitta);
 
       // ── Update fill path ───────────────────────────────────────────────
       if (fillPathRef.current) {
@@ -216,7 +175,7 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
           // Rectangle from bottom to fillTopY, then dome arc up to dotY.
           // Arc: from (W, fillTopY) counter-clockwise to (0, fillTopY)
           //   sweep-flag=0 → curves upward; apex at (W/2, dotY)
-          d = `M 0 ${H} L ${W} ${H} L ${W} ${fillTopY} A ${domeR} ${domeR} 0 0 0 0 ${fillTopY} Z`;
+          d = `M 0 ${H} L ${W} ${H} L ${W} ${fillTopY} A ${W} ${W} 0 0 0 0 ${fillTopY} Z`;
         }
         fillPathRef.current.setAttribute('d', d);
       }
@@ -256,25 +215,27 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
 
   // ── Pointer handlers ─────────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    console.log('Pointer down: => ', { isTapped, clientY: e.clientY });
     if (isTapped) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    pointerYRef.current = e.clientY;
-    const tapRect = divRef.current!.getBoundingClientRect();
-    tapYFromBottomRef.current = tapRect.bottom - e.clientY;
+    // Use event + clientWidth/Height instead of getBoundingClientRect() — avoids
+    // forcing a full viewport-position reflow. offsetY is relative to e.target,
+    // which is always the tile div because child divs have pointerEvents: none.
+    const W = e.currentTarget.clientWidth;
+    const H = e.currentTarget.clientHeight;
+    const fromBottom = H - e.nativeEvent.offsetY;
+    tapYFromBottomRef.current = fromBottom;
     // Cache W/H for the rAF loop — tile dimensions are fixed during a hold
-    cachedWRef.current = tapRect.width;
-    cachedHRef.current = tapRect.height;
+    cachedWRef.current = W;
+    cachedHRef.current = H;
     // ~6% of lane width; clamp to at least 5px so it's always visible
-    arcDotRRef.current = Math.min(10, Math.round(tapRect.width * 0.06));
-    // Cache canvas element + starting positions for reflow-free bottom tracking.
-    // style.transform = "translate3d(0, Ypx, 0)" — split(',')[1] extracts Y.
-    const canvasEl = (scrollRef?.current?.firstElementChild as HTMLElement) ?? null;
-    cachedCanvasElRef.current = canvasEl;
-    cachedTileBottomAtStartRef.current = tapRect.bottom;
-    cachedCanvasYAtStartRef.current = parseFloat(canvasEl?.style.transform.split(',')[1] ?? '0') || 0;
-    setTapYFromBottom(tapRect.bottom - e.clientY);
+    arcDotRRef.current = Math.min(10, Math.round(W * 0.06));
+    // Time-based progress: record start time + note duration scaled by speed
+    startTimeRef.current = performance.now();
+    totalDurationSRef.current = primaryNote.duration / speed;
+    setTapYFromBottom(fromBottom);
     firedSetRef.current = new Set();
     reachedPercentRef.current = 0;
     maxProgressRef.current = 0;
@@ -295,11 +256,7 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
     onTap(tile);
   };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isHeldRef.current) pointerYRef.current = e.clientY;
-  };
-
-  const handleRelease = () => {
+const handleRelease = () => {
     isHeldRef.current = false;
     cancelAnimationFrame(rafRef.current);
     setIsHeld(false);
@@ -333,15 +290,14 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
       data-tile-id={tile.id}
       style={{ ...style, overflow: 'visible', background: `linear-gradient(to top, #000000 ${singleTileH * 0.4}px, #0e3a6e ${singleTileH}px, #1565c0 100%)` }}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
       onPointerUp={handleRelease}
       onPointerCancel={handleRelease}
     >
       {/* Background radial haze (CSS, unchanged) */}
-      <div className="game-tile__hold-glow" />
+      <div className="game-tile__hold-glow" style={{ pointerEvents: 'none' }} />
 
       {/* Laser line (CSS, unchanged) */}
-      <div className="game-tile__hold-line" />
+      <div className="game-tile__hold-line" style={{ pointerEvents: 'none' }} />
 
       {/*
         SVG overlay — covers the full tile.
@@ -434,39 +390,18 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
             <circle ref={rippleRingRef} cx="50%" cy="-100" r="7"
               fill="none" stroke="rgba(100,200,255,0.55)" strokeWidth="8" opacity="0"
               filter={`url(#rippleGlow-${tile.id})`}
-            >
-              <animate ref={rippleAnimRRef}
-                attributeName="r" from="7" to="42"
-                dur="0.45s" begin="indefinite" fill="freeze"
-              />
-              <animate ref={rippleAnimOpRef}
-                attributeName="opacity" from="1" to="0"
-                dur="0.45s" begin="indefinite" fill="freeze"
-              />
-            </circle>
+            />
             {/* Edge layer — thin, sharp, higher opacity */}
             <circle ref={rippleEdgeRef} cx="50%" cy="-100" r="7"
               fill="none" stroke="rgba(160,225,255,0.9)" strokeWidth="1" opacity="0"
-            >
-              <animate ref={rippleEdgeAnimRRef}
-                attributeName="r" from="7" to="42"
-                dur="0.45s" begin="indefinite" fill="freeze"
-              />
-              <animate ref={rippleEdgeAnimOpRef}
-                attributeName="opacity" from="0.9" to="0"
-                dur="0.45s" begin="indefinite" fill="freeze"
-              />
-            </circle>
+            />
           </>
         )}
 
         {/*
           ── Arc dot — transient beat-hit indicator ────────────────────────
           Invisible by default (r=0, opacity=0). On each beat hit, fireBeat()
-          calls beginElement() on both <animate> children:
-            r:       staticDotR → arcDotR → 0  (grows from static dot, then shrinks away)
-            opacity: 0 → 1 → 0                 (flashes bright, then fades out)
-          fill="freeze" holds the final value (r=0, opacity=0) between beats.
+          calls element.animate() (WAAPI) to burst r and opacity.
           cx/cy are updated each rAF frame so it's always at the dome apex.
         */}
         {isHeld && (
@@ -478,30 +413,12 @@ export const HoldTileCard = memo(function HoldTileCard({ tile, onTap, onRelease,
             opacity="0"
             fill="rgba(160, 230, 255, 0.8)"
             filter={`url(#arcGlow-${tile.id})`}
-          >
-            {/* r: grow from static-dot size → larger (blur softens edges so we go bigger) → shrink to 0 */}
-            <animate ref={arcDotAnimRRef}
-              attributeName="r"
-              values="3;12;12;0"
-              keyTimes="0;0.2;0.65;1"
-              dur="0.45s"
-              begin="indefinite"
-              fill="freeze"
-            />
-            <animate ref={arcDotAnimOpRef}
-              attributeName="opacity"
-              values="0.85;0.85;0"
-              keyTimes="0;0.55;1"
-              dur="0.45s"
-              begin="indefinite"
-              fill="freeze"
-            />
-          </circle>
+          />
         )}
       </svg>
 
       {/* Tap ring at the bottom — hidden once held or tapped */}
-      {!isTapped && !isHeld && <div className="game-tile__hold-ring" />}
+      {!isTapped && !isHeld && <div className="game-tile__hold-ring" style={{ pointerEvents: 'none' }} />}
     </div>
   );
 }, (prev, next) =>

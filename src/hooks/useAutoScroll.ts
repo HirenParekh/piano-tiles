@@ -18,104 +18,95 @@ interface UseAutoScrollReturn {
   reset: () => void;
 }
 
+/**
+ * Pre-compute WAAPI keyframes from scroll segments (or a simple two-stop linear
+ * when no segments are present). Each segment boundary becomes a keyframe with
+ * an explicit `offset` (normalised 0–1 time) so that linear easing between stops
+ * exactly reproduces the variable-speed behaviour of the old timeToPixels helper.
+ */
+function buildKeyframes(
+  scrollSegments: ScrollSegment[] | undefined,
+  maxScroll: number,
+  pixelsPerSecond: number,
+  totalHeight: number,
+): { keyframes: Keyframe[]; durationMs: number } {
+  if (!scrollSegments || scrollSegments.length === 0) {
+    return {
+      keyframes: [
+        { transform: `translateY(${-maxScroll}px)`, easing: 'linear' },
+        { transform: 'translateY(0px)' },
+      ],
+      durationMs: (totalHeight / pixelsPerSecond) * 1000,
+    };
+  }
+
+  const totalDurationS = scrollSegments[scrollSegments.length - 1].endTime;
+  const keyframes: Keyframe[] = [
+    { offset: 0, transform: `translateY(${-maxScroll}px)`, easing: 'linear' },
+  ];
+  for (let i = 0; i < scrollSegments.length; i++) {
+    const seg = scrollSegments[i];
+    const isLast = i === scrollSegments.length - 1;
+    keyframes.push({
+      offset: isLast ? 1 : seg.endTime / totalDurationS,
+      transform: `translateY(${-(maxScroll - seg.endPixel)}px)`,
+      // No easing on final keyframe
+      ...(isLast ? {} : { easing: 'linear' }),
+    });
+  }
+
+  return { keyframes, durationMs: totalDurationS * 1000 };
+}
+
 export function useAutoScroll(
   scrollRef: React.RefObject<HTMLDivElement>,
   { pixelsPerSecond, speedMultiplier, totalHeight, viewportHeight, scrollSegments }: UseAutoScrollOptions
 ): UseAutoScrollReturn {
   const [isPlaying, setIsPlaying] = useState(false);
-  const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-  const timeAtPlayRef = useRef<number>(0); // Internal logic time when play() started
+  const animRef = useRef<Animation | null>(null);
   const isPlayingRef = useRef(false);
   const speedMultiplierRef = useRef(speedMultiplier);
+  // Keep ref always current so play() reads the right rate when creating the animation
   speedMultiplierRef.current = speedMultiplier;
 
   const maxScroll = Math.max(0, totalHeight - viewportHeight);
 
-  // Time-Pixel helpers
-  const timeToPixels = useCallback((t: number) => {
-    if (!scrollSegments || scrollSegments.length === 0) return t * pixelsPerSecond;
-
-    for (const seg of scrollSegments) {
-      if (t >= seg.startTime && t <= seg.endTime) {
-        const segDuration = seg.endTime - seg.startTime;
-        const segHeight = seg.endPixel - seg.startPixel;
-        const progress = segDuration === 0 ? 0 : (t - seg.startTime) / segDuration;
-        return seg.startPixel + (progress * segHeight);
-      }
-    }
-    const last = scrollSegments[scrollSegments.length - 1];
-    const lastSpeed = (last.endTime - last.startTime) === 0 ? pixelsPerSecond : (last.endPixel - last.startPixel) / (last.endTime - last.startTime);
-    return last.endPixel + (t - last.endTime) * lastSpeed;
-  }, [scrollSegments, pixelsPerSecond]);
-
-
+  // Push speed changes to a live animation (e.g. user drags the speed slider)
+  useEffect(() => {
+    if (animRef.current) animRef.current.playbackRate = speedMultiplier;
+  }, [speedMultiplier]);
 
   const stop = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    startTimeRef.current = null;
+    animRef.current?.pause();
     isPlayingRef.current = false;
     setIsPlaying(false);
   }, []);
 
-  const tick = useCallback((timestamp: number) => {
-    if (!isPlayingRef.current) return;
-    if (!scrollRef.current) return;
-
-    if (startTimeRef.current === null) {
-      startTimeRef.current = timestamp;
-    }
-
-    const elapsedWall = (timestamp - startTimeRef.current) / 1000;
-    const elapsedGame = elapsedWall * speedMultiplierRef.current;
-    const currentTime = timeAtPlayRef.current + elapsedGame;
-
-    const targetPxFromBottom = timeToPixels(currentTime);
-
-    // Instead of scrollTop, we use hardware-accelerated translate3d on the Canvas child
-    const canvas = scrollRef.current.firstElementChild as HTMLElement;
-    if (canvas) {
-      // The canvas natively extends `maxScroll` below the viewport.
-      // We push it UP by `-maxScroll` to see the bottom, and let it slide DOWN over time.
-      canvas.style.transform = `translate3d(0, ${-(maxScroll - targetPxFromBottom)}px, 0)`;
-    }
-
-    // Stop at the finish line securely
-    if (targetPxFromBottom >= maxScroll) {
-      if (canvas) canvas.style.transform = `translate3d(0, 0px, 0)`;
-      stop();
-      return;
-    }
-
-    rafRef.current = requestAnimationFrame(tick);
-  }, [timeToPixels, maxScroll, scrollRef, stop]);
-
   const play = useCallback(() => {
-    if (isPlayingRef.current) return;
+    if (isPlayingRef.current || !scrollRef.current) return;
+    const canvas = scrollRef.current.firstElementChild as HTMLElement;
+    if (!canvas) return;
 
-    // Instead of reading scrollTop, we derive state precisely from the internal time
-    // If the game hasn't started, timeAtPlayRef is 0. 
-    // This removes all reliance on DOM measurement lag.
-    timeAtPlayRef.current = timeAtPlayRef.current || 0;
+    // Hand off from native-scroll preview mode to WAAPI-driven scroll
+    scrollRef.current.scrollTop = 0;
 
-    // Transition from native layout scrolling to translate3d scrolling seamlessly
-    if (scrollRef.current) {
-      // We force native scroll to true top (0) so translate3d drives layout locally
-      scrollRef.current.scrollTop = 0;
-      const canvas = scrollRef.current.firstElementChild as HTMLElement;
-      if (canvas) {
-        canvas.style.transform = `translate3d(0, ${-(maxScroll - timeToPixels(timeAtPlayRef.current))}px, 0)`;
-      }
+    if (!animRef.current) {
+      // Create the WAAPI animation once — subsequent play() calls just resume it
+      const { keyframes, durationMs } = buildKeyframes(scrollSegments, maxScroll, pixelsPerSecond, totalHeight);
+      const anim = canvas.animate(keyframes, { duration: durationMs, fill: 'forwards' });
+      anim.playbackRate = speedMultiplierRef.current;
+      anim.pause(); // start paused; the play() call below will start it
+      anim.addEventListener('finish', () => {
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+      });
+      animRef.current = anim;
     }
 
+    animRef.current.play();
     isPlayingRef.current = true;
     setIsPlaying(true);
-    startTimeRef.current = null; // anchored on first tick
-    rafRef.current = requestAnimationFrame(tick);
-  }, [tick]);
+  }, [scrollRef, scrollSegments, maxScroll, pixelsPerSecond, totalHeight]);
 
   const pause = useCallback(() => stop(), [stop]);
 
@@ -124,28 +115,29 @@ export function useAutoScroll(
   }, [pause, play]);
 
   const reset = useCallback(() => {
-    stop();
+    animRef.current?.cancel();
+    animRef.current = null;
+    isPlayingRef.current = false;
+    setIsPlaying(false);
     if (scrollRef.current) {
       const canvas = scrollRef.current.firstElementChild as HTMLElement;
-      if (canvas) canvas.style.transform = `none`;
-      // Return control to manual DOM scrolling mechanics
+      if (canvas) canvas.style.transform = 'none';
+      // Return control to native-scroll preview mode
       scrollRef.current.scrollTop = maxScroll;
-      timeAtPlayRef.current = 0;
     }
-  }, [stop, scrollRef, maxScroll]);
+  }, [scrollRef, maxScroll]);
 
-  // Reset to bottom on mount (useLayoutEffect prevents visual flash)
+  // Set initial scroll position for the native-scroll preview mode (before play)
   useLayoutEffect(() => {
     if (scrollRef.current) {
       const canvas = scrollRef.current.firstElementChild as HTMLElement;
-      if (canvas) canvas.style.transform = `none`;
+      if (canvas) canvas.style.transform = 'none';
       scrollRef.current.scrollTop = maxScroll;
-      timeAtPlayRef.current = 0;
     }
   }, [scrollRef, maxScroll]);
 
   // Cleanup on unmount
-  useEffect(() => () => stop(), [stop]);
+  useEffect(() => () => { animRef.current?.cancel(); }, []);
 
   return { isPlaying, play, pause, toggle, reset };
 }
