@@ -13,6 +13,7 @@ import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
 import './styles/main.scss';
 import { TileRendererWidget } from './components/TileRendererWidget';
+import { HoldTileLayersDebug } from './components/HoldTileLayersDebug';
 
 type AppScreen = 'home' | 'selection' | 'game';
 export default function App() {
@@ -197,7 +198,7 @@ export default function App() {
                 Debug
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
-                {[0.25, 0.5, 0.75].map(v => (
+                {[0.25, 0.5, 0.75, 1.5].map(v => (
                   <button
                     key={v}
                     onClick={() => setSpeedMultiplier(speedMultiplier === v ? 1 : v)}
@@ -267,6 +268,7 @@ export default function App() {
             overflowY: 'auto',
           }}>
             <TileRendererWidget />
+            <HoldTileLayersDebug />
           </div>
         </>
       )}
