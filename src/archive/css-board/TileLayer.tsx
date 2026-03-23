@@ -25,12 +25,12 @@
  */
 
 import { useMemo, memo } from 'react';
-import type { ParsedNote } from '../types/midi';
-import type { Card, Tile, TileCard } from '../types/track';
+import type { ParsedNote } from '../../types/midi';
+import type { Card, Tile, TileCard } from '../../types/track';
 import { GameTileCard } from './GameTileCard';
 import { HoldTileCard } from './HoldTileCard';
 import { DoubleTileCard } from './DoubleTileCard';
-import { MIN_HEIGHT } from '../utils/tileBuilder';
+import { MIN_HEIGHT } from '../../utils/tileBuilder';
 
 interface Props {
   /** The card array produced by buildTrackFromTiles — drives all rendering. */

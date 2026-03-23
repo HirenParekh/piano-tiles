@@ -618,7 +618,7 @@ export function buildResultFromPianoTilesSong(
   const initialBaseBeat = catBaseBeats[0] ?? initialMusic?.baseBeats ?? 0.5;
   const initialEffectiveBpm = catRatios[0] ?? (initialBpm / initialBaseBeat);
 
-  const START_OFFSET_SLOTS = 0;
+  const START_OFFSET_SLOTS = 2;
   const MIN_HEIGHT = 100;
   const initialSlotDurationS = initialBpm > 0 ? (initialBaseBeat * (60 / initialBpm)) : 0.6;
 

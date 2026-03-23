@@ -11,8 +11,8 @@
  */
 
 import { useRef, useEffect, useMemo, memo } from 'react';
-import type { Tile } from '../types/track';
-import type { ParsedNote } from '../types/midi';
+import type { Tile } from '../../types/track';
+import type { ParsedNote } from '../../types/midi';
 
 interface Props {
   tile: Tile;

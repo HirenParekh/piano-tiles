@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { HoldTileCard } from './HoldTileCard';
+import { HoldTileCard } from '../archive/css-board/HoldTileCard';
 import type { HoldTile } from '../types/track';
 import type { ParsedNote } from '../types/midi';
 

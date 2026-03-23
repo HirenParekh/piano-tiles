@@ -22,8 +22,8 @@
  */
 
 import { useCallback } from 'react';
-import type { ParsedNote } from '../types/midi';
-import type { GameBoardEngine } from '../hooks/useGameBoardEngine';
+import type { ParsedNote } from '../../types/midi';
+import type { GameBoardEngine } from './useGameBoardEngine';
 import { TileLayer } from './TileLayer';
 
 interface Props {

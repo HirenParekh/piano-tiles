@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { Tile } from '../types/track';
+import type { Tile } from '../../types/track';
 
 interface Props {
   tile: Tile;

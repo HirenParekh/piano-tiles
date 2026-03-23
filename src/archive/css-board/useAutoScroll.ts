@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react';
 
-import type { ScrollSegment } from '../types/midi';
+import type { ScrollSegment } from '../../types/midi';
 
 interface UseAutoScrollOptions {
   pixelsPerSecond: number; // fallback strategy

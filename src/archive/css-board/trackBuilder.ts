@@ -1,5 +1,5 @@
-import type { GameTile } from '../types/midi';
-import type { GameTrackData, Card, Tile } from '../types/track';
+import type { GameTile } from '../../types/midi';
+import type { GameTrackData, Card, Tile } from '../../types/track';
 
 export function buildTrackFromTiles(tiles: GameTile[]): GameTrackData {
     // 1. Map old GameTile array to new Card-based Tile array with absolute track rows

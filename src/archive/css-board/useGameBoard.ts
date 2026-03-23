@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import type { Tile } from '../types/track';
+import type { Tile } from '../../types/track';
 
 interface UseGameBoardReturn {
   tapTile: (tile: Tile) => void;

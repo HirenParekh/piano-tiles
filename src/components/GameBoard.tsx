@@ -1,4 +1,7 @@
 /**
+ * @deprecated Use PhaserGameBoard instead. Kept as a legacy fallback available via the
+ * dev-mode "CSS Board (legacy)" checkbox. Archived source files are in src/archive/css-board/.
+ *
  * GameBoard — thin orchestrator component.
  *
  * RESPONSIBILITY:
@@ -19,9 +22,9 @@
 
 import type { MidiParseResult, ParsedNote } from '../types/midi';
 import type { Tile } from '../types/track';
-import { useGameBoardEngine } from '../hooks/useGameBoardEngine';
-import { GameBoardClassicSkin } from './GameBoardClassicSkin';
-import { GameBoardDebugSkin } from './GameBoardDebugSkin';
+import { useGameBoardEngine } from '../archive/css-board/useGameBoardEngine';
+import { GameBoardClassicSkin } from '../archive/css-board/GameBoardClassicSkin';
+import { GameBoardDebugSkin } from '../archive/css-board/GameBoardDebugSkin';
 
 /** All available visual skins for the game board. */
 export type GameBoardSkin = 'classic' | 'debug';

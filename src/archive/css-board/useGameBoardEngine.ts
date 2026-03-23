@@ -21,12 +21,12 @@
  */
 
 import { useCallback, useState, useEffect, useMemo } from 'react';
-import type { MidiParseResult } from '../types/midi';
-import type { Tile } from '../types/track';
+import type { MidiParseResult } from '../../types/midi';
+import type { Tile } from '../../types/track';
 import { useGameBoard } from './useGameBoard';
 import { useAutoScroll } from './useAutoScroll';
-import { MIN_HEIGHT } from '../utils/tileBuilder';
-import { buildTrackFromTiles } from '../utils/trackBuilder';
+import { MIN_HEIGHT } from '../../utils/tileBuilder';
+import { buildTrackFromTiles } from './trackBuilder';
 
 interface Props {
   result: MidiParseResult;

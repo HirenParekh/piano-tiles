@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type { MidiParseResult } from '../types/midi';
 import type { Tile } from '../types/track';
-import { useGameBoard } from '../hooks/useGameBoard';
+import { useGameBoard } from '../archive/css-board/useGameBoard';
 import { MIN_HEIGHT } from '../utils/tileBuilder';
-import { buildTrackFromTiles } from '../utils/trackBuilder';
+import { buildTrackFromTiles } from '../archive/css-board/trackBuilder';
 
 interface Props {
     result: MidiParseResult;

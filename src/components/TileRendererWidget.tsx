@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { buildResultFromPianoTilesSong } from '../utils/pianoTilesParser';
-import { buildTrackFromTiles } from '../utils/trackBuilder';
-import { GameTileCard } from './GameTileCard';
-import { HoldTileCard } from './HoldTileCard';
-import { DoubleTileCard } from './DoubleTileCard';
+import { buildTrackFromTiles } from '../archive/css-board/trackBuilder';
+import { GameTileCard } from '../archive/css-board/GameTileCard';
+import { HoldTileCard } from '../archive/css-board/HoldTileCard';
+import { DoubleTileCard } from '../archive/css-board/DoubleTileCard';
 import type { Tile } from '../types/track';
 import { MIN_HEIGHT } from '../utils/tileBuilder';
 import { useSynth } from '../hooks/useSynth';
