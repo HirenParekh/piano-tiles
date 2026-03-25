@@ -112,10 +112,9 @@ export abstract class BaseTileObject extends Phaser.GameObjects.Container {
    * Subclasses apply visual feedback (color change, fill animation, etc.).
    *
    * @param speedMultiplier - Current playback speed (1 = normal, 0.5 = half speed).
-   *   Used by HoldTileObject to scale tween and beat-timer durations.
-   *   SINGLE and DOUBLE subclasses ignore this parameter.
+   * @param worldY          - Optional physical Y coordinate of the pointer tap in world space.
    */
-  abstract onTap(speedMultiplier?: number): void;
+  abstract onTap(speedMultiplier?: number, worldY?: number): void;
 
   /**
    * Called by InputSystem when the player releases a held tile (pointerup / cancel).

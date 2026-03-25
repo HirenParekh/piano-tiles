@@ -3,43 +3,13 @@
  *
  * Phaser game object for a hold tile (spans > 1 slot in height).
  *
- * RESPONSIBILITY:
- *   - Render a tall tile with a body, animated fill-progress bar, and a cap.
- *   - On tap: start a fill animation that rises from the bottom to the top of the
- *     tile over the hold's full duration, matching the CSS HoldTileCard animation.
- *   - On tap: schedule Phaser.Time.TimerEvent beat callbacks for each secondary
- *     beat slot within the hold, so audio fires at the correct musical time.
- *   - On release: stop the fill animation at its current position and cancel
- *     all remaining beat timers.
- *
- * DOES NOT:
- *   - Play audio directly — it emits HOLD_BEAT on the EventBus; PhaserGameBoard
- *     forwards that to useTileAudio.handleHoldBeat().
- *   - Know about camera scroll speed — timing is derived from note durations
- *     and the speedMultiplier passed to onTap().
- *
- * VISUAL STRUCTURE (top-to-bottom in world space):
- *
- *   y=0 ┌──────────────┐  ← tile top (highest world Y — first to scroll into view)
- *       │  BODY        │  Dark navy blue body
- *       │  ░░░░░░░░░░  │  ↑ FILL rect grows upward from cap toward body top
- *       │              │
- *       ├──────────────┤
- *   y=H │  CAP         │  Bright cyan — the tap-zone indicator (visible first,
- *       └──────────────┘  ← tile bottom / first to scroll past the tap line)
- *
- * WHY the fill grows upward:
- *   The world scrolls upward (camera.scrollY decreases). The bottom of the tile
- *   enters the tap zone first. A fill that starts at the cap and grows toward the
- *   tile top mirrors how progress fills "time remaining" as the tile scrolls past.
- *
- * SECONDARY BEATS:
- *   A hold tile's notes[] contains multiple ParsedNote entries at different
- *   slotStart values. Notes at the same slotStart as the primary note (notes[0])
- *   are co-starts — played immediately on tap by useTileAudio. Notes at later
- *   slotStarts are "secondary beats" — they must fire at a musical delay after
- *   the initial tap. HoldTileObject schedules a Phaser.Time.TimerEvent for each
- *   unique secondary slotStart and emits HOLD_BEAT when each timer fires.
+ * PHASE 2 ANIMATIONS IMPLEMENTED:
+ *   - Dark-to-Navy gradient body via 4-color Rectangle fill.
+ *   - Bright neon laser line down the center (`BlendModes.ADD`).
+ *   - Tap ring burst animation at the bottom tap area.
+ *   - Dynamic fill geometry (rectangle + rounded dome) via Phaser Graphics.
+ *   - White glowing leader dot that travels ahead of the fill.
+ *   - Secondary beat dots that erupt into sonar-like rings as the fill crosses them.
  */
 
 import Phaser from 'phaser';
@@ -51,24 +21,19 @@ import { EventBus, PianoEvents } from '../EventBus';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Main body color — dark navy blue, matching CSS `#0e3a6e` region. */
-const HOLD_BODY_COLOR = 0x0e3a6e;
-
-/** Cap color — bright cyan, matching the original HoldTileCard cap. */
-const HOLD_CAP_COLOR = 0x00cfff; // #00cfff — project $accent3
-
-/**
- * Fill progress color — a brighter blue to visually distinguish the "filled"
- * portion from the dark body. Approximates the CSS `#308af1` fill gradient.
- */
+const HOLD_BODY_TOP = 0x1565c0;
+const HOLD_BODY_BOT = 0x000000;
+const HOLD_CAP_COLOR = 0x00cfff;
 const HOLD_FILL_COLOR = 0x308af1;
+const LASER_TOP = 0x64c8ff;
+const LASER_BOT = 0x00c8ff;
+const DOT_COLOR = 0x00d2ff;
 
-/**
- * Height of the cap rectangle in pixels.
- * The cap signals the tap-zone and is always visible regardless of tile height.
- * Clamped to 1/4 of tile height for very short hold tiles.
- */
 const CAP_HEIGHT = 20;
+
+// The follower dot sits exactly 50px vertically above the apex of the fill dome
+// so it remains visible above the player's thumb.
+const DOT_OFFSET_PX = 50;
 
 // ---------------------------------------------------------------------------
 // Class
@@ -77,46 +42,36 @@ const CAP_HEIGHT = 20;
 export class HoldTileObject extends BaseTileObject {
   // ── Child game objects ──────────────────────────────────────────────────
 
-  /** Dark blue body rectangle — occupies most of the tile height. */
-  private readonly bodyRect: Phaser.GameObjects.Rectangle;
-
-  /**
-   * Blue fill progress rectangle — starts at height=0 at the tile bottom,
-   * grows upward toward the tile top as the hold duration elapses.
-   * Origin is set to (0.5, 1) — bottom-center — so increasing `height`
-   * expands upward without changing the bottom anchor position.
-   */
-  private readonly fillRect: Phaser.GameObjects.Rectangle;
-
-  /** Bright cyan cap at the tile bottom — the first part to reach the tap line. */
+  private readonly bgGraphics: Phaser.GameObjects.Graphics;
+  private readonly laserGraphics: Phaser.GameObjects.Graphics;
   private readonly capRect: Phaser.GameObjects.Rectangle;
+
+  /** Dynamic Graphics object drawing the fill body + rounded dome head */
+  private readonly fillGraphics: Phaser.GameObjects.Graphics;
+
+  /** The ring at the bottom that bursts outward on tap */
+  private readonly bottomRing: Phaser.GameObjects.Arc;
+
+  /** The container holding the moving dot, glow, and any ripples that erupt */
+  private readonly followerGroup: Phaser.GameObjects.Container;
+  private readonly followerDot: Phaser.GameObjects.Arc;
+  private readonly followerGlow: Phaser.GameObjects.Arc;
 
   // ── Animation state ─────────────────────────────────────────────────────
 
-  /**
-   * The active fill tween (started in onTap(), stopped in onRelease()).
-   * Null when no hold is in progress.
-   */
-  private fillTween: Phaser.Tweens.Tween | null = null;
+  private firedDots = new Set<number>();
+  private staticBeatDots: { arc: Phaser.GameObjects.Arc; timeOffsetMs: number; notes: ParsedNote[] }[] = [];
 
-  /**
-   * Active secondary-beat timers. Each fires HOLD_BEAT for one beat slot
-   * and is removed from this list when it fires or when onRelease() cancels them.
-   */
-  private beatTimers: Phaser.Time.TimerEvent[] = [];
+  // Tween target representing the pixel height of the fill progress
+  private fillState = { height: 0 };
 
-  // ---------------------------------------------------------------------------
-  // Constructor
-  // ---------------------------------------------------------------------------
+  // The bottom-center Y coordinate where the fill and cap anchor
+  private readonly fillAnchorY: number;
 
-  /**
-   * @param scene      - The owning Phaser scene.
-   * @param worldX     - World X of the tile's top-left corner.
-   * @param worldY     - World Y of the tile's top-left corner.
-   * @param tileWidth  - Full lane width.
-   * @param tileHeight - Full tile height in world pixels (spans multiple slots).
-   * @param tile       - The source GameTile (tile.notes.length > 1 for hold tiles).
-   */
+  private isHolding = false;
+  private tapScreenY = 0;
+  private fillMaxH = 0;
+
   constructor(
     scene: Phaser.Scene,
     worldX: number,
@@ -127,187 +82,330 @@ export class HoldTileObject extends BaseTileObject {
   ) {
     super(scene, worldX, worldY, tileWidth, tileHeight, tile);
 
-    // ── Compute dimensions ─────────────────────────────────────────────────
     const visW = tileWidth - 2 * TILE_VISUAL_GAP;
     const capH = Math.min(CAP_HEIGHT, tileHeight / 4);
     const bodyH = tileHeight - capH - 2 * TILE_VISUAL_GAP;
     const centerX = TILE_VISUAL_GAP + visW / 2;
+    this.fillAnchorY = TILE_VISUAL_GAP + bodyH;
 
-    // ── Body rectangle ──────────────────────────────────────────────────────
-    // Occupies the tile from the top gap down to where the cap begins.
-    // Rect (x, y) is its center — so we shift right by half-gap, down by half-bodyH.
-    this.bodyRect = scene.add.rectangle(
-      centerX,
-      TILE_VISUAL_GAP + bodyH / 2,
-      visW,
-      bodyH,
-      HOLD_BODY_COLOR,
-    );
+    // ── Body & Laser Graphics ─────────────────────────────────────────────
+    // Replaces generic Rectangles so we can use complex 4-corner gradients
+    this.bgGraphics = scene.add.graphics();
+    this.bgGraphics.fillGradientStyle(HOLD_BODY_TOP, HOLD_BODY_TOP, HOLD_BODY_BOT, HOLD_BODY_BOT, 1, 1, 1, 1);
+    this.bgGraphics.fillRect(TILE_VISUAL_GAP, TILE_VISUAL_GAP, visW, bodyH);
 
-    // ── Fill progress rectangle ─────────────────────────────────────────────
-    // Initially zero height, anchored at the BOTTOM of the body area.
-    // Origin (0.5, 1) means (x, y) positions the BOTTOM CENTER of the rect.
-    // As `height` grows from 0 → bodyH, the rect expands upward from the anchor.
-    const fillAnchorY = TILE_VISUAL_GAP + bodyH; // bottom of body, top of cap
-    this.fillRect = scene.add.rectangle(
-      centerX,
-      fillAnchorY,
-      visW,
-      0, // starts invisible (zero height)
-      HOLD_FILL_COLOR,
-    );
-    this.fillRect.setOrigin(0.5, 1);
+    // 2px wide line in the center, stops slightly short of the bottom
+    // Fades alpha from 0.65 at top to 0 at bottom
+    this.laserGraphics = scene.add.graphics();
+    const laserX = TILE_VISUAL_GAP + visW / 2 - 1;
+    this.laserGraphics.fillGradientStyle(LASER_TOP, LASER_TOP, LASER_BOT, LASER_BOT, 0.8, 0.8, 0, 0);
+    this.laserGraphics.fillRect(laserX, TILE_VISUAL_GAP, 2, Math.max(0, bodyH - 30));
+    this.laserGraphics.setBlendMode(Phaser.BlendModes.ADD);
 
-    // ── Cap rectangle ───────────────────────────────────────────────────────
-    // Sits at the tile bottom — the first part the player sees as the tile
-    // scrolls upward into the tap zone.
-    this.capRect = scene.add.rectangle(
-      centerX,
-      TILE_VISUAL_GAP + bodyH + capH / 2,
-      visW,
-      capH,
-      HOLD_CAP_COLOR,
-    );
+    // ── Fill Graphics ─────────────────────────────────────────────────────
+    this.fillGraphics = scene.add.graphics();
 
-    // Add children in back-to-front render order:
-    //   body (behind fill) → fill (behind cap) → cap (on top, always visible)
-    this.add([this.bodyRect, this.fillRect, this.capRect]);
+    // ── Cap Rectangle ─────────────────────────────────────────────────────
+    this.capRect = scene.add.rectangle(centerX, this.fillAnchorY + capH / 2, visW, capH, HOLD_CAP_COLOR);
+
+    // ── Tap Ring ──────────────────────────────────────────────────────────
+    // Matches "__hold-ring" positioned at the bottom of the body
+    this.bottomRing = scene.add.arc(centerX, this.fillAnchorY - 12, 12);
+    this.bottomRing.setStrokeStyle(2, HOLD_CAP_COLOR, 0.85);
+
+    // ── Follower Group ────────────────────────────────────────────────────
+    // Grouped together so the visual dot and any ripples physically move 
+    // up the tile in perfect unison just like the CSS implementation.
+    this.followerGroup = scene.add.container(centerX, this.fillAnchorY);
+    this.followerGroup.setAlpha(0); // Hidden until tapped
+
+    // A subtle glowing backdrop simulating the old CSS drop-shadow filter
+    this.followerGlow = scene.add.circle(0, 0, 14, LASER_TOP, 0.4);
+    this.followerGlow.setBlendMode(Phaser.BlendModes.ADD);
+
+    this.followerDot = scene.add.arc(0, 0, 7, 0, 360, false, 0xffffff);
+
+    this.followerGroup.add([this.followerGlow, this.followerDot]);
+
+    // Back-to-front rendering
+    this.add([
+      this.bgGraphics,
+      this.laserGraphics,
+      this.bottomRing,
+      this.fillGraphics,
+      this.capRect,
+      this.followerGroup
+    ]);
+
+    // ── Secondary Beat Static Dots ────────────────────────────────────────
+    const defaultTapOffset = capH / 2;
+    this.buildStaticBeatDots(centerX, defaultTapOffset);
   }
 
   // ---------------------------------------------------------------------------
-  // BaseTileObject implementation
+  // Implementations
   // ---------------------------------------------------------------------------
 
   getTileType(): 'HOLD' {
     return 'HOLD';
   }
 
-  /**
-   * Starts the hold animation and schedules secondary beat timers.
-   *
-   * Called by InputSystem → PianoGameScene.handleTileTap() on finger-down.
-   * Returns immediately if already tapped (guards against double-fire).
-   *
-   * @param speedMultiplier - Current playback speed multiplier (default 1).
-   *   Scales both the fill-tween duration and beat-timer delays proportionally.
-   */
-  onTap(speedMultiplier = 1): void {
+  onTap(_speedMultiplier = 1, worldY?: number): void {
     if (this.tapped) return;
     this.tapped = true;
 
     const primaryNote = this.gameTile.notes[0];
     if (!primaryNote) return;
 
-    // ── Fill tween ────────────────────────────────────────────────────────
-    // Rise from height 0 to full body height over the hold's note duration,
-    // adjusted for playback speed. Linear easing matches the constant scroll speed.
-    const capH = Math.min(CAP_HEIGHT, this.tileHeight / 4);
-    const fillMaxH = this.tileHeight - capH - 2 * TILE_VISUAL_GAP;
-    const durationMs = (primaryNote.duration / speedMultiplier) * 1000;
+    let tapDistFromBottom = 0;
+    if (worldY !== undefined) {
+      this.tapScreenY = worldY - this.scene.cameras.main.scrollY;
+      tapDistFromBottom = (this.y + this.tileHeight) - worldY;
+    } else {
+      this.tapScreenY = (this.y + this.tileHeight) - this.scene.cameras.main.scrollY;
+    }
+    tapDistFromBottom = Math.max(0, Math.min(this.tileHeight, tapDistFromBottom));
 
-    this.fillTween = this.scene.tweens.add({
-      targets: this.fillRect,
-      // Tween the Rectangle's `height` property directly.
-      // With origin (0.5, 1) this makes the rect grow upward from its anchor.
-      height: fillMaxH,
-      duration: durationMs,
-      ease: 'Linear',
+    const capH = Math.min(CAP_HEIGHT, this.tileHeight / 4);
+
+    // Geometry math to ensure the APEX of the arc is positioned exactly DOT_OFFSET_PX above the physical tap:
+    const visW = this.tileWidth - 2 * TILE_VISUAL_GAP;
+    const dy = visW * 0.866025; // sqrt(3)/2
+
+    // Using simple math to anchor the apex:
+    let initialFillH = Math.max(0, tapDistFromBottom + DOT_OFFSET_PX - capH + dy - visW);
+    this.fillMaxH = this.tileHeight - capH - 2 * TILE_VISUAL_GAP;
+
+    this.fillState.height = initialFillH;
+    this.drawFillFrame();
+
+    // ── Tap Ring Burst Animation ──────────────────────────────────────────
+    this.scene.tweens.add({
+      targets: this.bottomRing,
+      scale: 1.4,
+      alpha: 0,
+      duration: 300,
+      ease: 'Cubic.out',
+      onStart: () => {
+        this.bottomRing.setStrokeStyle(3, 0xffffff, 1);
+      }
     });
 
-    // ── Secondary beat timers ──────────────────────────────────────────────
-    this.scheduleBeatTimers(primaryNote, speedMultiplier);
+    // ── Reveal Follower Group  ──────────────────────────────
+    this.followerGroup.setAlpha(1);
+
+    // Animate static dots in when tapped
+    this.scene.tweens.add({
+      targets: this.staticBeatDots.map(d => d.arc),
+      alpha: 1, // Start fully opaque
+      duration: 100,
+    });
+    this.updateStaticBeatDotsLayout(tapDistFromBottom);
+
+    this.firedDots.clear();
+    this.isHolding = true;
+
+    this.scene.events.off('update', this.onPhysicsUpdate, this);
+    this.scene.events.on('update', this.onPhysicsUpdate, this);
   }
 
-  /**
-   * Stops the fill animation at its current state and cancels all remaining
-   * beat timers. Called by InputSystem → PianoGameScene.handleTileRelease()
-   * on finger-up / finger-cancel.
-   *
-   * WHY stop instead of reset:
-   *   The player may release mid-hold. The fill should freeze at its current
-   *   height (showing how far they got), not snap back to zero. This also
-   *   matches the CSS HoldTileCard behavior (commitStyles + cancel).
-   */
   onRelease(): void {
     if (!this.tapped) return;
 
-    // Stop the tween at its current position (does not reset the height property).
-    this.fillTween?.stop();
-    this.fillTween = null;
+    this.isHolding = false;
+    this.scene.events.off('update', this.onPhysicsUpdate, this);
+    this.firedDots.clear();
 
-    // Cancel all pending beat timers so no audio fires after release.
-    this.beatTimers.forEach((t) => t.remove(false));
-    this.beatTimers = [];
+    // Flatten dome at release to signal completion
+    this.drawFillFrame(true);
 
-    // Grey out all Rectangle children (body, fill, cap) to signal completion.
     this.markTapped();
+    
+    // Hide dots and glow
+    this.followerGroup.setAlpha(0);
   }
 
   // ---------------------------------------------------------------------------
-  // Private: beat scheduling
+  // Geometry & Rendering
   // ---------------------------------------------------------------------------
 
+  private onPhysicsUpdate(_time: number, _delta: number): void {
+    if (!this.isHolding) return;
+
+    const currentWorldY = this.tapScreenY + this.scene.cameras.main.scrollY;
+    let tapDistFromBottom = (this.y + this.tileHeight) - currentWorldY;
+    tapDistFromBottom = Math.max(0, Math.min(this.tileHeight, tapDistFromBottom));
+
+    const capH = Math.min(CAP_HEIGHT, this.tileHeight / 4);
+    const visW = this.tileWidth - 2 * TILE_VISUAL_GAP;
+    const dy = visW * 0.866025; // sqrt(3)/2
+
+    let newHeight = Math.max(0, tapDistFromBottom + DOT_OFFSET_PX - capH + dy - visW);
+    newHeight = Math.min(newHeight, this.fillMaxH);
+    
+    this.fillState.height = newHeight;
+
+    const topY = this.fillAnchorY - newHeight;
+    const apexY = topY + dy - visW;
+
+    for (let i = 0; i < this.staticBeatDots.length; i++) {
+        if (this.firedDots.has(i)) continue;
+        const dot = this.staticBeatDots[i];
+        if (apexY <= dot.arc.y) {
+            this.firedDots.add(i);
+            this.fireBeat(dot.notes, dot.arc);
+        }
+    }
+
+    this.drawFillFrame();
+
+    if (newHeight >= this.fillMaxH) {
+      this.isHolding = false;
+      this.scene.events.off('update', this.onPhysicsUpdate, this);
+      this.drawFillFrame(true);
+    }
+  }
+
   /**
-   * Groups the tile's notes by slotStart, then schedules a Phaser timer for
-   * each unique secondary beat (i.e. every slotStart that differs from the
-   * primary note's slotStart).
-   *
-   * When each timer fires it emits HOLD_BEAT on the EventBus with the
-   * notes for that beat. PhaserGameBoard listens and calls useTileAudio.handleHoldBeat().
-   *
-   * WHY group by slotStart:
-   *   A hold tile can have multiple notes at the same secondary slotStart
-   *   (e.g. a chord on beat 2). They must all fire together, not separately.
-   *
-   * @param primaryNote     - The first note; defines t=0 for delay calculation.
-   * @param speedMultiplier - Scales all delays so fast/slow speeds are respected.
+   * Clears and redraws the fill geometry (body rect + dome top).
+   * Repositions the follower dot based on the apex of the dome.
+   * 
+   * @param forceFlat - if true, draws a flat top instead of a dome (used on release)
    */
-  private scheduleBeatTimers(primaryNote: ParsedNote, speedMultiplier: number): void {
-    // Build a map of slotStart → { time, notes[] } for all non-primary beats.
-    const groups = new Map<number, { time: number; notes: ParsedNote[] }>();
+  private drawFillFrame(forceFlat = false): void {
+    this.fillGraphics.clear();
+    const h = this.fillState.height;
+    if (h <= 0 && !forceFlat) return;
+
+    const visW = this.tileWidth - 2 * TILE_VISUAL_GAP;
+    const leftX = TILE_VISUAL_GAP;
+    const rightX = TILE_VISUAL_GAP + visW;
+
+    // The visual top line where the dome starts
+    const topY = this.fillAnchorY - h;
+
+    this.fillGraphics.fillStyle(HOLD_FILL_COLOR);
+    this.fillGraphics.beginPath();
+    this.fillGraphics.moveTo(leftX, this.fillAnchorY); // Bottom-left
+    this.fillGraphics.lineTo(rightX, this.fillAnchorY); // Bottom-right
+    this.fillGraphics.lineTo(rightX, topY); // Top-right
+
+    // If flat (tile completed or released), just draw a straight line.
+    // Otherwise, draw the circular arc dome.
+    if (forceFlat) {
+      this.fillGraphics.lineTo(leftX, topY);
+      this.followerGroup.setY(topY);
+    } else {
+      // ── Perfect geometric dome matching the CSS `width: 200%, aspect-ratio: 1` ──
+      // The CSS dome was a circle of radius W, clipped to width W.
+      // This means the center is precisely W * sqrt(3)/2 pixels below the chord.
+      // The angle from the center to the corners is exactly +/- 60 degrees from vertical.
+      const R = visW;
+      const dy = visW * 0.866025; // sqrt(3)/2
+      const cx = leftX + visW / 2;
+      const cy = topY + dy;
+
+      this.fillGraphics.arc(
+        cx,
+        cy,
+        R,
+        Phaser.Math.DegToRad(-60),
+        Phaser.Math.DegToRad(-120),
+        true // anticlockwise (from top-right to top-left)
+      );
+
+      // The apex (highest point) of the arc is exactly at -90 degrees from center
+      const apexY = cy - R;
+
+      // The follower group sits directly ON the apex!
+      this.followerGroup.setY(Math.max(TILE_VISUAL_GAP, apexY));
+    }
+
+    this.fillGraphics.closePath();
+    this.fillGraphics.fillPath();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Beat Scheduling & Ripple
+  // ---------------------------------------------------------------------------
+
+  private buildStaticBeatDots(centerX: number, defaultTapOffset: number): void {
+    const primaryNote = this.gameTile.notes[0];
+    const grouped = new Map<number, ParsedNote[]>();
 
     for (const note of this.gameTile.notes) {
-      // Skip notes that co-start with the primary — those are played immediately
-      // by useTileAudio.handleTileTap() (the "co-starts" branch).
-      if (note.slotStart === primaryNote.slotStart) continue;
-
-      if (!groups.has(note.slotStart)) {
-        groups.set(note.slotStart, { time: note.time, notes: [] });
+      if (note.time !== primaryNote.time) {
+        if (!grouped.has(note.time)) {
+          grouped.set(note.time, []);
+        }
+        grouped.get(note.time)!.push(note);
       }
-      groups.get(note.slotStart)!.notes.push(note);
     }
 
-    // Sort beats chronologically and schedule one timer per beat slot.
-    const sortedBeats = Array.from(groups.values()).sort((a, b) => a.time - b.time);
+    const pxPerMs = this.tileHeight / (primaryNote.duration * 1000);
+    const visualBottomY = this.tileHeight - TILE_VISUAL_GAP;
 
-    for (const beat of sortedBeats) {
-      // Delay = time between primary note start and this beat's start,
-      // divided by speedMultiplier so faster play fires sooner.
-      const delayMs = ((beat.time - primaryNote.time) / speedMultiplier) * 1000;
+    const times = Array.from(grouped.keys()).sort((a,b) => a - b);
+    for (const time of times) {
+      const timeOffsetMs = (time - primaryNote.time) * 1000;
+      const notes = grouped.get(time)!;
 
-      if (delayMs <= 0) {
-        // Should not happen (secondary beats are always after the primary),
-        // but guard against floating-point edge cases.
-        continue;
-      }
+      const dotPxFromBottom = defaultTapOffset + (timeOffsetMs * pxPerMs);
+      const dotY = visualBottomY - dotPxFromBottom - DOT_OFFSET_PX;
 
-      // Capture notes in a stable closure variable so the timer callback
-      // always references the correct beat's notes regardless of loop iteration.
-      const beatNotes = beat.notes.slice();
+      // Start with object alpha=0, but fillAlpha=1 so the color is fully present when revealed
+      const staticDot = this.scene.add.circle(centerX, dotY, 4, DOT_COLOR, 1);
+      staticDot.setAlpha(0);
 
-      const timer = this.scene.time.addEvent({
-        delay: delayMs,
-        callback: () => {
-          // Emit the beat with its notes so PhaserGameBoard can call
-          // useTileAudio.handleHoldBeat(notes).
-          EventBus.emit(PianoEvents.HOLD_BEAT, {
-            tile: this.gameTile,
-            notes: beatNotes,
-          });
-        },
-      });
+      this.add(staticDot);
 
-      this.beatTimers.push(timer);
+      this.staticBeatDots.push({ arc: staticDot, timeOffsetMs, notes });
     }
+  }
+
+  private updateStaticBeatDotsLayout(tapDistFromBottom: number): void {
+    const primaryNote = this.gameTile.notes[0];
+    const pxPerMs = this.tileHeight / (primaryNote.duration * 1000);
+    const visualBottomY = this.tileHeight - TILE_VISUAL_GAP;
+
+    for (const dot of this.staticBeatDots) {
+      const dotPxFromBottom = tapDistFromBottom + (dot.timeOffsetMs * pxPerMs);
+      const dotY = visualBottomY - dotPxFromBottom - DOT_OFFSET_PX;
+      dot.arc.setY(dotY);
+    }
+  }
+
+  private fireBeat(notes: ParsedNote[], staticDotElem: Phaser.GameObjects.Arc): void {
+    EventBus.emit(PianoEvents.HOLD_BEAT, {
+      tile: this.gameTile,
+      notes: notes,
+    });
+
+    staticDotElem.setAlpha(0);
+
+    const ripple = this.scene.add.circle(0, 0, 7);
+    ripple.isFilled = false;
+    ripple.setStrokeStyle(2, 0xa0e1ff, 0.9);
+
+    this.followerGroup.add(ripple);
+
+    this.scene.tweens.add({
+      targets: ripple,
+      scale: 6,
+      alpha: 0,
+      duration: 450,
+      ease: 'Quad.out',
+      onComplete: () => {
+        ripple.destroy();
+      }
+    });
+
+    this.scene.tweens.add({
+      targets: this.followerDot,
+      alpha: 0.2,
+      duration: 180,
+      yoyo: true,
+      ease: 'Sine.inOut'
+    });
   }
 }

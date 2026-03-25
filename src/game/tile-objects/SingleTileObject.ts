@@ -106,7 +106,7 @@ export class SingleTileObject extends BaseTileObject {
    * Visual tap feedback: dim the tile to show it has been tapped.
    * Audio is handled upstream by the EventBus → PhaserGameBoard → useTileAudio chain.
    */
-  onTap(_speedMultiplier?: number): void {
+  onTap(_speedMultiplier?: number, _worldY?: number): void {
     if (this.tapped) return; // Ignore duplicate taps on the same tile.
     this.tapped = true;
 

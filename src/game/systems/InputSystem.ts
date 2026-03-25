@@ -37,7 +37,7 @@ import type { BaseTileObject } from '../tile-objects/BaseTileObject';
 // ---------------------------------------------------------------------------
 
 /** Called when a tile is successfully tapped. */
-export type TileTapCallback = (tileObject: BaseTileObject) => void;
+export type TileTapCallback = (tileObject: BaseTileObject, worldY: number) => void;
 
 /** Called when a held tile's pointer is released. */
 export type TileReleaseCallback = (tileObject: BaseTileObject) => void;
@@ -160,7 +160,7 @@ export class InputSystem {
       if (tileObject.containsPoint(worldPoint.x, worldPoint.y)) {
         // Track this pointer's association with the hit tile (for hold release).
         this.heldTiles.set(pointer.id, tileObject);
-        this.onTileTap(tileObject);
+        this.onTileTap(tileObject, worldPoint.y);
         break; // One tile per pointer per frame.
       }
     }
