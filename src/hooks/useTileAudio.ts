@@ -83,11 +83,14 @@ export function useTileAudio({
       attackNote({ ...primaryNote, duration: primaryNote.duration / speed });
       heldNoteRef.current = primaryNote;
       // Play any notes that co-start with the primary (same slot = play simultaneously on tap)
-      tile.notes.slice(1).forEach(note => {
-        if (Math.abs(note.slotStart - primaryNote.slotStart) < 0.0001) {
-          playNote({ ...note, duration: note.duration / speed });
-        }
-      });
+      // BUT SKIP if they are already baked into the mergedBuffer!
+      if (!primaryNote.mergedBuffer) {
+        tile.notes.slice(1).forEach(note => {
+          if (Math.abs(note.slotStart - primaryNote.slotStart) < 0.0001) {
+            playNote({ ...note, duration: note.duration / speed });
+          }
+        });
+      }
     } else if (tile.type === 'ARPEGGIO') {
       // Notes have staggered arpeggioDelayS — fire each with a setTimeout offset.
       // The first note always has delayMs=0 and plays immediately.
@@ -110,10 +113,10 @@ export function useTileAudio({
     }
   }, [attackNote, playNote, resumeContext, getSpeed, playNoteScheduled, getAudioTime]);
 
-  const handleHoldBeat = useCallback((notes: ParsedNote[]) => {
-    const speed = getSpeed();
-    notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
-  }, [playNote, getSpeed]);
+  const handleHoldBeat = useCallback((_notes: ParsedNote[]) => {
+    // Secondary beat notes are now baked into the pre-merged hold buffer
+    // triggered at tap-start. We only emit this for visual/score effects.
+  }, []);
 
   const handleHoldRelease = useCallback(() => {
     if (heldNoteRef.current) {

@@ -110,7 +110,7 @@ export default function App() {
 
       await loadInstruments(requiredInstruments);
       resolveNotes(result.notes);
-      await resolveChords(result.tiles);
+      await resolveChords(result.tiles, speedMultiplier);
 
       handleSongSelect(result);
       setScreen('game');

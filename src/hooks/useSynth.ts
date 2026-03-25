@@ -65,19 +65,31 @@ class WebAudioSampler {
     }
   }
 
-  async mergeNotes(notes: ParsedNote[]): Promise<void> {
+  async mergeNotes(notes: ParsedNote[], speedMultiplier = 1): Promise<void> {
     const buffers = notes.map(n => n.buffer).filter(Boolean) as AudioBuffer[];
-    if (buffers.length < 2) return;
-    const length = Math.max(...buffers.map(b => b.length));
+    if (buffers.length < 1) return;
+
+    const baseTimeForTile = notes[0].time;
+    let maxEnd = 0;
+    for (const note of notes) {
+      if (!note.buffer) continue;
+      const offset = (note.time - baseTimeForTile) / speedMultiplier;
+      maxEnd = Math.max(maxEnd, offset + note.buffer.duration);
+    }
+
     const sampleRate = buffers[0].sampleRate;
     const channels = Math.max(...buffers.map(b => b.numberOfChannels));
-    const offline = new OfflineAudioContext(channels, length, sampleRate);
-    for (const buf of buffers) {
+    const offline = new OfflineAudioContext(channels, Math.ceil(maxEnd * sampleRate), sampleRate);
+
+    for (const note of notes) {
+      if (!note.buffer) continue;
       const src = offline.createBufferSource();
-      src.buffer = buf;
+      src.buffer = note.buffer;
       src.connect(offline.destination);
-      src.start(0);
+      const offset = (note.time - baseTimeForTile) / speedMultiplier;
+      src.start(offset);
     }
+
     notes[0].mergedBuffer = await offline.startRendering();
   }
 
@@ -246,15 +258,13 @@ export function useSynth(): UseSynthReturn {
     }
   }, []);
 
-  const resolveChords = useCallback(async (gameTiles: GameTile[]) => {
+  const resolveChords = useCallback(async (gameTiles: GameTile[], speedMultiplier = 1) => {
     const promises: Promise<void>[] = [];
     for (const tile of gameTiles) {
       if (tile.notes.length < 2) continue;
-      const allSameSlot = tile.notes.every(n => Math.abs(n.slotStart - tile.notes[0].slotStart) < 0.001);
-      if (!allSameSlot) continue;
       const instr = tile.notes[0].instrument || 'piano';
       const sampler = samplersRef.current[instr];
-      if (sampler) promises.push(sampler.mergeNotes(tile.notes));
+      if (sampler) promises.push(sampler.mergeNotes(tile.notes, speedMultiplier));
     }
     await Promise.all(promises);
   }, []);

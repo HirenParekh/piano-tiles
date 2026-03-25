@@ -59,8 +59,9 @@ export class HoldTileObject extends BaseTileObject {
 
   // ── Animation state ─────────────────────────────────────────────────────
 
-  private firedDots = new Set<number>();
+  private lastApexY: number | undefined;
   private staticBeatDots: { arc: Phaser.GameObjects.Arc; timeOffsetMs: number; notes: ParsedNote[] }[] = [];
+  private firedDots = new Set<number>();
 
   // Tween target representing the pixel height of the fill progress
   private fillState = { height: 0 };
@@ -203,6 +204,7 @@ export class HoldTileObject extends BaseTileObject {
     this.updateStaticBeatDotsLayout(tapDistFromBottom);
 
     this.firedDots.clear();
+    this.lastApexY = undefined;
     this.isHolding = true;
 
     this.scene.events.off('update', this.onPhysicsUpdate, this);
@@ -214,6 +216,7 @@ export class HoldTileObject extends BaseTileObject {
 
     this.isHolding = false;
     this.scene.events.off('update', this.onPhysicsUpdate, this);
+    this.lastApexY = undefined;
     this.firedDots.clear();
 
     // Flatten dome at release to signal completion
@@ -245,17 +248,21 @@ export class HoldTileObject extends BaseTileObject {
     
     this.fillState.height = newHeight;
 
-    const topY = this.fillAnchorY - newHeight;
-    const apexY = topY + dy - visW;
-
-    for (let i = 0; i < this.staticBeatDots.length; i++) {
+    // ── Spatial Collision Detection ──────────────────────────────────────────
+    const currentApexY = this.tileHeight - TILE_VISUAL_GAP - tapDistFromBottom - DOT_OFFSET_PX;
+    if (this.lastApexY !== undefined) {
+      for (let i = 0; i < this.staticBeatDots.length; i++) {
         if (this.firedDots.has(i)) continue;
         const dot = this.staticBeatDots[i];
-        if (apexY <= dot.arc.y) {
-            this.firedDots.add(i);
-            this.fireBeat(dot.notes, dot.arc);
+        
+        // Detect crossing (Apex moves UP = decreasing Y): current <= dotY < last
+        if (currentApexY <= dot.arc.y && dot.arc.y < this.lastApexY) {
+          this.firedDots.add(i);
+          this.fireBeat(dot.notes, dot.arc);
         }
+      }
     }
+    this.lastApexY = currentApexY;
 
     this.drawFillFrame();
 
@@ -342,16 +349,18 @@ export class HoldTileObject extends BaseTileObject {
       }
     }
 
-    const pxPerMs = this.tileHeight / (primaryNote.duration * 1000);
+    const slotSpanMultiplier = Math.max(1, Math.round(this.gameTile.slotSpan));
+    const singleTileH = this.tileHeight / slotSpanMultiplier;
     const visualBottomY = this.tileHeight - TILE_VISUAL_GAP;
 
     const times = Array.from(grouped.keys()).sort((a,b) => a - b);
     for (const time of times) {
-      const timeOffsetMs = (time - primaryNote.time) * 1000;
       const notes = grouped.get(time)!;
+      const slotOffset = notes[0].slotStart - primaryNote.slotStart;
 
-      const dotPxFromBottom = defaultTapOffset + (timeOffsetMs * pxPerMs);
-      const dotY = visualBottomY - dotPxFromBottom - DOT_OFFSET_PX;
+      // The dot is exactly spatialOffset + DOT_OFFSET_PX from its base musical position
+      const dotPxFromBottom = defaultTapOffset + (slotOffset * singleTileH) + DOT_OFFSET_PX;
+      const dotY = visualBottomY - dotPxFromBottom;
 
       // Start with object alpha=0, but fillAlpha=1 so the color is fully present when revealed
       const staticDot = this.scene.add.circle(centerX, dotY, 4, DOT_COLOR, 1);
@@ -359,18 +368,20 @@ export class HoldTileObject extends BaseTileObject {
 
       this.add(staticDot);
 
-      this.staticBeatDots.push({ arc: staticDot, timeOffsetMs, notes });
+      this.staticBeatDots.push({ arc: staticDot, timeOffsetMs: (time - primaryNote.time) * 1000, notes });
     }
   }
 
   private updateStaticBeatDotsLayout(tapDistFromBottom: number): void {
     const primaryNote = this.gameTile.notes[0];
-    const pxPerMs = this.tileHeight / (primaryNote.duration * 1000);
+    const slotSpanMultiplier = Math.max(1, Math.round(this.gameTile.slotSpan));
+    const singleTileH = this.tileHeight / slotSpanMultiplier;
     const visualBottomY = this.tileHeight - TILE_VISUAL_GAP;
 
     for (const dot of this.staticBeatDots) {
-      const dotPxFromBottom = tapDistFromBottom + (dot.timeOffsetMs * pxPerMs);
-      const dotY = visualBottomY - dotPxFromBottom - DOT_OFFSET_PX;
+      const slotOffset = dot.notes[0].slotStart - primaryNote.slotStart;
+      const dotPxFromBottom = tapDistFromBottom + (slotOffset * singleTileH) + DOT_OFFSET_PX;
+      const dotY = visualBottomY - dotPxFromBottom;
       dot.arc.setY(dotY);
     }
   }
