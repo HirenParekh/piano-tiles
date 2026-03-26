@@ -55,7 +55,6 @@ export class HoldTileObject extends BaseTileObject {
   /** The container holding the moving dot, glow, and any ripples that erupt */
   private readonly followerGroup: Phaser.GameObjects.Container;
   private readonly followerDot: Phaser.GameObjects.Arc;
-  private readonly followerGlow: Phaser.GameObjects.Arc;
 
   // ── Animation state ─────────────────────────────────────────────────────
 
@@ -121,13 +120,12 @@ export class HoldTileObject extends BaseTileObject {
     this.followerGroup = scene.add.container(centerX, this.fillAnchorY);
     this.followerGroup.setAlpha(0); // Hidden until tapped
 
-    // A subtle glowing backdrop simulating the old CSS drop-shadow filter
-    this.followerGlow = scene.add.circle(0, 0, 14, LASER_TOP, 0.4);
-    this.followerGlow.setBlendMode(Phaser.BlendModes.ADD);
+    const initialRadius = visW * 0.06; // 6% of tile width (down from 10%)
 
-    this.followerDot = scene.add.arc(0, 0, 7, 0, 360, false, 0xffffff);
+    // The white playhead dot (ArcDot)
+    this.followerDot = scene.add.arc(0, 0, initialRadius, 0, 360, false, 0xffffff);
 
-    this.followerGroup.add([this.followerGlow, this.followerDot]);
+    this.followerGroup.add([this.followerDot]);
 
     // Back-to-front rendering
     this.add([
@@ -194,8 +192,9 @@ export class HoldTileObject extends BaseTileObject {
       }
     });
 
-    // ── Reveal Follower Group  ──────────────────────────────
-    this.followerGroup.setAlpha(1);
+    // The ArcDot (followerGroup) remains hidden during the initial tap.
+    // It only flashes during secondary beats triggered by fireBeat.
+    this.followerGroup.setAlpha(0);
 
     // Animate static dots in when tapped
     this.scene.tweens.add({
@@ -225,7 +224,7 @@ export class HoldTileObject extends BaseTileObject {
     this.drawFillFrame(true);
 
     this.markTapped();
-    
+
     // Hide dots and glow
     this.followerGroup.setAlpha(0);
   }
@@ -247,7 +246,7 @@ export class HoldTileObject extends BaseTileObject {
 
     let newHeight = Math.max(0, tapDistFromBottom + DOT_OFFSET_PX - capH + dy - visW);
     newHeight = Math.min(newHeight, this.fillMaxH);
-    
+
     this.fillState.height = newHeight;
 
     // ── Spatial Collision Detection ──────────────────────────────────────────
@@ -256,7 +255,7 @@ export class HoldTileObject extends BaseTileObject {
       for (let i = 0; i < this.staticBeatDots.length; i++) {
         if (this.firedDots.has(i)) continue;
         const dot = this.staticBeatDots[i];
-        
+
         // Detect crossing (Apex moves UP = decreasing Y): current <= dotY < last
         if (currentApexY <= dot.arc.y && dot.arc.y < this.lastApexY) {
           this.firedDots.add(i);
@@ -355,7 +354,7 @@ export class HoldTileObject extends BaseTileObject {
     const singleTileH = this.tileHeight / slotSpanMultiplier;
     const visualBottomY = this.tileHeight - TILE_VISUAL_GAP;
 
-    const times = Array.from(grouped.keys()).sort((a,b) => a - b);
+    const times = Array.from(grouped.keys()).sort((a, b) => a - b);
     for (const time of times) {
       const notes = grouped.get(time)!;
       const slotOffset = notes[0].slotStart - primaryNote.slotStart;
@@ -414,9 +413,17 @@ export class HoldTileObject extends BaseTileObject {
     });
 
     this.scene.tweens.add({
+      targets: this.followerGroup,
+      alpha: 0.2, // Increased transparency as requested
+      duration: 90,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
+
+    this.scene.tweens.add({
       targets: this.followerDot,
-      alpha: 0.2,
-      duration: 180 / this.speedMultiplier,
+      scale: 1.333, // Grows to 8% (8 / 6 = 1.333)
+      duration: 90,
       yoyo: true,
       ease: 'Sine.inOut'
     });
