@@ -258,7 +258,7 @@ export function useSynth(): UseSynthReturn {
     }
   }, []);
 
-  const resolveChords = useCallback(async (gameTiles: GameTile[], speedMultiplier = 1) => {
+  const resolveChords = useCallback(async (gameTiles: GameTile[], speedMultiplier: number = 1) => {
     const promises: Promise<void>[] = [];
     for (const tile of gameTiles) {
       if (tile.notes.length < 2) continue;
@@ -271,5 +271,15 @@ export function useSynth(): UseSynthReturn {
 
   const getAudioTime = useCallback(() => rawContext.currentTime, [rawContext]);
 
-  return { loadInstruments, resolveNotes, resolveChords, playNote, attackNote, releaseNote, playNoteScheduled, getAudioTime, resumeContext };
+  return {
+    loadInstruments,
+    resolveNotes,
+    resolveChords: (resolveChords as (gameTiles: any[], speedMultiplier?: number) => Promise<void>),
+    playNote,
+    attackNote,
+    releaseNote,
+    playNoteScheduled,
+    getAudioTime,
+    resumeContext
+  };
 }

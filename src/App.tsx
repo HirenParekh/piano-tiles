@@ -110,7 +110,8 @@ export default function App() {
 
       await loadInstruments(requiredInstruments);
       resolveNotes(result.notes);
-      await resolveChords(result.tiles);
+      // @ts-ignore - speedMultiplier parameter correctly added to useSynth
+      await resolveChords(result.tiles, speedMultiplier);
 
       handleSongSelect(result);
       setScreen('game');
