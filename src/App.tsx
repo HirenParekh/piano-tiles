@@ -110,7 +110,7 @@ export default function App() {
 
       await loadInstruments(requiredInstruments);
       resolveNotes(result.notes);
-      await resolveChords(result.tiles, speedMultiplier);
+      await resolveChords(result.tiles);
 
       handleSongSelect(result);
       setScreen('game');
@@ -130,75 +130,75 @@ export default function App() {
 
         {/* Floating Speed Selectors */}
         {screen === 'selection' && (
-        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 90, display: 'flex', gap: '8px' }}>
+          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 90, display: 'flex', gap: '8px' }}>
 
-          {/* Engine TimeScale (Animation SlowMo) */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowTimeScaleMenu(!showTimeScaleMenu)}
-              style={{
-                padding: '8px 12px', borderRadius: '8px', background: 'rgba(231, 76, 60, 0.9)',
-                color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
-              }}
-            >
-              Engine: {timeScale}x ▾
-            </button>
-            {showTimeScaleMenu && (
-              <div style={{
-                position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: '#fff',
-                padding: '12px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '150px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#888', fontWeight: 'bold' }}>Phaser Time Scale</div>
-                {[0.1, 0.25, 0.5, 1].map(v => (
-                  <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#333', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    <input
-                      type="checkbox"
-                      checked={timeScale === v}
-                      onChange={() => { setTimeScale(v); setShowTimeScaleMenu(false); }}
-                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                    />
-                    {v}x (SlowMo)
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
+            {/* Engine TimeScale (Animation SlowMo) */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowTimeScaleMenu(!showTimeScaleMenu)}
+                style={{
+                  padding: '8px 12px', borderRadius: '8px', background: 'rgba(231, 76, 60, 0.9)',
+                  color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+                }}
+              >
+                Engine: {timeScale}x ▾
+              </button>
+              {showTimeScaleMenu && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: '#fff',
+                  padding: '12px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '150px'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#888', fontWeight: 'bold' }}>Phaser Time Scale</div>
+                  {[0.1, 0.25, 0.5, 1].map(v => (
+                    <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#333', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <input
+                        type="checkbox"
+                        checked={timeScale === v}
+                        onChange={() => { setTimeScale(v); setShowTimeScaleMenu(false); }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      {v}x (SlowMo)
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {/* Song Speed */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-              style={{
-                padding: '8px 12px', borderRadius: '8px', background: 'rgba(52, 152, 219, 0.9)',
-                color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
-              }}
-            >
-              Speed: {speedMultiplier}x ▾
-            </button>
-            {showSpeedMenu && (
-              <div style={{
-                position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: '#fff',
-                padding: '12px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '120px'
-              }}>
-                {[0.25, 0.5, 0.75, 1, 1.25, 1.5].map(v => (
-                  <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#333', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    <input
-                      type="checkbox"
-                      checked={speedMultiplier === v}
-                      onChange={() => { setSpeedMultiplier(v); setShowSpeedMenu(false); }}
-                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                    />
-                    {v}x Song Speed
-                  </label>
-                ))}
-              </div>
-            )}
+            {/* Song Speed */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                style={{
+                  padding: '8px 12px', borderRadius: '8px', background: 'rgba(52, 152, 219, 0.9)',
+                  color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+                }}
+              >
+                Speed: {speedMultiplier}x ▾
+              </button>
+              {showSpeedMenu && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: '#fff',
+                  padding: '12px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '120px'
+                }}>
+                  {[0.25, 0.5, 0.75, 1, 1.25, 1.5].map(v => (
+                    <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#333', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <input
+                        type="checkbox"
+                        checked={speedMultiplier === v}
+                        onChange={() => { setSpeedMultiplier(v); setShowSpeedMenu(false); }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      {v}x Song Speed
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         )}
 
         {/* Game Board — z:1, slides in from right */}
