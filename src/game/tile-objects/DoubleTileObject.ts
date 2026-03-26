@@ -79,7 +79,7 @@ export class DoubleTileObject extends BaseTileObject {
   }
 
   // speedMultiplier is accepted for interface conformance but not used by double tiles.
-  onTap(_speedMultiplier?: number): void {
+  onTap(_speedMultiplier = 1, _worldY?: number, _slotDurationMs = 0): void {
     if (this.tapped) return;
     this.markTapped();
   }

@@ -506,9 +506,13 @@ export class PianoGameScene extends Phaser.Scene {
    *   4. Emit TILE_TAPPED so PhaserGameBoard can call useTileAudio.
    */
   private handleTileTap(tileObject: BaseTileObject, worldY: number): void {
+    const result = this.songData?.result;
+    const effectiveBpm = result?.info.effectiveBpm ?? result?.info.bpm ?? 120;
+    const slotDurationMs = 60000 / effectiveBpm;
+
     // Visual feedback — greys out single/double tiles; starts the fill tween
     // and schedules beat timers for hold tiles. speedMultiplier scales all timings.
-    tileObject.onTap(this.songData?.speedMultiplier ?? 1, worldY);
+    tileObject.onTap(this.songData?.speedMultiplier ?? 1, worldY, slotDurationMs);
 
     // Increment HUD score counter.
     this.hudSystem?.increment();

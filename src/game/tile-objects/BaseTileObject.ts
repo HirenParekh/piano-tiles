@@ -113,8 +113,9 @@ export abstract class BaseTileObject extends Phaser.GameObjects.Container {
    *
    * @param speedMultiplier - Current playback speed (1 = normal, 0.5 = half speed).
    * @param worldY          - Optional physical Y coordinate of the pointer tap in world space.
+   * @param slotDurationMs  - Musical duration of one tile slot in milliseconds.
    */
-  abstract onTap(speedMultiplier?: number, worldY?: number): void;
+  abstract onTap(speedMultiplier?: number, worldY?: number, slotDurationMs?: number): void;
 
   /**
    * Called by InputSystem when the player releases a held tile (pointerup / cancel).

@@ -72,6 +72,7 @@ export class HoldTileObject extends BaseTileObject {
   private isHolding = false;
   private tapScreenY = 0;
   private fillMaxH = 0;
+  private speedMultiplier = 1;
 
   constructor(
     scene: Phaser.Scene,
@@ -151,9 +152,10 @@ export class HoldTileObject extends BaseTileObject {
     return 'HOLD';
   }
 
-  onTap(_speedMultiplier = 1, worldY?: number): void {
+  onTap(speedMultiplier = 1, worldY?: number, _slotDurationMs = 0): void {
     if (this.tapped) return;
     this.tapped = true;
+    this.speedMultiplier = speedMultiplier;
 
     const primaryNote = this.gameTile.notes[0];
     if (!primaryNote) return;
@@ -185,7 +187,7 @@ export class HoldTileObject extends BaseTileObject {
       targets: this.bottomRing,
       scale: 1.4,
       alpha: 0,
-      duration: 300,
+      duration: 300 / this.speedMultiplier,
       ease: 'Cubic.out',
       onStart: () => {
         this.bottomRing.setStrokeStyle(3, 0xffffff, 1);
@@ -199,7 +201,7 @@ export class HoldTileObject extends BaseTileObject {
     this.scene.tweens.add({
       targets: this.staticBeatDots.map(d => d.arc),
       alpha: 1, // Start fully opaque
-      duration: 100,
+      duration: 100 / this.speedMultiplier,
     });
     this.updateStaticBeatDotsLayout(tapDistFromBottom);
 
@@ -404,7 +406,7 @@ export class HoldTileObject extends BaseTileObject {
       targets: ripple,
       scale: 6,
       alpha: 0,
-      duration: 450,
+      duration: 180,
       ease: 'Quad.out',
       onComplete: () => {
         ripple.destroy();
@@ -414,7 +416,7 @@ export class HoldTileObject extends BaseTileObject {
     this.scene.tweens.add({
       targets: this.followerDot,
       alpha: 0.2,
-      duration: 180,
+      duration: 180 / this.speedMultiplier,
       yoyo: true,
       ease: 'Sine.inOut'
     });
