@@ -41,8 +41,6 @@ const CSS_BODY_BOT = '#000000';
 const CSS_FILL     = '#308af1';
 /** Cap, ring, and dot accent color (bright cyan) */
 const CSS_CAP      = '#00cfff';
-/** Ripple ring color (light blue-white) */
-const CSS_RIPPLE   = '#a0e1ff';
 
 // ---------------------------------------------------------------------------
 // Geometry constants (must match values in HoldTileObject)
@@ -281,22 +279,33 @@ function bakeDot(scene: Phaser.Scene): void {
 }
 
 /**
- * Sonar ripple: a light-blue stroke circle for the beat-crossing ripple effect.
- * 24×24px; the pool sprite tweens scale 1 → 6 then returns to the pool.
+ * Sonar ripple: high-resolution hairline stroke circle with a soft, multi-tonal glow.
+ * 128x128px canvas (increased from 48px) to eliminate pixelation during expansion.
+ * The sprite is scaled down initially then expanded, staying crisp throughout.
  */
 function bakeRipple(scene: Phaser.Scene): void {
   const key = holdTextureKey('ripple');
   if (scene.textures.exists(key)) return;
 
-  const size = 24;
+  const size = 128; // high-res canvas
+  const radius = 20; // larger base radius to capture more detail
   const tex  = scene.textures.createCanvas(key, size, size);
   if (!tex) return;
 
   const ctx = tex.getContext();
-  ctx.strokeStyle = CSS_RIPPLE;
-  ctx.lineWidth   = 2;
+
+  // White core with a luxurious, feathered cyan glow
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 1.5;           // Hairline thickness
+  ctx.shadowColor = CSS_CAP;       // #00cfff (Cyan color)
+  ctx.shadowBlur  = 24;            // Soft, dreamy bloom (increased for high-res)
+
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+  
+  // Multiple strokes to build a vibrant, clear core without "fattening" the line
   ctx.stroke();
+  ctx.stroke();
+
   tex.refresh();
 }

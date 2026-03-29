@@ -90,6 +90,24 @@ export function SongSelection({ onPlaySong }: Props) {
                 </div>
             </div>
 
+            <div style={{ padding: '0 20px', marginTop: 'auto' }}>
+                <button 
+                  onClick={() => window.location.search = '?scene=fx'}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '4px',
+                    color: '#888',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    fontFamily: 'monospace',
+                    width: 'fit-content'
+                  }}
+                >
+                  ⚙️ DEBUG SANDBOX
+                </button>
+            </div>
         </div>
     );
 }

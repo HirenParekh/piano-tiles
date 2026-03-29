@@ -24,7 +24,8 @@ import { PhaserGame } from '../game/PhaserGame';
 import type { IRefPhaserGame } from '../game/PhaserGame';
 import { EventBus, PianoEvents } from '../game/EventBus';
 import type { LoadSongPayload } from '../game/EventBus';
-import { PianoGameScene } from '../game/scenes/PianoGameScene';
+import { PianoGameScene, PIANO_GAME_SCENE_KEY } from '../game/scenes/PianoGameScene';
+import { FXSandboxScene } from '../game/scenes/FXSandboxScene';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -70,6 +71,11 @@ export function PhaserGameBoard({
 
   // No longer needed: audio is handled internally by Phaser AudioSystem
 
+  const isSandbox = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('scene') === 'fx';
+  }, []);
+
   /** Song payload passed to PianoGameScene.init() via scene.scene.restart(). */
   const payload = useMemo<LoadSongPayload>(
     () => ({
@@ -90,12 +96,18 @@ export function PhaserGameBoard({
     (scene: Phaser.Scene) => {
       scene.time.timeScale = timeScale; // Slows down scene timers
       scene.tweens.timeScale = timeScale; // Slows down our tap animation tweens!
-      if (!songSentRef.current) {
+
+      if (isSandbox) {
+        // If we're in the sandbox, do not restart with a song payload.
+        return;
+      }
+
+      if (!songSentRef.current && scene.scene.key === PIANO_GAME_SCENE_KEY) {
         songSentRef.current = true;
         scene.scene.restart(payload as unknown as object);
       }
     },
-    [payload, timeScale],
+    [payload, timeScale, isSandbox],
   );
 
   // Apply timeScale dynamically if it changes during gameplay
@@ -125,7 +137,7 @@ export function PhaserGameBoard({
     <div style={{ width: '100%', height: '100%' }}>
       <PhaserGame
         ref={phaserRef}
-        scenes={[PianoGameScene]}
+        scenes={isSandbox ? [FXSandboxScene, PianoGameScene] : [PianoGameScene, FXSandboxScene]}
         onSceneReady={handleSceneReady}
       />
     </div>

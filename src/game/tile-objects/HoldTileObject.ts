@@ -134,11 +134,6 @@ export class HoldTileObject extends BaseTileObject {
    * Their world Y-coordinates will be continuously updated to mathematically 
    * "ride" the apex of the dome as the progress bar moves up!
    */
-  /**
-   * List of spawned visual effects (ripples, apex dots) that are currently active.
-   * Their world Y-coordinates will be continuously updated to mathematically 
-   * "ride" the apex of the dome as the progress bar moves up!
-   */
   private activeTrackingDecorations: Phaser.GameObjects.Image[] = [];
 
   // ── Secondary beat detection state ──────────────────────────────────────
@@ -360,16 +355,24 @@ export class HoldTileObject extends BaseTileObject {
         this.activeDots[i] = dot;
         // worldY of this dot = tile container Y + local dot Y
         const dotWorldX = this.x + this.centerX;
-        const dotWorldY = this.y + (this.staticBeatDots[i].worldY);
+        const localY    = this.staticBeatDots[i].worldY;
+        const dotWorldY = this.y + localY;
+        
         dot.image.setPosition(dotWorldX, dotWorldY);
         dot.image.setAlpha(0);
-        dot.image.setVisible(true);
-        // Fade in
-        this.scene.tweens.add({
-          targets: dot.image,
-          alpha: 1,
-          duration: 100 / this.speedMultiplier,
-        });
+        
+        // Clip to tile bounds: dots are only visible when inside the tile body
+        const isWithinTile = localY >= 0 && localY <= this.tileHeight;
+        dot.image.setVisible(isWithinTile);
+        
+        // Fade in (only if visible)
+        if (isWithinTile) {
+          this.scene.tweens.add({
+            targets: dot.image,
+            alpha: 1,
+            duration: 100 / this.speedMultiplier,
+          });
+        }
       }
     }
 
@@ -456,7 +459,13 @@ export class HoldTileObject extends BaseTileObject {
     for (let i = 0; i < this.activeDots.length; i++) {
       const dot = this.activeDots[i];
       if (dot && !this.firedDots.has(i)) {
-        dot.image.setY(this.y + this.staticBeatDots[i].worldY);
+        const localY = this.staticBeatDots[i].worldY;
+        // Clip to tile bounds: [0, tileHeight]
+        const isWithinTile = localY >= 0 && localY <= this.tileHeight;
+        dot.image.setVisible(isWithinTile);
+        if (isWithinTile) {
+          dot.image.setY(this.y + localY);
+        }
       }
     }
 
@@ -644,8 +653,9 @@ export class HoldTileObject extends BaseTileObject {
     const ripple = this.decorPool.borrowRipple();
     if (ripple) {
       ripple.image.setPosition(dotWorldX, dotWorldY);
-      ripple.image.setScale(1);
-      ripple.image.setAlpha(0.9);
+      ripple.image.setScale(0.25); // Start small with high-res texture (128px -> small circle)
+      ripple.image.setAlpha(0.6);  // Softer base opacity
+      ripple.image.setBlendMode(Phaser.BlendModes.ADD); 
       ripple.image.setVisible(true);
 
       // Add to tracking array so it geometrically rides the dome apex!
@@ -653,10 +663,9 @@ export class HoldTileObject extends BaseTileObject {
 
       this.scene.tweens.add({
         targets: ripple.image,
-        scale: 4.5,
-        alpha: 0,
-        duration: 250,
-        ease: 'Quad.out',
+        scale: { value: 2.0, ease: 'Quad.out' }, // Fast pop
+        alpha: { value: 0, ease: 'Sine.inOut' },
+        duration: 220, // Optimized duration from Sandbox testing
         onComplete: () => {
           this.activeTrackingDecorations = this.activeTrackingDecorations.filter(img => img !== ripple.image);
           this.decorPool.returnItem(ripple);
