@@ -167,6 +167,9 @@ export class HoldTileObject extends BaseTileObject {
   /** True while the player's finger is pressing this tile */
   private isHolding = false;
 
+  /** True if the tile has successfully reached 100% completion */
+  private isCompleted = false;
+
   /**
    * Screen-space Y captured at tap time = worldY − camera.scrollY.
    * Re-adds current scrollY each frame to reconstruct the tap's world position.
@@ -396,8 +399,10 @@ export class HoldTileObject extends BaseTileObject {
     this.lastApexY = undefined;
     this.firedDots.clear();
 
-    // Preserve the dome cap exactly where the player released.
-    this.updateFillSprites(false);
+    if (!this.isCompleted) {
+      // Preserve the dome cap exactly where the player released.
+      this.updateFillSprites(false);
+    }
 
     // Return all borrowed dot sprites to the pool.
     for (const dot of this.activeDots) {
@@ -451,6 +456,20 @@ export class HoldTileObject extends BaseTileObject {
     // Compute new fill height. Uses only pre-computed readonly fields.
     let newHeight = Math.max(0, tapDistFromBottom + DOT_OFFSET_PX - this.capH + this.domeDy - this.visW);
     newHeight     = Math.min(newHeight, this.fillMaxH);
+
+    // ── Snap to 100% Logic ────────────────────────────────────────────────
+    // The original game magnetically snaps the fill to 100% when it gets very close,
+    // ensuring the user doesn't miss the last frame of an almost-perfect hold.
+    const progressRatio = newHeight / this.fillMaxH;
+    const SNAP_THRESHOLD = 0.90; // Snap when 90% complete
+
+    if (progressRatio >= SNAP_THRESHOLD || newHeight >= this.fillMaxH) {
+      newHeight = this.fillMaxH;
+      // We explicitly snap the physics offset as well so currentApexY perfectly 
+      // crosses any remaining beat dots at the very top of the tile!
+      tapDistFromBottom = newHeight - DOT_OFFSET_PX + this.capH - this.domeDy + this.visW;
+    }
+
     this.fillHeight = newHeight;
 
     // Update dot sprite world positions as the camera scrolls.
@@ -489,8 +508,26 @@ export class HoldTileObject extends BaseTileObject {
     // Auto-complete when fill reaches the top.
     if (newHeight >= this.fillMaxH) {
       this.isHolding = false;
+      this.isCompleted = true;
       this.scene.events.off('update', this.onPhysicsUpdate, this);
       this.updateFillSprites(true);
+
+      // ── Post-Completion Transparency (The "Spent" State) ────────────────
+      // Exactly like the single tile hit state, the entire tile turns mostly
+      // transparent the moment it is completely filled.
+      this.bodyTopSprite.setAlpha(0.15);
+      this.bodyBaseSprite.setAlpha(0.15);
+      this.laserSprite.setVisible(false);
+      
+      // We hide the fill explicitly so the tile is just a faint outline.
+      this.fillRect.setVisible(false);
+      this.domeSprite.setVisible(false);
+      
+      // Any dots waiting to fade can be instantly returned
+      for (const dot of this.activeDots) {
+        if (dot) this.decorPool.returnItem(dot);
+      }
+      this.activeDots = [];
     }
   }
 
