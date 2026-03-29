@@ -51,6 +51,7 @@ import Phaser from 'phaser';
 import { MIN_HEIGHT } from '../../utils/tileBuilder';
 import { EventBus, PianoEvents } from '../EventBus';
 import type { LoadSongPayload } from '../EventBus';
+import type { ParsedNote } from '../../types/midi';
 import { TileObjectFactory } from '../tile-objects/TileObjectFactory';
 import type { BaseTileObject } from '../tile-objects/BaseTileObject';
 import { CameraScrollSystem } from '../systems/CameraScrollSystem';
@@ -59,6 +60,9 @@ import { InputSystem } from '../systems/InputSystem';
 import { BackgroundSystem } from '../systems/BackgroundSystem';
 import { LaneDividerSystem } from '../systems/LaneDividerSystem';
 import { HUDSystem } from '../systems/HUDSystem';
+import { AudioSystem } from '../systems/AudioSystem';
+import { bakeHoldTileTextures } from '../tile-objects/HoldTileTextures';
+import { HoldDecorationPool } from '../tile-objects/HoldDecorationPool';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -117,29 +121,33 @@ export class PianoGameScene extends Phaser.Scene {
   private inputSystem: InputSystem | null = null;
 
   /**
-   * Score counter, back button, and song title pinned to screen coordinates.
-   * Absorbs the Step-4 ScoreSystem; created whenever a song is loaded.
+   * Score counter and back button pinned to screen coordinates.
    */
   private hudSystem: HUDSystem | null = null;
 
   /**
    * Animated gradient + bokeh + particles background layer.
-   * Created in create(); always present even without a song.
    */
   private backgroundSystem: BackgroundSystem | null = null;
 
   /**
    * Static vertical lines between the 4 lanes.
-   * Created in create(); always present even without a song.
    */
   private laneDividerSystem: LaneDividerSystem | null = null;
 
   /**
-   * Pixel scale ratio: how many Phaser world pixels equal one MIN_HEIGHT slot.
-   * = gameHeight / (VISIBLE_SLOTS * MIN_HEIGHT)
+   * Pixel scale ratio: gameHeight / (VISIBLE_SLOTS * MIN_HEIGHT).
    * Recomputed on every Phaser.Scale.RESIZE event.
    */
   private scaleRatio = 1;
+
+  /** Low-latency audio playback system. */
+  private audioSystem: AudioSystem | null = null;
+
+  /**
+   * Scene-level pool of decoration sprites for hold tiles.
+   */
+  private holdDecorationPool: HoldDecorationPool | null = null;
 
   /**
    * Container for world-bound Intro and Start cards.
@@ -148,10 +156,33 @@ export class PianoGameScene extends Phaser.Scene {
 
   /**
    * Full height of the Phaser world in pixels.
-   * = result.totalHeight * scaleRatio
-   * All tiles are positioned within [0, worldHeight].
    */
   private worldHeight = 0;
+
+  // ── Browse-scroll state (drag + wheel before game starts) ──────────────────
+
+  /**
+   * Screen-Y captured at pointer-down; used to compute drag delta.
+   * -1 when no drag is in progress.
+   */
+  private dragStartY = -1;
+
+  /**
+   * Camera scrollY at the moment the drag started.
+   * Combined with dragStartY to compute the new scrollY each frame.
+   */
+  private dragStartScrollY = 0;
+
+  /** Bound references so we can remove the exact same function on cleanup. */
+  private readonly onBrowseDragStart = (p: Phaser.Input.Pointer) => this.handleBrowseDragStart(p);
+  private readonly onBrowseDragMove  = (p: Phaser.Input.Pointer) => this.handleBrowseDragMove(p);
+  private readonly onBrowseDragEnd   = ()                         => this.handleBrowseDragEnd();
+  private readonly onBrowseWheel     = (
+    _p: Phaser.Input.Pointer,
+    _gx: number,
+    _gy: number,
+    deltaY: number,
+  ) => this.handleBrowseWheel(deltaY);
 
   // -------------------------------------------------------------------------
   // Constructor
@@ -202,6 +233,9 @@ export class PianoGameScene extends Phaser.Scene {
    *   6. HUD (topmost depth — created last so it's always on top)
    */
   create(): void {
+    // 0. Initialize audio system.
+    this.audioSystem = new AudioSystem(this);
+
     // 1. Compute how many Phaser pixels equal one tile slot.
     this.computeScaleRatio();
 
@@ -219,7 +253,20 @@ export class PianoGameScene extends Phaser.Scene {
     );
 
     if (this.songData) {
-      // 5. Instantiate one game object per tile.
+      const laneWidth = this.scale.width / LANE_COUNT;
+
+      // 5a. Pre-bake all shared hold-tile canvas textures into the GPU texture cache.
+      //     Must run BEFORE buildTileObjects() so textures exist when HoldTileObjects
+      //     reference them in their constructors. Safe to call multiple times —
+      //     bakeHoldTileTextures() skips any key that already exists in the cache.
+      bakeHoldTileTextures(this, laneWidth);
+
+      // 5b. Create the scene-level decoration pool (ring, dots, ripples).
+      //     Shared across all hold tiles; tiles borrow on tap and return on release.
+      this.holdDecorationPool?.destroy();
+      this.holdDecorationPool = new HoldDecorationPool(this, laneWidth);
+
+      // 5c. Instantiate one game object per tile.
       this.buildTileObjects();
 
       // 5. Build Intro and Start cards
@@ -228,7 +275,7 @@ export class PianoGameScene extends Phaser.Scene {
       // 6. Build the scroll system that moves the camera each frame.
       this.buildScrollSystem();
 
-      // 7. Build HUD (score + back button + arrows).
+      // 7. Build HUD (score + back button).
       const songTitle = this.songData.result.info.name ?? '';
       this.hudSystem = new HUDSystem(
         this,
@@ -236,12 +283,13 @@ export class PianoGameScene extends Phaser.Scene {
         this.scale.height,
         MIN_HEIGHT * this.scaleRatio,
         songTitle,
-        (dir) => this.scrollBySlot(dir),
       );
 
-      // Hide arrows if game already started (during resize)
+      // Hide arrows / register browse-scroll if game hasn't started.
       if (this.gameStarted) {
         this.cameraScrollSystem?.start();
+      } else {
+        this.registerBrowseScrollListeners();
       }
 
       // 8. Build input detection — wires pointer events to tile callbacks.
@@ -254,6 +302,7 @@ export class PianoGameScene extends Phaser.Scene {
         (tileObject, worldY) => this.handleTileTap(tileObject, worldY),
         (tileObject) => this.handleTileRelease(tileObject),
       );
+      this.audioSystem?.loadSongAssets(this.songData.tiles, this.songData.speedMultiplier);
     }
 
     // 9. Recompute layout on window/container resize.
@@ -282,7 +331,62 @@ export class PianoGameScene extends Phaser.Scene {
     // Update FPS HUD
     this.hudSystem?.update(this);
 
+    // Viewport culling: hide tiles that are fully outside the camera's view.
+    // This is the #1 performance optimization in any game engine — rendering
+    // cost becomes O(visible tiles) instead of O(all tiles).
+    // A song like Jingle Bells has 150+ tiles; only 4-8 are ever on screen.
+    this.cullTiles();
+
     // Input is event-driven (no polling needed here).
+  }
+
+  // -------------------------------------------------------------------------
+  // Viewport culling
+  // -------------------------------------------------------------------------
+
+  /**
+   * Sets visibility on each tile based on whether it intersects the camera view.
+   *
+   * WHY this is the correct fix:
+   *   Phaser renders EVERY game object in the display list every frame, even invisible
+   *   ones that are thousands of pixels above or below the camera. With 150+ tile objects
+   *   (each a Container with 1-5 children), this overwhelms low-end Android GPUs.
+   *   By calling setVisible(false) on out-of-view tiles, the renderer skips them entirely,
+   *   reducing work from O(total tiles) to O(visible tiles) — typically 4-8 at a time.
+   *
+   * BUFFER:
+   *   We use 1 full screen height as a buffer above and below the viewport so tiles
+   *   are pre-shown before they scroll into view, preventing a pop-in artifact.
+   *
+   * PERFORMANCE of this method itself:
+   *   O(N) comparisons per frame (N = total tile count, ~150 for Jingle Bells).
+   *   Each comparison is tile.y vs two numbers — essentially free on modern CPUs.
+   *   The rendering savings (150 tiles → ~6 tiles) far outweigh this loop cost.
+   *
+   * NOTE: Active hold tiles (isHolding = true) are always kept visible even if
+   *   they scroll partially out of frame, so the fill animation never disappears
+   *   mid-hold. We achieve this by using a tall buffer below the viewport.
+   */
+  private cullTiles(): void {
+    if (this.tileObjects.length === 0) return;
+
+    const scrollY  = this.cameras.main.scrollY;
+    const viewH    = this.scale.height;
+
+    // Buffer = one full screen height above + one full screen height below.
+    // This ensures tiles start appearing before they enter frame (no pop-in).
+    const buffer   = viewH;
+    const viewTop  = scrollY - buffer;
+    const viewBot  = scrollY + viewH + buffer;
+
+    for (const tile of this.tileObjects) {
+      // Tile occupies world Y range [tile.y, tile.y + tile.tileHeight].
+      // Visible if the tile's range intersects [viewTop, viewBot].
+      const tileTop = tile.y;
+      const tileBot = tile.y + tile.tileHeight;
+      const inView  = tileBot > viewTop && tileTop < viewBot;
+      tile.setVisible(inView);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -314,7 +418,7 @@ export class PianoGameScene extends Phaser.Scene {
 
   /**
    * Nudges the camera one slot in the given direction.
-   * Called by the HUD arrow buttons; only moves while scroll is not playing.
+   * Only used internally; browse-scroll is now driven by drag/wheel.
    */
   scrollBySlot(direction: 'up' | 'down'): void {
     const slotPx = MIN_HEIGHT * this.scaleRatio;
@@ -393,6 +497,10 @@ export class PianoGameScene extends Phaser.Scene {
     // comfortably inside a single-slot tile without overflowing.
     const labelFontSize = MIN_HEIGHT * this.scaleRatio * 0.18;
 
+    // The decoration pool must exist before tiles are created so HoldTileObjects
+    // can store a reference to it in their constructor.
+    const pool = this.holdDecorationPool!;
+
     this.tileObjects = tiles.map((tile) => {
       const obj = TileObjectFactory.createFor(
         this,
@@ -401,6 +509,7 @@ export class PianoGameScene extends Phaser.Scene {
         tile.top * this.scaleRatio,
         laneWidth,
         tile.height * this.scaleRatio,
+        pool,
       );
       if (debug) obj.addNoteLabels(labelFontSize);
       return obj;
@@ -457,7 +566,6 @@ export class PianoGameScene extends Phaser.Scene {
 
     // ── 1. Intro Card (bottom-most slot)
     const introY = this.worldHeight - slotPx;
-    // Build a nice gradient texture for the banner using Phaser Graphics (or a flat rect)
     const introRect = this.add.rectangle(0, introY, this.scale.width, slotPx, 0x1aaeea).setOrigin(0, 0);
     const titleText = this.add.text(this.scale.width / 2, introY + slotPx / 2 - 12, songTitle, {
       fontSize: '24px', fontStyle: 'bold', color: '#fff'
@@ -483,13 +591,68 @@ export class PianoGameScene extends Phaser.Scene {
       startObj.on(Phaser.Input.Events.POINTER_DOWN, () => {
         if (!this.gameStarted) {
           this.gameStarted = true;
+          this.unregisterBrowseScrollListeners();
           this.startScroll();
-          startObj.fillColor = 0x888888; // Grey out tapped tile
+          startObj.fillColor = 0x888888;
         }
       });
     }
 
     this.startCardObjects.push(startObj, startLabel);
+  }
+
+  // -------------------------------------------------------------------------
+  // Browse-scroll: drag + mouse wheel (only before game starts)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Registers drag and mouse-wheel listeners for pre-game board browsing.
+   * Called once when the scene is created (if game hasn't started yet) and
+   * again after a resize rebuilds the world.
+   */
+  private registerBrowseScrollListeners(): void {
+    this.input.on(Phaser.Input.Events.POINTER_DOWN,    this.onBrowseDragStart);
+    this.input.on(Phaser.Input.Events.POINTER_MOVE,    this.onBrowseDragMove);
+    this.input.on(Phaser.Input.Events.POINTER_UP,      this.onBrowseDragEnd);
+    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onBrowseDragEnd);
+    this.input.on(Phaser.Input.Events.POINTER_WHEEL,   this.onBrowseWheel);
+  }
+
+  /**
+   * Removes drag and mouse-wheel listeners.
+   * Called when the START tile is tapped so dragging no longer fights the camera.
+   */
+  private unregisterBrowseScrollListeners(): void {
+    this.input.off(Phaser.Input.Events.POINTER_DOWN,    this.onBrowseDragStart);
+    this.input.off(Phaser.Input.Events.POINTER_MOVE,    this.onBrowseDragMove);
+    this.input.off(Phaser.Input.Events.POINTER_UP,      this.onBrowseDragEnd);
+    this.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onBrowseDragEnd);
+    this.input.off(Phaser.Input.Events.POINTER_WHEEL,   this.onBrowseWheel);
+    this.dragStartY = -1;
+  }
+
+  private handleBrowseDragStart(p: Phaser.Input.Pointer): void {
+    if (this.gameStarted) return;
+    this.dragStartY = p.y;
+    this.dragStartScrollY = this.cameras.main.scrollY;
+  }
+
+  private handleBrowseDragMove(p: Phaser.Input.Pointer): void {
+    if (this.gameStarted || this.dragStartY < 0) return;
+    if (!p.isDown) return;
+    const dy = this.dragStartY - p.y; // drag up → dy positive → scroll up
+    const maxScrollY = Math.max(0, this.worldHeight - this.scale.height);
+    this.cameras.main.scrollY = Math.max(0, Math.min(maxScrollY, this.dragStartScrollY + dy));
+  }
+
+  private handleBrowseDragEnd(): void {
+    this.dragStartY = -1;
+  }
+
+  private handleBrowseWheel(deltaY: number): void {
+    if (this.gameStarted) return;
+    const maxScrollY = Math.max(0, this.worldHeight - this.scale.height);
+    this.cameras.main.scrollY = Math.max(0, Math.min(maxScrollY, this.cameras.main.scrollY + deltaY * 1.5));
   }
 
   // -------------------------------------------------------------------------
@@ -517,8 +680,12 @@ export class PianoGameScene extends Phaser.Scene {
     // Increment HUD score counter.
     this.hudSystem?.increment();
 
-    // Notify React (PhaserGameBoard) to play audio via useTileAudio.
-    EventBus.emit(PianoEvents.TILE_TAPPED, { tile: tileObject.getGameTile() });
+    // Play audio directly in Phaser for zero-latency.
+    if (tileObject.getTileType() === 'HOLD') {
+      this.audioSystem?.attackHold(tileObject.getGameTile());
+    } else {
+      this.audioSystem?.playNote(tileObject.getGameTile());
+    }
   }
 
   /**
@@ -528,7 +695,17 @@ export class PianoGameScene extends Phaser.Scene {
    */
   private handleTileRelease(tileObject: BaseTileObject): void {
     tileObject.onRelease();
-    EventBus.emit(PianoEvents.HOLD_RELEASED, { tile: tileObject.getGameTile() });
+    if (tileObject.getTileType() === 'HOLD') {
+      this.audioSystem?.releaseHold(tileObject.getGameTile());
+    }
+  }
+
+  /**
+   * Called by HoldTileObject whenever a secondary beat dot is crossed.
+   * Triggers the appropriate instrument samples for synchronized audio.
+   */
+  public handleHoldBeat(notes: ParsedNote[]): void {
+    this.audioSystem?.playHoldBeat(notes);
   }
 
   // -------------------------------------------------------------------------
@@ -562,8 +739,7 @@ export class PianoGameScene extends Phaser.Scene {
       this.scale.height,
     );
 
-    // ── Rebuild HUD ──────────────────────────────────────────────────────────
-    // Destroy old HUD first so the pointer listener is removed before recreating.
+    // ── Rebuild HUD ─────────────────────────────────────────────────────────
     if (this.hudSystem) {
       this.hudSystem.destroy(this);
       const songTitle = this.songData?.result.info.name ?? '';
@@ -573,7 +749,6 @@ export class PianoGameScene extends Phaser.Scene {
         this.scale.height,
         MIN_HEIGHT * this.scaleRatio,
         songTitle,
-        (dir) => this.scrollBySlot(dir),
       );
     }
 
@@ -582,6 +757,17 @@ export class PianoGameScene extends Phaser.Scene {
     // against tile objects that are about to be recreated.
     this.inputSystem?.destroy();
     this.inputSystem = null;
+
+    // ── Recreate decoration pool at new lane width ───────────────────────────
+    // Pool sprites are screen-space objects; destroy and recreate on resize.
+    // Textures are NOT recreated — bakeHoldTileTextures() and the cache.exists()
+    // guard in each bake function ensures they persist across resize.
+    if (this.songData) {
+      const laneWidth = this.scale.width / LANE_COUNT;
+      bakeHoldTileTextures(this, laneWidth);
+      this.holdDecorationPool?.destroy();
+      this.holdDecorationPool = new HoldDecorationPool(this, laneWidth);
+    }
 
     // ── Recreate tile objects at updated pixel positions ─────────────────────
     this.tileObjects.forEach((obj) => obj.destroy());

@@ -45,6 +45,13 @@ export const TILE_VISUAL_GAP = 0;
  */
 export const TILE_TAPPED_COLOR = 0x555555;
 
+/**
+ * Default fill color for untapped single and double tiles.
+ * Exported so SingleTileObject and DoubleTileObject both reference
+ * this single constant — one change here updates both tile types.
+ */
+export const TILE_FILL_COLOR = 0x1a1a1a; // #1a1a1a — black tile matching CSS classic skin
+
 // ---------------------------------------------------------------------------
 // Abstract base class
 // ---------------------------------------------------------------------------
@@ -225,7 +232,6 @@ export abstract class BaseTileObject extends Phaser.GameObjects.Container {
    */
   protected markTapped(): void {
     this.tapped = true;
-    // Iterate all children that are Rectangle game objects and grey them out.
     this.each((child: Phaser.GameObjects.GameObject) => {
       if (child instanceof Phaser.GameObjects.Rectangle) {
         child.setFillStyle(TILE_TAPPED_COLOR);

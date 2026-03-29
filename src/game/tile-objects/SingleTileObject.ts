@@ -20,19 +20,15 @@
 
 import Phaser from 'phaser';
 import type { GameTile } from '../../types/midi';
-import { BaseTileObject, TILE_VISUAL_GAP } from './BaseTileObject';
+import { BaseTileObject, TILE_VISUAL_GAP, TILE_FILL_COLOR } from './BaseTileObject';
 import { SingleTileRippleAnimation } from '../animations/SingleTileRippleAnimation';
 
 // ---------------------------------------------------------------------------
 // Color constants
 // ---------------------------------------------------------------------------
 
-/**
- * Default fill color for untapped single tiles.
- * Using neon green ($accent) so tiles are clearly visible in the Step 2 debug view.
- * The Classic skin (Step 6) will override this with the proper dark tile style.
- */
-const TILE_FILL_COLOR = 0x1a1a1a; // #1a1a1a — black tile matching CSS classic skin
+// Tile fill color is defined in BaseTileObject.TILE_FILL_COLOR and shared
+// with DoubleTileObject so a single change updates both tile types.
 
 /**
  * Corner radius for the tile rectangle.
@@ -98,7 +94,7 @@ export class SingleTileObject extends BaseTileObject {
   // BaseTileObject implementation
   // ---------------------------------------------------------------------------
 
-  getTileType(): 'SINGLE' {
+  getTileType(): 'SINGLE' | 'DOUBLE' {
     return 'SINGLE';
   }
 
@@ -107,21 +103,18 @@ export class SingleTileObject extends BaseTileObject {
    * Audio is handled upstream by the EventBus → PhaserGameBoard → useTileAudio chain.
    */
   onTap(_speedMultiplier = 1, _worldY?: number, _slotDurationMs = 0): void {
-    if (this.tapped) return; // Ignore duplicate taps on the same tile.
+    if (this.tapped) return;
     this.tapped = true;
-
-    // Use the TileRippleAnimation service, following SOLID separation of concerns
-    const visW = this.tileWidth - 2 * TILE_VISUAL_GAP;
+    const visW = this.tileWidth  - 2 * TILE_VISUAL_GAP;
     const visH = this.tileHeight - 2 * TILE_VISUAL_GAP;
-
     SingleTileRippleAnimation.play({
-      scene: this.scene,
-      container: this,
+      scene:      this.scene,
+      container:  this,
       originRect: this.rect,
-      width: visW,
-      height: visH,
-      color: TILE_FILL_COLOR,
-      duration: 180
+      width:      visW,
+      height:     visH,
+      color:      TILE_FILL_COLOR,
+      duration:   180,
     });
   }
 

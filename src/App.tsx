@@ -108,10 +108,12 @@ export default function App() {
       const requiredInstruments = Array.from(new Set(result.notes.map(n => n.instrument || 'piano')));
       if (requiredInstruments.length === 0) requiredInstruments.push('piano');
 
-      await loadInstruments(requiredInstruments);
-      resolveNotes(result.notes);
-      // @ts-ignore - speedMultiplier parameter correctly added to useSynth
-      await resolveChords(result.tiles, speedMultiplier);
+      if (!usePhaser) {
+        await loadInstruments(requiredInstruments);
+        resolveNotes(result.notes);
+        // @ts-ignore - speedMultiplier parameter correctly added to useSynth
+        await resolveChords(result.tiles, speedMultiplier);
+      }
 
       handleSongSelect(result);
       setScreen('game');
@@ -213,9 +215,6 @@ export default function App() {
             usePhaser ? (
               <PhaserGameBoard
                 result={pickedResult}
-                onPlayNote={handleTileTap}
-                onHoldBeat={handleHoldBeat}
-                onHoldRelease={handleHoldRelease}
                 onExit={handleExitGame}
                 speedMultiplier={speedMultiplier}
                 debug={boardSkin === 'debug'}

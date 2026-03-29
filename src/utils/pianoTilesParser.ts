@@ -602,6 +602,11 @@ export function buildResultFromPianoTilesSong(
 
   let maxTrackCount = 0;
   let globalLastLane = -1;
+  // Also propagate the last double-pair index across section boundaries.
+  // Without this, the exclusion zone from a section-ending double pair only
+  // covers laneA (stored in globalLastLane), not laneB — causing the first
+  // tile of the next section to land on laneB and appear back-to-back.
+  let globalLastDoublePairIdx = -1;
 
   let catBpms: number[] = [];
   let catBaseBeats: number[] = [];
@@ -685,8 +690,13 @@ export function buildResultFromPianoTilesSong(
     }
 
     const tileNotes = [...melodyNotes, ...bassTileNotes].sort((a, b) => a.time - b.time);
-    const { tiles: sectionTiles, lastLane } = buildTilesFromNotes(tileNotes, globalLastLane);
+    const { tiles: sectionTiles, lastLane, lastDoublePairIdx } = buildTilesFromNotes(
+      tileNotes,
+      globalLastLane,
+      globalLastDoublePairIdx,
+    );
     globalLastLane = lastLane;
+    globalLastDoublePairIdx = lastDoublePairIdx;
 
     const sortedTiles = [...sectionTiles].sort((a, b) => a.note.slotStart - b.note.slotStart);
     for (const accNote of bassAccomp) {

@@ -97,13 +97,17 @@ function buildLayout(tiles: GameTile[]): number {
 export function buildTilesFromNotes(
     notes: ParsedNote[],
     initialLastLane?: number,
-): { tiles: GameTile[]; totalHeight: number; lastLane: number } {
+    initialLastDoublePairIdx?: number,
+): { tiles: GameTile[]; totalHeight: number; lastLane: number; lastDoublePairIdx: number } {
     const groups = mergeConsecutiveNotes(notes);
 
     let noteOffset = 0;
     let lastLane = initialLastLane ?? -1;
     // Track last double pair: 0 = used lanes (0,2), 1 = used lanes (1,3), -1 = none
-    let lastDoublePairIdx = -1;
+    // initialLastDoublePairIdx propagates the exclusion zone across section boundaries
+    // so the first tile of a new section avoids BOTH lanes of the previous section's
+    // last double pair, not just laneA (which was stored in lastLane).
+    let lastDoublePairIdx = initialLastDoublePairIdx ?? -1;
 
     const makeTile = (group: ParsedNote[], index: number, lane: number): GameTile => {
         const primaryNote = group[0];
@@ -239,5 +243,5 @@ export function buildTilesFromNotes(
     }
 
     const totalHeight = buildLayout(tiles);
-    return { tiles, totalHeight, lastLane };
+    return { tiles, totalHeight, lastLane, lastDoublePairIdx };
 }

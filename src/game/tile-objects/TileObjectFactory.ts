@@ -27,6 +27,7 @@ import { SingleTileObject } from './SingleTileObject';
 import { HoldTileObject } from './HoldTileObject';
 import { DoubleTileObject } from './DoubleTileObject';
 import { classifyTile } from './classifyTile';
+import type { HoldDecorationPool } from './HoldDecorationPool';
 export { classifyTile } from './classifyTile';
 
 export class TileObjectFactory {
@@ -39,6 +40,8 @@ export class TileObjectFactory {
    * @param worldY     - World Y of the tile's top-left corner (= tile.top * scaleRatio).
    * @param laneWidth  - Pixel width of one lane (= gameWidth / LANE_COUNT).
    * @param tileHeight - Pixel height of this tile (= tile.height * scaleRatio).
+   * @param decorPool  - Scene-level decoration pool; passed to HoldTileObject only.
+   *                     Single/Double tiles ignore this parameter.
    * @returns A concrete BaseTileObject registered with the scene's display list.
    */
   static createFor(
@@ -48,10 +51,11 @@ export class TileObjectFactory {
     worldY: number,
     laneWidth: number,
     tileHeight: number,
+    decorPool: HoldDecorationPool,
   ): BaseTileObject {
     const type = classifyTile(tile);
     if (type === 'DOUBLE') return new DoubleTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile);
-    if (type === 'HOLD')   return new HoldTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile);
+    if (type === 'HOLD')   return new HoldTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile, decorPool);
     return new SingleTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile);
   }
 }
