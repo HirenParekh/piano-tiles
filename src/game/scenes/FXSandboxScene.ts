@@ -12,12 +12,14 @@
 import Phaser from 'phaser';
 import { Pane } from 'tweakpane';
 import { HoldDecorationPool } from '../tile-objects/HoldDecorationPool';
-import { bakeHoldTileTextures } from '../tile-objects/HoldTileTextures';
+import { bakeHoldTileTextures, HOLD_TILE_COLORS } from '../tile-objects/HoldTileTextures';
+import { HoldTileObject } from '../tile-objects/HoldTileObject';
 
 export const FX_SANDBOX_SCENE_KEY = 'FXSandboxScene';
 
 export class FXSandboxScene extends Phaser.Scene {
   private decorPool: HoldDecorationPool | null = null;
+  private testTile: HoldTileObject | null = null;
   private pane: any = null;
 
   // ── Tweakable Parameters ──────────────────────────────────────────────────
@@ -32,6 +34,10 @@ export class FXSandboxScene extends Phaser.Scene {
     },
     system: {
       backgroundColor: '#0a0a14',
+    },
+    holdTile: {
+      fillHeight: 300,
+      isCompleted: false
     }
   };
 
@@ -48,6 +54,12 @@ export class FXSandboxScene extends Phaser.Scene {
 
     // ── Build Pool ────────────────────────────────────────────────────────────
     this.decorPool = new HoldDecorationPool(this, 150);
+
+    // ── Build Test Tile ───────────────────────────────────────────────────────
+    const mockTile = { lane: 1, time: 0, duration: 1000, isHold: true, notes: [] };
+    this.testTile = new HoldTileObject(this, width / 2 - 75, 200, 150, 500, mockTile as any, this.decorPool);
+    this.add.existing(this.testTile);
+    this.testTile.debugSetFill(this.config.holdTile.fillHeight);
 
     // ── Set Background ────────────────────────────────────────────────────────
     this.cameras.main.setBackgroundColor(this.config.system.backgroundColor);
@@ -104,7 +116,43 @@ export class FXSandboxScene extends Phaser.Scene {
        this.cameras.main.setBackgroundColor(ev.value);
     });
 
+    const hold = this.pane.addFolder({ title: 'HOLD TILE TUNER' });
+    hold.addBinding(this.config.holdTile, 'fillHeight', { min: 0, max: 500 }).on('change', (ev: any) => {
+      this.testTile?.debugSetFill(ev.value);
+    });
+    hold.addBinding(this.config.holdTile, 'isCompleted').on('change', (ev: any) => {
+      this.testTile?.debugSetCompleted(ev.value);
+    });
+
+    hold.addBinding(HOLD_TILE_COLORS, 'bulletStop', { min: 0.0, max: 1.0 }).on('change', () => this.refreshTextures());
+    hold.addBinding(HOLD_TILE_COLORS, 'fillStart', { min: 0.0, max: 1.0 }).on('change', () => this.refreshTextures());
+    hold.addBinding(HOLD_TILE_COLORS, 'fillStop', { min: 0.0, max: 1.0 }).on('change', () => this.refreshTextures());
+    hold.addBinding(HOLD_TILE_COLORS, 'bulletTailH', { min: 0, max: 200, step: 1 }).on('change', () => this.refreshTextures());
+
+    // ── Live Color Tuning ───────────────────────────────────────────────────
+    const colors = hold.addFolder({ title: 'COLORS (RE-BAKES ON CHANGE)', expanded: true });
+    
+    // Bind directly to the global configuration object in HoldTileTextures
+    colors.addBinding(HOLD_TILE_COLORS, 'bulletTop').on('change', () => this.refreshTextures());
+    colors.addBinding(HOLD_TILE_COLORS, 'bulletBot').on('change', () => this.refreshTextures());
+    colors.addBinding(HOLD_TILE_COLORS, 'fillTop').on('change', () => this.refreshTextures());
+    colors.addBinding(HOLD_TILE_COLORS, 'fillBot').on('change', () => this.refreshTextures());
+    colors.addBinding(HOLD_TILE_COLORS, 'showGlow').on('change', () => this.refreshTextures());
+    colors.addBinding(HOLD_TILE_COLORS, 'glowColor').on('change', () => this.refreshTextures());
+
     this.pane.addButton({ title: 'CLEAR ALL' });
+  }
+
+  /**
+   * Re-bakes all textures and refreshes the test tile.
+   * Runs whenever a color value is changed in Tweakpane.
+   */
+  private refreshTextures(): void {
+    bakeHoldTileTextures(this, 150, true);
+    // After re-baking, we must tell the test tile to update its visuals.
+    if (this.testTile) {
+      this.testTile.debugSetFill(this.config.holdTile.fillHeight);
+    }
   }
 
   private spawnRipple(x: number, y: number): void {

@@ -25,7 +25,7 @@
 import Phaser from 'phaser';
 import type { GameTile, ParsedNote } from '../../types/midi';
 import { BaseTileObject, TILE_VISUAL_GAP } from './BaseTileObject';
-import { holdTextureKey } from './HoldTileTextures';
+import { holdTextureKey, BAKE_HEIGHT, HOLD_TILE_COLORS } from './HoldTileTextures';
 import type { HoldDecorationPool, PooledDot } from './HoldDecorationPool';
 
 // ---------------------------------------------------------------------------
@@ -39,8 +39,7 @@ import type { HoldDecorationPool, PooledDot } from './HoldDecorationPool';
  */
 const DOT_OFFSET_PX = 120;
 
-/** Phaser hex color for the fill rectangle */
-const HOLD_FILL_COLOR = 0x308af1;
+
 
 // ---------------------------------------------------------------------------
 // Class
@@ -91,11 +90,11 @@ export class HoldTileObject extends BaseTileObject {
   private readonly laserSprite: Phaser.GameObjects.Image;
 
   /**
-   * Fill progress bar. Rectangle with scaleY driven each frame during a hold.
+   * Fill progress volume. Image sprite using the shared 'hold-fill-bar-{W}' gradient texture.
+   * Driven each frame during a hold via scaleY.
    * Origin (0.5, 1) so it grows upward from fillAnchorY.
-   * PERFORMANCE: changing scaleY = one property write per frame, batched with all sprites.
    */
-  private readonly fillRect: Phaser.GameObjects.Rectangle;
+  private readonly fillSprite: Phaser.GameObjects.Image;
 
   /**
    * Bullet sprite using shared 'hold-bullet-{W}' canvas texture.
@@ -247,19 +246,17 @@ export class HoldTileObject extends BaseTileObject {
     this.laserSprite.scaleY = (tileHeight - 2 * TILE_VISUAL_GAP) / 256;
     this.laserSprite.setBlendMode(Phaser.BlendModes.ADD);
 
-    // ── Fill rectangle ─────────────────────────────────────────────────────
+    // ── Fill volume (Gradient Image) ──────────────────────────────────────
     // Grows upward from fillAnchorY via scaleY each frame.
-    // Origin (0.5, 1): the rect is centered horizontally and anchored at its bottom edge.
-    this.fillRect = scene.add.rectangle(
+    // Origin (0.5, 1): centered horizontally and anchored at its bottom edge.
+    this.fillSprite = scene.add.image(
       this.centerX,
       this.fillAnchorY,
-      this.visW,
-      this.bodyH,
-      HOLD_FILL_COLOR,
+      holdTextureKey('fill-bar', this.visW),
     );
-    this.fillRect.setOrigin(0.5, 1); // bottom-center pivot
-    this.fillRect.scaleY = 0;
-    this.fillRect.setVisible(false);
+    this.fillSprite.setOrigin(0.5, 1); // bottom-center pivot
+    this.fillSprite.scaleY = 0;
+    this.fillSprite.setVisible(false);
 
     // ── Bullet sprite (Arc + 100px Tail) ──────────────────────────────────
     // Uses the shared 'hold-bullet-{W}' canvas texture.
@@ -287,8 +284,8 @@ export class HoldTileObject extends BaseTileObject {
       this.bodyTopSprite,
       this.bodyBaseSprite,
       this.laserSprite,
-      this.fillRect,
       this.bulletSprite,
+      this.fillSprite,
       this.tapRingSprite,
     ]);
 
@@ -520,7 +517,7 @@ export class HoldTileObject extends BaseTileObject {
       this.laserSprite.setVisible(false);
       
       // We hide the fill explicitly so the tile is just a faint outline.
-      this.fillRect.setVisible(false);
+      this.fillSprite.setVisible(false);
       this.bulletSprite.setVisible(false);
       
       // Any dots waiting to fade can be instantly returned
@@ -536,7 +533,7 @@ export class HoldTileObject extends BaseTileObject {
   // ---------------------------------------------------------------------------
 
   /**
-   * Updates fillRect.scaleY and bulletSprite.setY() to reflect the current fillHeight.
+   * Updates fillSprite.scaleY and bulletSprite.setY() to reflect the current fillHeight.
    * Called once per frame during holds, once on tap, and once on release.
    *
    * @param forceFlat - On release: hide bullet, show flat-topped fill (signals completion).
@@ -545,38 +542,48 @@ export class HoldTileObject extends BaseTileObject {
     const h = this.fillHeight;
 
     if (h <= 0 && !forceFlat) {
-      this.fillRect.setVisible(false);
+      this.fillSprite.setVisible(false);
       this.bulletSprite.setVisible(false);
       return;
     }
 
-    // Show the fill rect and scale it to the current height.
-    this.fillRect.setVisible(true);
-    this.fillRect.scaleY = h / this.bodyH;
+    // ── Update Fill Volume & Bullet Cap ───────────────────────────────────
+    const tailH = HOLD_TILE_COLORS.bulletTailH;
 
     if (forceFlat) {
-      // Flat top = release or auto-complete signal. Hide bullet.
+      // Flat top = release or auto-complete signal. Hide bubble/arc effects.
       this.bulletSprite.setVisible(false);
+      this.fillSprite.setVisible(true);
+      this.fillSprite.scaleY = h / BAKE_HEIGHT;
+      this.fillSprite.setY(this.fillAnchorY);
     } else {
-      // Position the bullet sprite so its chord (bottom edge of the arc)
-      // aligns perfectly with the fill rect's top.
+      // 1. Calculate the 'chord' (top of the tail) and bullet positioning
       const chordY   = this.fillAnchorY - h;
       const domeTopY = chordY - (this.domeRTH - 1);
+      const actualY  = Math.round(Math.max(TILE_VISUAL_GAP, domeTopY));
       
-      const actualY = Math.max(TILE_VISUAL_GAP, domeTopY);
-
       this.bulletSprite.setVisible(true);
       this.bulletSprite.setY(actualY);
       
-      // The bullet has a 100px solid tail pointing downward to overlap the fillRect (hiding the seam).
-      // We MUST dynamically crop the sprite so this tail never bleeds below the tile's physical bottom!
-      const totalSpriteH = this.domeRTH + 100; // dome + 100px tail
-      const maxVisibleH = this.fillAnchorY - actualY; // pixels from the sprite top down to the tile bottom
+      // Scale crop to current visibility — the tail overlaps the fill bar
+      const totalSpriteH = this.domeRTH + tailH;
+      const maxVisibleH  = this.fillAnchorY - actualY;
       this.bulletSprite.setCrop(0, 0, this.visW, Math.min(totalSpriteH, maxVisibleH));
+
+      // 2. Position the fill bar body exactly below the bullet tail.
+      // We add a 2px overlap (bodyH + 2) to eliminate the thin black seam.
+      const bodyH = Math.max(0, h - tailH + 2);
+      
+      if (bodyH > 2) {
+        this.fillSprite.setVisible(true);
+        this.fillSprite.setY(this.fillAnchorY);
+        this.fillSprite.scaleY = bodyH / BAKE_HEIGHT;
+      } else {
+        this.fillSprite.setVisible(false);
+      }
     }
 
     // ── Lock tracking decorations to the dome apex ────────────────────────
-    // Causes ripples and the flashing follower dot to "ride" the moving apex
     if (this.activeTrackingDecorations.length > 0) {
       const apexWorldY = this.y + this.bulletSprite.y;
       for (const img of this.activeTrackingDecorations) {
@@ -734,6 +741,37 @@ export class HoldTileObject extends BaseTileObject {
           this.decorPool.returnItem(apexDot);
         },
       });
+    }
+  }
+
+  // ── Debug / Sandbox Helpers ───────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+
+  /**
+   * For the FX Sandbox: manually sets the fill height to see the results of
+   * live texture tuning without needing to interactively hold the tile.
+   */
+  public debugSetFill(height: number): void {
+    this.fillHeight = height;
+    this.updateFillSprites();
+  }
+
+  /**
+   * For the FX Sandbox: manually sets the completion state to see the 'Spent' visuals.
+   */
+  public debugSetCompleted(val: boolean): void {
+    this.isCompleted = val;
+    if (val) {
+      this.bodyTopSprite.setAlpha(0.15);
+      this.bodyBaseSprite.setAlpha(0.15);
+      this.laserSprite.setVisible(false);
+      this.fillSprite.setVisible(false);
+      this.bulletSprite.setVisible(false);
+    } else {
+      this.bodyTopSprite.setAlpha(1);
+      this.bodyBaseSprite.setAlpha(1);
+      this.laserSprite.setVisible(true);
+      this.updateFillSprites();
     }
   }
 }

@@ -31,16 +31,25 @@ import Phaser from 'phaser';
 // Color constants (CSS strings for the Canvas 2D API)
 // ---------------------------------------------------------------------------
 
-/** Top color of the tile body gradient (dark blue) */
-const CSS_BODY_TOP = '#1565c0';
-/** Mid color of the tile body gradient (used exactly at 1 slot's height from the bottom) */
-const CSS_BODY_MID = '#0e3a6e';
-/** Bottom color of the tile body gradient (black) */
-const CSS_BODY_BOT = '#000000';
-/** Fill bar and dome color (mid blue) */
-const CSS_FILL     = '#308af1';
-/** Cap, ring, and dot accent color (bright cyan) */
-const CSS_CAP      = '#00cfff';
+/**
+ * Configuration object for hold tile fill colors.
+ * Exported so the FX Sandbox can modify these values for live tuning.
+ */
+export const HOLD_TILE_COLORS = {
+  bulletTop: '#6bdcfa',
+  bulletBot: '#60c4f8',
+  fillTop:   '#60c4f8',
+  fillBot:   '#50bcfa',
+  bulletStop: 0.47,
+  fillStart:  0.70,
+  fillStop:   1.00,
+  bulletTailH: 100,
+  glowColor: '#3af4fc',
+  showGlow:  false
+};
+
+/** Secondary accent for UI elements (caps/rings) */
+const CSS_UI_ACCENT  = '#00cfff';
 
 // ---------------------------------------------------------------------------
 // Geometry constants (must match values in HoldTileObject)
@@ -54,7 +63,7 @@ const CAP_HEIGHT = 20;
  * Actual tile bodies may be taller; scaleY stretches the gradient proportionally
  * — a linear gradient scaled vertically looks identical to one drawn at full height.
  */
-const BAKE_HEIGHT = 256;
+export const BAKE_HEIGHT = 256;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -62,22 +71,23 @@ const BAKE_HEIGHT = 256;
 
 /**
  * Bakes all shared hold-tile textures into the scene's texture cache.
- * Safe to call multiple times — skips any texture that already exists.
  *
  * @param scene     - The Phaser scene whose texture cache receives the textures.
  * @param laneWidth - Pixel width of a single lane (= screen width / LANE_COUNT).
+ * @param force     - If true, overwrites existing textures (used for live tuning).
  */
-export function bakeHoldTileTextures(scene: Phaser.Scene, laneWidth: number): void {
-  const visW = Math.round(laneWidth); // TILE_VISUAL_GAP is 0, so visW === laneWidth
+export function bakeHoldTileTextures(scene: Phaser.Scene, laneWidth: number, force = false): void {
+  const visW = Math.round(laneWidth);
 
-  bakeBodyTop(scene, visW);
-  bakeBodyBase(scene, visW);
-  bakeBullet(scene, visW);
-  bakeLaser(scene, visW);
-  bakeCap(scene, visW);
-  bakeTapRing(scene, visW);
-  bakeDot(scene);
-  bakeRipple(scene);
+  bakeBodyTop(scene, visW, force);
+  bakeBodyBase(scene, visW, force);
+  bakeBullet(scene, visW, force);
+  bakeFillBar(scene, visW, force);
+  bakeLaser(scene, visW, force);
+  bakeCap(scene, visW, force);
+  bakeTapRing(scene, visW, force);
+  bakeDot(scene, force);
+  bakeRipple(scene, force);
 }
 
 /**
@@ -106,41 +116,42 @@ export function holdTextureKey(name: string, visW?: number): string {
  * Top body gradient: #1565c0 (top) → #0e3a6e (bottom).
  * Represents the upper portion of the tile, scaling dynamically to (tileHeight - singleTileH).
  */
-function bakeBodyTop(scene: Phaser.Scene, visW: number): void {
+function bakeBodyTop(scene: Phaser.Scene, visW: number, force = false): void {
   const key = holdTextureKey('body-top', visW);
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
-  const tex = scene.textures.createCanvas(key, visW, BAKE_HEIGHT);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, visW, BAKE_HEIGHT);
+
   if (!tex) return;
 
   const ctx  = tex.getContext();
+  ctx.clearRect(0, 0, visW, BAKE_HEIGHT);
   const grad = ctx.createLinearGradient(0, 0, 0, BAKE_HEIGHT);
-  grad.addColorStop(0, CSS_BODY_TOP);
-  grad.addColorStop(1, CSS_BODY_MID);
+  grad.addColorStop(0, '#1565c0');
+  grad.addColorStop(1, '#0e3a6e');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, visW, BAKE_HEIGHT);
   tex.refresh();
 }
 
-/**
- * Base body gradient: #0e3a6e (top) → #000000 (bottom), with the bottom 40% solid black.
- * Represents the bottom single-slot portion of the hold tile, scaled exactly to singleTileH.
- */
-function bakeBodyBase(scene: Phaser.Scene, visW: number): void {
+function bakeBodyBase(scene: Phaser.Scene, visW: number, force = false): void {
   const key = holdTextureKey('body-base', visW);
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
-  const tex = scene.textures.createCanvas(key, visW, BAKE_HEIGHT);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, visW, BAKE_HEIGHT);
+
   if (!tex) return;
 
   const ctx  = tex.getContext();
+  ctx.clearRect(0, 0, visW, BAKE_HEIGHT);
   const grad = ctx.createLinearGradient(0, 0, 0, BAKE_HEIGHT);
-  // Canvas Y grows downwards: 0 is top, BAKE_HEIGHT is bottom.
-  // The CSS gradient hits solid black at 40% from the bottom.
-  // Therefore, solid black starts at gradient stop 0.6.
-  grad.addColorStop(0, CSS_BODY_MID);
-  grad.addColorStop(0.6, CSS_BODY_BOT);
-  grad.addColorStop(1, CSS_BODY_BOT);
+  grad.addColorStop(0, '#0e3a6e');
+  grad.addColorStop(0.6, '#000000');
+  grad.addColorStop(1, '#000000');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, visW, BAKE_HEIGHT);
   tex.refresh();
@@ -148,36 +159,39 @@ function bakeBodyBase(scene: Phaser.Scene, visW: number): void {
 
 /**
  * Bullet arc cap: the blue rounded dome sitting on top of the fill bar with a 100px tail.
- *
- * Geometry: a circular arc of radius R = visW, spanning ±60° from vertical.
- *   domeDy     = visW × sin(60°) ≈ visW × 0.866  (chord-to-center distance)
- *   domeHeight = visW − domeDy                    (pixels above the chord)
- *
- * Canvas coordinate system:
- *   y = 0         → apex (plus 2px anti-aliasing buffer at top)
- *   y = domeRTH-1 → chord line (aligns with fill bar top)
- *   circle center → below the chord.
- *   y = chord to canvasH -> 100px solid tail to cover rendering seams perfectly.
+ * Enhanced with internal gradients and a glowing boundary.
  */
-function bakeBullet(scene: Phaser.Scene, visW: number): void {
+function bakeBullet(scene: Phaser.Scene, visW: number, force = false): void {
   const key = holdTextureKey('bullet', visW);
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
   const domeDy  = visW * 0.866025;          // sin(60°) = sqrt(3)/2
   const domeH   = visW - domeDy;            // pixels the dome protrudes above chord
-  const tailH   = 100;
+  const tailH   = HOLD_TILE_COLORS.bulletTailH;
   const baseCanvasH = Math.ceil(domeH) + 2; // +2px top buffer for anti-aliasing
   const canvasH = baseCanvasH + tailH;
 
-  const tex = scene.textures.createCanvas(key, visW, canvasH);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, visW, canvasH);
+
   if (!tex) return;
 
   const ctx    = tex.getContext();
+  ctx.clearRect(0, 0, visW, canvasH); // IMPORTANT: fresh start for re-bakes
   const chordY = baseCanvasH - 1;           // chord at the bottom of the original dome area
   const cx     = visW / 2;
   const cy     = chordY + domeDy;           // circle center — below chord
 
-  ctx.fillStyle = CSS_FILL;
+  // 1. Fill with the premium vertical gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, canvasH);
+  // User-tunable stop position (default: 0.5 for a '50-50' split)
+  const stopPos = HOLD_TILE_COLORS.bulletStop;
+  grad.addColorStop(0, HOLD_TILE_COLORS.bulletTop);
+  grad.addColorStop(stopPos, HOLD_TILE_COLORS.bulletBot);
+  grad.addColorStop(1, HOLD_TILE_COLORS.bulletBot);
+  ctx.fillStyle = grad;
+
   ctx.beginPath();
   ctx.moveTo(0, chordY);                    // chord left corner
   ctx.lineTo(visW, chordY);                 // chord right corner
@@ -189,6 +203,41 @@ function bakeBullet(scene: Phaser.Scene, visW: number): void {
   // Draw the 100px bullet tail dead flush underneath the chord.
   ctx.fillRect(0, chordY, visW, tailH);
 
+  // 2. Add the sharp arc border (stroke) — no glow by default
+  ctx.strokeStyle = HOLD_TILE_COLORS.glowColor;
+  ctx.lineWidth   = 1.5;
+  // Explicitly disable shadows to ensure no unwanted glow effects
+  ctx.shadowBlur  = HOLD_TILE_COLORS.showGlow ? 16 : 0;
+  ctx.shadowColor = HOLD_TILE_COLORS.glowColor;
+  
+  ctx.beginPath();
+  ctx.arc(cx, cy, visW - 1, -Math.PI / 3, -2 * Math.PI / 3, true);
+  ctx.stroke();
+
+  tex.refresh();
+}
+
+function bakeFillBar(scene: Phaser.Scene, visW: number, force = false): void {
+  const key = holdTextureKey('fill-bar', visW);
+  if (!force && scene.textures.exists(key)) return;
+
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, visW, BAKE_HEIGHT);
+
+  if (!tex) return;
+
+  const ctx  = tex.getContext();
+  ctx.clearRect(0, 0, visW, BAKE_HEIGHT);
+  const grad = ctx.createLinearGradient(0, 0, 0, BAKE_HEIGHT);
+  const startPos = HOLD_TILE_COLORS.fillStart;
+  const stopPos  = HOLD_TILE_COLORS.fillStop;
+  grad.addColorStop(0,        HOLD_TILE_COLORS.fillTop); 
+  grad.addColorStop(startPos, HOLD_TILE_COLORS.fillTop); 
+  grad.addColorStop(stopPos,  HOLD_TILE_COLORS.fillBot);
+  grad.addColorStop(1,        HOLD_TILE_COLORS.fillBot);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, visW, BAKE_HEIGHT);
   tex.refresh();
 }
 
@@ -197,15 +246,18 @@ function bakeBullet(scene: Phaser.Scene, visW: number): void {
  * Baked tall so tiles can scaleY it to match the body height.
  * ADD blend mode is applied on the sprite in HoldTileObject, not in this texture.
  */
-function bakeLaser(scene: Phaser.Scene, visW: number): void {
+function bakeLaser(scene: Phaser.Scene, visW: number, force = false): void {
   const key = holdTextureKey('laser', visW);
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
-  // 2px wide; the sprite is positioned at centerX-1 in HoldTileObject.
-  const tex = scene.textures.createCanvas(key, 2, BAKE_HEIGHT);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, 2, BAKE_HEIGHT);
+
   if (!tex) return;
 
   const ctx  = tex.getContext();
+  ctx.clearRect(0, 0, 2, BAKE_HEIGHT);
   const grad = ctx.createLinearGradient(0, 0, 0, BAKE_HEIGHT);
   grad.addColorStop(0,    'rgba(100, 200, 255, 0.30)'); // faint cyan at top
   grad.addColorStop(0.88, 'rgba(0,   200, 255, 0.0)');  // fade to transparent
@@ -215,31 +267,26 @@ function bakeLaser(scene: Phaser.Scene, visW: number): void {
   tex.refresh();
 }
 
-/**
- * Cap stripe: solid cyan bar at the tile's bottom (the tap-target visual indicator).
- * Width = visW, height = CAP_HEIGHT.
- */
-function bakeCap(scene: Phaser.Scene, visW: number): void {
+function bakeCap(scene: Phaser.Scene, visW: number, force = false): void {
   const key = holdTextureKey('cap', visW);
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
-  const tex = scene.textures.createCanvas(key, visW, CAP_HEIGHT);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, visW, CAP_HEIGHT);
+
   if (!tex) return;
 
   const ctx = tex.getContext();
-  ctx.fillStyle = CSS_CAP;
+  ctx.clearRect(0, 0, visW, CAP_HEIGHT);
+  ctx.fillStyle = CSS_UI_ACCENT;
   ctx.fillRect(0, 0, visW, CAP_HEIGHT);
   tex.refresh();
 }
 
-/**
- * Static tap-target ring: a simple, thin cyan circle outline matching the
- * original game's visual. Single stroke, no glow — just a clean ring.
- * Fixed at 26px diameter so it looks consistent regardless of lane width.
- */
-function bakeTapRing(scene: Phaser.Scene, visW: number): void {
+function bakeTapRing(scene: Phaser.Scene, visW: number, force = false): void {
   const key = holdTextureKey('tapring', visW);
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
   const diameter = 26;              // fixed size matching the original game
   const padding  = 4;               // enough room so the stroke edge isn't clipped
@@ -248,13 +295,17 @@ function bakeTapRing(scene: Phaser.Scene, visW: number): void {
   const cy       = size / 2;
   const r        = diameter / 2;
 
-  const tex = scene.textures.createCanvas(key, size, size);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, size, size);
+
   if (!tex) return;
 
   const ctx = tex.getContext();
+  ctx.clearRect(0, 0, size, size);
 
   // Single crisp outline — matches the original game exactly.
-  ctx.strokeStyle = CSS_CAP; // #00cfff
+  ctx.strokeStyle = CSS_UI_ACCENT; // #00cfff
   ctx.lineWidth   = 1.5;
   ctx.beginPath();
   ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
@@ -269,42 +320,45 @@ function bakeTapRing(scene: Phaser.Scene, visW: number): void {
  * Beat dot: small solid cyan circle placed at secondary beat positions inside the tile.
  * 10×10px circle. Pool sprites are positioned at the dot's world coordinates on tap.
  */
-function bakeDot(scene: Phaser.Scene): void {
+function bakeDot(scene: Phaser.Scene, force = false): void {
   const key = holdTextureKey('dot');
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
   const size = 10;
-  const tex  = scene.textures.createCanvas(key, size, size);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, size, size);
+
   if (!tex) return;
 
   const ctx = tex.getContext();
-  ctx.fillStyle = CSS_CAP;
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = CSS_UI_ACCENT;
   ctx.beginPath();
   ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
   ctx.fill();
   tex.refresh();
 }
 
-/**
- * Sonar ripple: high-resolution hairline stroke circle with a soft, multi-tonal glow.
- * 128x128px canvas (increased from 48px) to eliminate pixelation during expansion.
- * The sprite is scaled down initially then expanded, staying crisp throughout.
- */
-function bakeRipple(scene: Phaser.Scene): void {
+function bakeRipple(scene: Phaser.Scene, force = false): void {
   const key = holdTextureKey('ripple');
-  if (scene.textures.exists(key)) return;
+  if (!force && scene.textures.exists(key)) return;
 
   const size = 128; // high-res canvas
   const radius = 20; // larger base radius to capture more detail
-  const tex  = scene.textures.createCanvas(key, size, size);
+  const tex = scene.textures.exists(key) 
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture) 
+    : scene.textures.createCanvas(key, size, size);
+
   if (!tex) return;
 
   const ctx = tex.getContext();
+  ctx.clearRect(0, 0, size, size);
 
   // White core with a luxurious, feathered cyan glow
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth   = 1.5;           // Hairline thickness
-  ctx.shadowColor = CSS_CAP;       // #00cfff (Cyan color)
+  ctx.shadowColor = HOLD_TILE_COLORS.glowColor;      // Bright Cyan
   ctx.shadowBlur  = 24;            // Soft, dreamy bloom (increased for high-res)
 
   ctx.beginPath();
