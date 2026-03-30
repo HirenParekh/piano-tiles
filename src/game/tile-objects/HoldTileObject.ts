@@ -37,7 +37,7 @@ import type { HoldDecorationPool, PooledDot } from './HoldDecorationPool';
  * The follower dot (dome apex indicator) sits this many pixels above the tap point.
  * Keeps it visible above the player's thumb.
  */
-const DOT_OFFSET_PX = 50;
+const DOT_OFFSET_PX = 120;
 
 /** Phaser hex color for the fill rectangle */
 const HOLD_FILL_COLOR = 0x308af1;
@@ -98,11 +98,11 @@ export class HoldTileObject extends BaseTileObject {
   private readonly fillRect: Phaser.GameObjects.Rectangle;
 
   /**
-   * Dome cap sprite using shared 'hold-dome-{W}' canvas texture.
+   * Bullet sprite using shared 'hold-bullet-{W}' canvas texture.
    * Hidden until the hold starts; repositioned via setY() each frame.
    * Origin (0, 0) so x/y refers to the top-left corner (math is straightforward).
    */
-  private readonly domeSprite: Phaser.GameObjects.Image;
+  private readonly bulletSprite: Phaser.GameObjects.Image;
 
   /**
    * Static tap-target ring at the tile's bottom.
@@ -261,16 +261,16 @@ export class HoldTileObject extends BaseTileObject {
     this.fillRect.scaleY = 0;
     this.fillRect.setVisible(false);
 
-    // ── Dome sprite ───────────────────────────────────────────────────────
-    // Uses the shared 'hold-dome-{W}' canvas texture.
+    // ── Bullet sprite (Arc + 100px Tail) ──────────────────────────────────
+    // Uses the shared 'hold-bullet-{W}' canvas texture.
     // Starts invisible; shown and repositioned each frame during a hold.
-    this.domeSprite = scene.add.image(
+    this.bulletSprite = scene.add.image(
       TILE_VISUAL_GAP, // left edge of visual area
       0,               // Y updated every frame in updateFillSprites()
-      holdTextureKey('dome', this.visW),
+      holdTextureKey('bullet', this.visW),
     );
-    this.domeSprite.setOrigin(0, 0); // top-left anchor so setY() positions the top edge
-    this.domeSprite.setVisible(false);
+    this.bulletSprite.setOrigin(0, 0); // top-left anchor so setY() positions the top edge
+    this.bulletSprite.setVisible(false);
 
     // ── Tap-ring sprite ───────────────────────────────────────────────────
     // Positioned 80px above the tile's bottom edge, sitting on the laser line.
@@ -288,7 +288,7 @@ export class HoldTileObject extends BaseTileObject {
       this.bodyBaseSprite,
       this.laserSprite,
       this.fillRect,
-      this.domeSprite,
+      this.bulletSprite,
       this.tapRingSprite,
     ]);
 
@@ -521,7 +521,7 @@ export class HoldTileObject extends BaseTileObject {
       
       // We hide the fill explicitly so the tile is just a faint outline.
       this.fillRect.setVisible(false);
-      this.domeSprite.setVisible(false);
+      this.bulletSprite.setVisible(false);
       
       // Any dots waiting to fade can be instantly returned
       for (const dot of this.activeDots) {
@@ -536,51 +536,49 @@ export class HoldTileObject extends BaseTileObject {
   // ---------------------------------------------------------------------------
 
   /**
-   * Updates fillRect.scaleY and domeSprite.setY() to reflect the current fillHeight.
+   * Updates fillRect.scaleY and bulletSprite.setY() to reflect the current fillHeight.
    * Called once per frame during holds, once on tap, and once on release.
    *
-   * PERFORMANCE: zero Graphics operations per call. Only two property writes:
-   *   fillRect.scaleY + domeSprite.setY (plus follower position).
-   *
-   * @param forceFlat - On release: hide dome, show flat-topped fill (signals completion).
+   * @param forceFlat - On release: hide bullet, show flat-topped fill (signals completion).
    */
   private updateFillSprites(forceFlat = false): void {
     const h = this.fillHeight;
 
     if (h <= 0 && !forceFlat) {
       this.fillRect.setVisible(false);
-      this.domeSprite.setVisible(false);
+      this.bulletSprite.setVisible(false);
       return;
     }
 
     // Show the fill rect and scale it to the current height.
-    // Origin (0.5, 1) makes it grow upward from fillAnchorY.
     this.fillRect.setVisible(true);
     this.fillRect.scaleY = h / this.bodyH;
 
     if (forceFlat) {
-      // Flat top = release or auto-complete signal. Hide dome.
-      this.domeSprite.setVisible(false);
+      // Flat top = release or auto-complete signal. Hide bullet.
+      this.bulletSprite.setVisible(false);
     } else {
-      // Position dome so its chord (bottom edge) aligns with the fill rect's top.
-      // Fill rect top (in container local Y) = fillAnchorY - h.
-      // Dome texture: internal chord is at y = domeRTH - 1 from the sprite's top-left.
-      // So dome top-left Y = (fillAnchorY - h) - (domeRTH - 1).
+      // Position the bullet sprite so its chord (bottom edge of the arc)
+      // aligns perfectly with the fill rect's top.
       const chordY   = this.fillAnchorY - h;
-      // +1px downward to overlap the fillRect edge explicitly to hide the WebGL seam
-      const domeTopY = chordY - (this.domeRTH - 1) + 1;
+      const domeTopY = chordY - (this.domeRTH - 1);
+      
+      const actualY = Math.max(TILE_VISUAL_GAP, domeTopY);
 
-      this.domeSprite.setVisible(true);
-      // Clamp the dome so it never protrudes past the top of the tile.
-      // As the square fillRect continues rising beneath it, the curved top will 
-      // naturally be overwritten by the square corners, perfectly "squishing" it flat!
-      this.domeSprite.setY(Math.max(TILE_VISUAL_GAP, domeTopY));
+      this.bulletSprite.setVisible(true);
+      this.bulletSprite.setY(actualY);
+      
+      // The bullet has a 100px solid tail pointing downward to overlap the fillRect (hiding the seam).
+      // We MUST dynamically crop the sprite so this tail never bleeds below the tile's physical bottom!
+      const totalSpriteH = this.domeRTH + 100; // dome + 100px tail
+      const maxVisibleH = this.fillAnchorY - actualY; // pixels from the sprite top down to the tile bottom
+      this.bulletSprite.setCrop(0, 0, this.visW, Math.min(totalSpriteH, maxVisibleH));
     }
 
     // ── Lock tracking decorations to the dome apex ────────────────────────
     // Causes ripples and the flashing follower dot to "ride" the moving apex
     if (this.activeTrackingDecorations.length > 0) {
-      const apexWorldY = this.y + this.domeSprite.y;
+      const apexWorldY = this.y + this.bulletSprite.y;
       for (const img of this.activeTrackingDecorations) {
         if (img.active && img.visible) {
           img.setY(apexWorldY);
@@ -715,7 +713,7 @@ export class HoldTileObject extends BaseTileObject {
     // Mimics React arcDot pulse: flash in, hold slightly, then fade out.
     const apexDot = this.decorPool.borrowDot();
     if (apexDot) {
-      const apexWorldY = this.y + this.domeSprite.y;
+      const apexWorldY = this.y + this.bulletSprite.y;
       apexDot.image.setPosition(dotWorldX, apexWorldY);
       apexDot.image.setScale(1.2);
       apexDot.image.setAlpha(0.9);

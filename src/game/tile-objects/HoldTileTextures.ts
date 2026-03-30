@@ -72,7 +72,7 @@ export function bakeHoldTileTextures(scene: Phaser.Scene, laneWidth: number): vo
 
   bakeBodyTop(scene, visW);
   bakeBodyBase(scene, visW);
-  bakeDome(scene, visW);
+  bakeBullet(scene, visW);
   bakeLaser(scene, visW);
   bakeCap(scene, visW);
   bakeTapRing(scene, visW);
@@ -147,7 +147,7 @@ function bakeBodyBase(scene: Phaser.Scene, visW: number): void {
 }
 
 /**
- * Dome arc cap: the blue rounded dome sitting on top of the fill bar.
+ * Bullet arc cap: the blue rounded dome sitting on top of the fill bar with a 100px tail.
  *
  * Geometry: a circular arc of radius R = visW, spanning ±60° from vertical.
  *   domeDy     = visW × sin(60°) ≈ visW × 0.866  (chord-to-center distance)
@@ -156,23 +156,26 @@ function bakeBodyBase(scene: Phaser.Scene, visW: number): void {
  * Canvas coordinate system:
  *   y = 0         → apex (plus 2px anti-aliasing buffer at top)
  *   y = domeRTH-1 → chord line (aligns with fill bar top)
- *   circle center → below the canvas bottom (clipped naturally by the canvas)
+ *   circle center → below the chord.
+ *   y = chord to canvasH -> 100px solid tail to cover rendering seams perfectly.
  */
-function bakeDome(scene: Phaser.Scene, visW: number): void {
-  const key = holdTextureKey('dome', visW);
+function bakeBullet(scene: Phaser.Scene, visW: number): void {
+  const key = holdTextureKey('bullet', visW);
   if (scene.textures.exists(key)) return;
 
   const domeDy  = visW * 0.866025;          // sin(60°) = sqrt(3)/2
   const domeH   = visW - domeDy;            // pixels the dome protrudes above chord
-  const canvasH = Math.ceil(domeH) + 2;     // +2px top buffer for anti-aliasing
+  const tailH   = 100;
+  const baseCanvasH = Math.ceil(domeH) + 2; // +2px top buffer for anti-aliasing
+  const canvasH = baseCanvasH + tailH;
 
   const tex = scene.textures.createCanvas(key, visW, canvasH);
   if (!tex) return;
 
   const ctx    = tex.getContext();
-  const chordY = canvasH - 1;               // chord at the very bottom of the canvas
+  const chordY = baseCanvasH - 1;           // chord at the bottom of the original dome area
   const cx     = visW / 2;
-  const cy     = chordY + domeDy;           // circle center — below canvas, pixels clipped
+  const cy     = chordY + domeDy;           // circle center — below chord
 
   ctx.fillStyle = CSS_FILL;
   ctx.beginPath();
@@ -182,6 +185,10 @@ function bakeDome(scene: Phaser.Scene, visW: number): void {
   ctx.arc(cx, cy, visW, -Math.PI / 3, -2 * Math.PI / 3, true);
   ctx.closePath();
   ctx.fill();
+
+  // Draw the 100px bullet tail dead flush underneath the chord.
+  ctx.fillRect(0, chordY, visW, tailH);
+
   tex.refresh();
 }
 
