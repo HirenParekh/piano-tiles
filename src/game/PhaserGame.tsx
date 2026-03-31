@@ -66,7 +66,21 @@ interface PhaserGameProps {
    * @param scene - The newly active Phaser.Scene instance.
    */
   onSceneReady?: (scene: Phaser.Scene) => void;
+
+  /**
+   * Optional initial data to pass to the first scene's init() method.
+   * This is used for "Zero-Handshake" synchronous loading.
+   */
+  data?: any;
 }
+
+/**
+ * Global registry for scene data during the boot sequence.
+ * Because Phaser's 'new Game()' constructor is synchronous and immediately 
+ * starts the first scene, we use this to 'tunnel' data into the scene's init() 
+ * before it has a chance to fire its first update.
+ */
+export let PENDING_SCENE_DATA: any = null;
 
 // DOM element id for the Phaser canvas container.
 // Must be unique on the page. Kept as a constant to avoid typos.
@@ -96,7 +110,7 @@ const PHASER_CONTAINER_ID = 'piano-phaser-container';
  * ```
  */
 export const PhaserGame = forwardRef<IRefPhaserGame, PhaserGameProps>(
-  function PhaserGame({ scenes, onSceneReady }, ref) {
+  function PhaserGame({ scenes, onSceneReady, data }, ref) {
     // Internal ref to the Phaser.Game instance.
     // We use a ref (not state) because changing it must NOT trigger a re-render.
     const gameRef = useRef<Phaser.Game | null>(null);
@@ -109,6 +123,10 @@ export const PhaserGame = forwardRef<IRefPhaserGame, PhaserGameProps>(
       // in development, so this check prevents a duplicate game instance.
       if (gameRef.current !== null) return;
 
+      // 1. Prepare data for the first scene's init() call.
+      PENDING_SCENE_DATA = data;
+
+      // 2. Initialize Phaser. This synchronously triggers the first scene's init() and create().
       const config = buildGameConfig(PHASER_CONTAINER_ID, scenes);
       gameRef.current = new Phaser.Game(config);
 
@@ -129,10 +147,12 @@ export const PhaserGame = forwardRef<IRefPhaserGame, PhaserGameProps>(
         if (ref && typeof ref === 'object') {
           ref.current = { game: null, scene: null };
         }
+        // Also clear the global data to avoid contamination across re-mounts.
+        PENDING_SCENE_DATA = null;
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
       // `scenes` and `ref` are intentionally excluded: changing them after
-      // mount would require a full game restart (out of scope for this step).
+      // mount would require a full game restart (handled by 'key' in parent).
     }, []);
 
     // -------------------------------------------------------------------------

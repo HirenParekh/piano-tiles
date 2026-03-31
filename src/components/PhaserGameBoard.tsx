@@ -24,7 +24,7 @@ import { PhaserGame } from '../game/PhaserGame';
 import type { IRefPhaserGame } from '../game/PhaserGame';
 import { EventBus, PianoEvents } from '../game/EventBus';
 import type { LoadSongPayload } from '../game/EventBus';
-import { PianoGameScene, PIANO_GAME_SCENE_KEY } from '../game/scenes/PianoGameScene';
+import { PianoGameScene } from '../game/scenes/PianoGameScene';
 import { FXSandboxScene } from '../game/scenes/FXSandboxScene';
 
 // ---------------------------------------------------------------------------
@@ -59,12 +59,7 @@ export function PhaserGameBoard({
 }: PhaserGameBoardProps) {
   const phaserRef = useRef<IRefPhaserGame>(null);
 
-  /**
-   * Guards against calling scene.restart() more than once.
-   * CURRENT_SCENE_READY fires on every scene transition; without this flag
-   * the post-restart firing would trigger another restart → infinite loop.
-   */
-  const songSentRef = useRef(false);
+  // ---------------------------------------------------------------------------
 
   // audioTileMap no longer needed for audio: Phaser handles it internally.
   // We keep buildAudioTileMap in the codebase for now in case other UI needs it.
@@ -90,24 +85,14 @@ export function PhaserGameBoard({
 
   /**
    * Called by PhaserGame when any scene emits CURRENT_SCENE_READY.
-   * On the first call (empty-boot scene), restart with the real song payload.
+   * Now only handles UI-sync (timeScale) since data is passed on boot.
    */
   const handleSceneReady = useCallback(
     (scene: Phaser.Scene) => {
       scene.time.timeScale = timeScale; // Slows down scene timers
       scene.tweens.timeScale = timeScale; // Slows down our tap animation tweens!
-
-      if (isSandbox) {
-        // If we're in the sandbox, do not restart with a song payload.
-        return;
-      }
-
-      if (!songSentRef.current && scene.scene.key === PIANO_GAME_SCENE_KEY) {
-        songSentRef.current = true;
-        scene.scene.restart(payload as unknown as object);
-      }
     },
-    [payload, timeScale, isSandbox],
+    [timeScale],
   );
 
   // Apply timeScale dynamically if it changes during gameplay
@@ -130,15 +115,15 @@ export function PhaserGameBoard({
       EventBus.off(PianoEvents.EXIT_GAME, handleExit);
     };
   }, [onExit]);
-  // onPlayNote / onHoldRelease are accessed via refs, not listed as deps,
-  // so the listeners aren't re-registered on every parent render.
 
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <PhaserGame
+        key={result.info.name} // Re-mounts the entire Phaser engine when the song changes
         ref={phaserRef}
         scenes={isSandbox ? [FXSandboxScene, PianoGameScene] : [PianoGameScene, FXSandboxScene]}
         onSceneReady={handleSceneReady}
+        data={payload} // Pass the payload directly for synchronous initial load
       />
     </div>
   );

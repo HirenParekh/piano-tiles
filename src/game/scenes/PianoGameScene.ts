@@ -51,6 +51,7 @@ import Phaser from 'phaser';
 import { MIN_HEIGHT } from '../../utils/tileBuilder';
 import { EventBus, PianoEvents } from '../EventBus';
 import type { LoadSongPayload } from '../EventBus';
+import { PENDING_SCENE_DATA } from '../PhaserGame';
 import type { ParsedNote } from '../../types/midi';
 import { TileObjectFactory } from '../tile-objects/TileObjectFactory';
 import type { BaseTileObject } from '../tile-objects/BaseTileObject';
@@ -207,12 +208,13 @@ export class PianoGameScene extends Phaser.Scene {
    * @param data - LoadSongPayload from PhaserGameBoard, or undefined in dev mode.
    */
   init(data: LoadSongPayload | undefined): void {
-    // WHY check `data?.result` instead of just `data`:
-    // Phaser calls init({}) with an empty object on first boot when no data is
-    // passed to scene.start(). An empty object is truthy, so `data ?? null`
-    // would assign {} to songData and then `songData.result` would be undefined.
-    // Checking for the `result` property distinguishes a real payload from the
-    // empty-object default Phaser provides.
+    // 1. If data is empty (Phaser boot default), check the 'Tunnel' registry 
+    // for synchronous initial data passed from the React bridge.
+    if (!data?.result && PENDING_SCENE_DATA) {
+      data = PENDING_SCENE_DATA;
+    }
+
+    // 2. Standard assignment
     this.songData = data?.result ? (data as LoadSongPayload) : null;
   }
 
