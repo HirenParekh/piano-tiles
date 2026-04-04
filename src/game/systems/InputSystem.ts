@@ -42,6 +42,9 @@ export type TileTapCallback = (tileObject: BaseTileObject, worldY: number) => vo
 /** Called when a held tile's pointer is released. */
 export type TileReleaseCallback = (tileObject: BaseTileObject) => void;
 
+/** Called whenever a pointer goes down, regardless of hits. */
+export type PointerDownCallback = (worldX: number, worldY: number) => void;
+
 // ---------------------------------------------------------------------------
 // Class
 // ---------------------------------------------------------------------------
@@ -62,6 +65,9 @@ export class InputSystem {
   /** Fired synchronously when a pointer is released over (or after tapping) a tile. */
   private readonly onTileRelease: TileReleaseCallback;
 
+  /** Fired whenever a finger touches the screen (used for debug markers). */
+  private readonly onPointerDown?: PointerDownCallback;
+
   /**
    * Tracks which tile (if any) each active pointer is currently holding.
    * Key = pointer.id (1-based in Phaser). Value = the tile being held.
@@ -78,6 +84,7 @@ export class InputSystem {
    * @param getActiveTiles - Returns current tile objects (called on every pointer-down).
    * @param onTileTap      - Callback fired when a tile is hit.
    * @param onTileRelease  - Callback fired when a held tile's pointer is released.
+   * @param onPointerDown   - Optional callback fired on every touch event.
    */
   constructor(
     scene: Phaser.Scene,
@@ -85,12 +92,14 @@ export class InputSystem {
     getActiveTiles: () => BaseTileObject[],
     onTileTap: TileTapCallback,
     onTileRelease: TileReleaseCallback,
+    onPointerDown?: PointerDownCallback,
   ) {
     this.input = scene.input;
     this.camera = camera;
     this.getActiveTiles = getActiveTiles;
     this.onTileTap = onTileTap;
     this.onTileRelease = onTileRelease;
+    this.onPointerDown = onPointerDown;
 
     this.registerPointers();
     this.registerListeners();
@@ -107,7 +116,7 @@ export class InputSystem {
    * pointer3 and pointer4, giving us 4 total — one per lane.
    */
   private registerPointers(): void {
-    this.input.addPointer(2); // 2 more → total 4 active pointers
+    this.input.addPointer(6); // 6 more → total 8 active pointers (handles noisy multi-touch)
   }
 
   /**
@@ -150,12 +159,21 @@ export class InputSystem {
     // getWorldPoint accounts for camera scroll and zoom.
     const worldPoint = this.camera.getWorldPoint(pointer.x, pointer.y);
 
+    // DEBUG: Fire the general pointer-down callback (used for tap markers).
+    this.onPointerDown?.(worldPoint.x, worldPoint.y);
+
     // Test each active tile for a hit. Stop at the first match per pointer.
     // O(N) where N = number of currently rendered tiles — acceptable since
     // the viewport shows at most ~10–15 tiles at a time.
     const tiles = this.getActiveTiles();
     for (const tileObject of tiles) {
-      if (tileObject.isTapped()) continue; // Skip already-tapped tiles.
+      // PERFORMANCE OPTIMIZATION (Input Culling):
+      // Only test tiles that are currently visible on screen.
+      // 1. Skip tiles that are far off-camera (setVisible(false) by PianoGameScene.cullTiles).
+      // 2. Skip already-tapped tiles.
+      if (!tileObject.visible || tileObject.isTapped()) {
+        continue;
+      }
 
       if (tileObject.containsPoint(worldPoint.x, worldPoint.y)) {
         // Track this pointer's association with the hit tile (for hold release).

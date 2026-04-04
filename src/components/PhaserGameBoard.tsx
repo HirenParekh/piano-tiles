@@ -43,7 +43,14 @@ interface PhaserGameBoardProps {
   /** When true, note-name labels are rendered on every tile (debug skin). */
   debug?: boolean;
   /** Phaser timeScale to globally slow down all tweens, timers, and physics for debugging animations. */
+
   timeScale?: number;
+  /** When true, a red dot is rendered at every touch position in world coordinates. */
+  showTapMarkers?: boolean;
+  /** When true, the board can be scrolled by dragging (even after the game starts). */
+  interactiveScroll?: boolean;
+  /** When true, developer-only tools (diagnostics, special buttons) are shown. */
+  isDevMode?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +63,9 @@ export function PhaserGameBoard({
   speedMultiplier = 1,
   debug = false,
   timeScale = 1,
+  showTapMarkers = false,
+  interactiveScroll = false,
+  isDevMode = false,
 }: PhaserGameBoardProps) {
   const phaserRef = useRef<IRefPhaserGame>(null);
 
@@ -79,8 +89,11 @@ export function PhaserGameBoard({
       scrollSegments: result.info.scrollSegments ?? [],
       speedMultiplier,
       debug,
+      showTapMarkers,
+      interactiveScroll,
+      isDevMode,
     }),
-    [result, speedMultiplier, debug],
+    [result, speedMultiplier, debug, showTapMarkers, interactiveScroll, isDevMode],
   );
 
   /**
@@ -102,6 +115,14 @@ export function PhaserGameBoard({
       phaserRef.current.scene.tweens.timeScale = timeScale;
     }
   }, [timeScale]);
+
+  // Sync debug settings (markers/scroll) dynamically
+  useEffect(() => {
+    const scene = phaserRef.current?.scene as PianoGameScene | null;
+    if (scene && typeof scene.updateSettings === 'function') {
+      scene.updateSettings({ showTapMarkers, interactiveScroll });
+    }
+  }, [showTapMarkers, interactiveScroll]);
 
   // ── EventBus listeners ────────────────────────────────────────────────────
 

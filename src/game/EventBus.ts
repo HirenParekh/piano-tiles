@@ -116,6 +116,18 @@ export interface LoadSongPayload {
    * (e.g. "g2[L]") and note names on each tile for development inspection.
    */
   debug?: boolean;
+  /**
+   * When true, a red dot is rendered at every touch position in world coordinates.
+   * Helps developers visualize why tiles might be missed during fast songs.
+   */
+  showTapMarkers?: boolean;
+  /**
+   * When true, the board can be scrolled by dragging at any time.
+   * Useful for inspecting tap markers after a song finishes.
+   */
+  interactiveScroll?: boolean;
+  /** When true, developer-only tools (diagnostics, special buttons) are shown. */
+  isDevMode?: boolean;
 }
 
 /**

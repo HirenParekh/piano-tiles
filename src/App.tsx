@@ -213,13 +213,14 @@ export default function App() {
         }}>
           {pickedResult && (
             usePhaser ? (
-              <PhaserGameBoard
-                result={pickedResult}
-                onExit={handleExitGame}
-                speedMultiplier={speedMultiplier}
-                debug={boardSkin === 'debug'}
-                timeScale={timeScale}
-              />
+                <PhaserGameBoard
+                  result={pickedResult}
+                  onExit={handleExitGame}
+                  speedMultiplier={speedMultiplier}
+                  debug={boardSkin === 'debug'}
+                  timeScale={timeScale}
+                  isDevMode={isDevMode}
+                />
             ) : useCanvas ? (
               <CanvasGameBoard
                 result={pickedResult}
@@ -293,7 +294,7 @@ export default function App() {
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
                   <input type="checkbox" checked={boardSkin === 'debug'} onChange={e => setBoardSkin(e.target.checked ? 'debug' : 'classic')} />
-                  Debug
+                  Debug Tiles
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
                   {[0.25, 0.5, 0.75, 1.5].map(v => (
@@ -359,7 +360,8 @@ export default function App() {
             position: 'fixed', top: 0, right: 0, width: '95vw', height: '100vh',
             zIndex: 99,
             transform: isWidgetOpen ? 'translateX(0)' : 'translateX(100%)',
-            transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+            transition: 'transform 0.35s cubic-bezier(0.25, ' + (1) + ', 0.5, 1)',
+            pointerEvents: isWidgetOpen ? 'auto' : 'none',
             background: '#0d0d1a',
             borderLeft: '1px solid rgba(0,207,255,0.25)',
             boxShadow: isWidgetOpen ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',

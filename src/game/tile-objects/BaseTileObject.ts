@@ -164,10 +164,10 @@ export abstract class BaseTileObject extends Phaser.GameObjects.Container {
   containsPoint(worldX: number, worldY: number): boolean {
     // ── Tap Tolerance (matching the legacy CSS ::before pseudo-element) ──
     // The visual tile height can span multiple slots. The tolerance is strictly
-    // based on 25% of a SINGLE slot height, exactly like the original app.
+    // based on 40% of a SINGLE slot height, exactly like the original app.
     const slotSpanMultiplier = Math.max(1, Math.round(this.gameTile.slotSpan));
     const singleSlotHeight = this.tileHeight / slotSpanMultiplier;
-    const toleranceY = singleSlotHeight * 0.25;
+    const toleranceY = singleSlotHeight * 0.40;
 
     // this.x / this.y are the container's world position (top-left corner).
     return (

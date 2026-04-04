@@ -137,6 +137,15 @@ export class PianoGameScene extends Phaser.Scene {
   private laneDividerSystem: LaneDividerSystem | null = null;
 
   /**
+   * Diagnostic counters for identifying dropped input events.
+   */
+  private nativeTapsCount = 0;
+  private phaserTapsCount = 0;
+  private lastHitType = 'None';
+  private onNativeDownBound: (e: Event) => void = () => {};
+  private isDevMode = false;
+
+  /**
    * Pixel scale ratio: gameHeight / (VISIBLE_SLOTS * MIN_HEIGHT).
    * Recomputed on every Phaser.Scale.RESIZE event.
    */
@@ -159,6 +168,9 @@ export class PianoGameScene extends Phaser.Scene {
    * Full height of the Phaser world in pixels.
    */
   private worldHeight = 0;
+
+  /** Track if browse-scroll listeners are currently attached to the input plugin. */
+  private browseScrollRegistered = false;
 
   // ── Browse-scroll state (drag + wheel before game starts) ──────────────────
 
@@ -216,6 +228,7 @@ export class PianoGameScene extends Phaser.Scene {
 
     // 2. Standard assignment
     this.songData = data?.result ? (data as LoadSongPayload) : null;
+    this.isDevMode = data?.isDevMode ?? false;
   }
 
   // -------------------------------------------------------------------------
@@ -285,14 +298,31 @@ export class PianoGameScene extends Phaser.Scene {
         this.scale.height,
         MIN_HEIGHT * this.scaleRatio,
         songTitle,
+        {
+          onToggleMarkers: (active) => this.updateSettings({ showTapMarkers: active }),
+          onToggleInteractiveScroll: (active) => this.updateSettings({ interactiveScroll: active }),
+          onToggleAutoScroll: (active) => {
+            if (active) this.startScroll();
+            else this.pauseScroll();
+          }
+        },
+        this.isDevMode
       );
 
       // Hide arrows / register browse-scroll if game hasn't started.
       if (this.gameStarted) {
         this.cameraScrollSystem?.start();
-      } else {
-        this.registerBrowseScrollListeners();
       }
+      this.updateInteractiveScroll(); // Replaces hard registration logic to honor flag
+
+      // --- HARD DIAGNOSTIC CONFIGURATION ---
+      // Disable topOnly so scene events fire even if a HUD button is hit.
+      this.input.setTopOnly(false);
+      
+      // Native listeners to see if Browser sees things Phaser doesn't.
+      this.onNativeDownBound = () => { this.nativeTapsCount++; };
+      window.addEventListener('touchstart', this.onNativeDownBound, { passive: true });
+      window.addEventListener('mousedown', this.onNativeDownBound, { passive: true });
 
       // 8. Build input detection — wires pointer events to tile callbacks.
       //    The callback also starts scroll on the very first tile tap so the
@@ -303,6 +333,12 @@ export class PianoGameScene extends Phaser.Scene {
         () => this.tileObjects,
         (tileObject, worldY) => this.handleTileTap(tileObject, worldY),
         (tileObject) => this.handleTileRelease(tileObject),
+        (worldX, worldY) => {
+          this.phaserTapsCount++;
+          if (this.songData?.showTapMarkers) {
+            this.createTapMarker(worldX, worldY);
+          }
+        },
       );
       this.audioSystem?.loadSongAssets(this.songData.tiles, this.songData.speedMultiplier);
     }
@@ -331,7 +367,12 @@ export class PianoGameScene extends Phaser.Scene {
     this.cameraScrollSystem?.update(delta);
 
     // Update FPS HUD
-    this.hudSystem?.update(this);
+    // Update HUD diagnostic text
+    // Periodically update diagnostic HUD
+    if (this.hudSystem) {
+      this.hudSystem.updateDebugInfo(this.nativeTapsCount, this.phaserTapsCount, this.lastHitType);
+      this.hudSystem.update(this);
+    }
 
     // Viewport culling: hide tiles that are fully outside the camera's view.
     // This is the #1 performance optimization in any game engine — rendering
@@ -416,6 +457,38 @@ export class PianoGameScene extends Phaser.Scene {
    */
   setScrollSpeed(multiplier: number): void {
     this.cameraScrollSystem?.setSpeed(multiplier);
+  }
+
+  /**
+   * Updates scene settings dynamically (e.g. from the React dev panel).
+   * Prevents full scene restarts when only toggling debug flags.
+   */
+  updateSettings(data: Partial<LoadSongPayload>): void {
+    if (!this.songData) return;
+    
+    if (data.showTapMarkers !== undefined) {
+      this.songData.showTapMarkers = data.showTapMarkers;
+    }
+
+    if (data.interactiveScroll !== undefined) {
+      this.songData.interactiveScroll = data.interactiveScroll;
+      this.updateInteractiveScroll();
+    }
+  }
+
+  /**
+   * Enables or disables drag/wheel scroll listeners based on the flag
+   * and whether the game has already started.
+   */
+  private updateInteractiveScroll(): void {
+    const isEnabled = this.songData?.interactiveScroll === true;
+    
+    // The button now controls all manual scrolling.
+    if (isEnabled) {
+      this.registerBrowseScrollListeners();
+    } else {
+      this.unregisterBrowseScrollListeners();
+    }
   }
 
   /**
@@ -593,7 +666,7 @@ export class PianoGameScene extends Phaser.Scene {
       startObj.on(Phaser.Input.Events.POINTER_DOWN, () => {
         if (!this.gameStarted) {
           this.gameStarted = true;
-          this.unregisterBrowseScrollListeners();
+          this.updateInteractiveScroll(); // Will unregister unless flag is on
           this.startScroll();
           startObj.fillColor = 0x888888;
         }
@@ -613,6 +686,9 @@ export class PianoGameScene extends Phaser.Scene {
    * again after a resize rebuilds the world.
    */
   private registerBrowseScrollListeners(): void {
+    if (this.browseScrollRegistered) return;
+    this.browseScrollRegistered = true;
+
     this.input.on(Phaser.Input.Events.POINTER_DOWN,    this.onBrowseDragStart);
     this.input.on(Phaser.Input.Events.POINTER_MOVE,    this.onBrowseDragMove);
     this.input.on(Phaser.Input.Events.POINTER_UP,      this.onBrowseDragEnd);
@@ -625,6 +701,9 @@ export class PianoGameScene extends Phaser.Scene {
    * Called when the START tile is tapped so dragging no longer fights the camera.
    */
   private unregisterBrowseScrollListeners(): void {
+    if (!this.browseScrollRegistered) return;
+    this.browseScrollRegistered = false;
+
     this.input.off(Phaser.Input.Events.POINTER_DOWN,    this.onBrowseDragStart);
     this.input.off(Phaser.Input.Events.POINTER_MOVE,    this.onBrowseDragMove);
     this.input.off(Phaser.Input.Events.POINTER_UP,      this.onBrowseDragEnd);
@@ -634,13 +713,13 @@ export class PianoGameScene extends Phaser.Scene {
   }
 
   private handleBrowseDragStart(p: Phaser.Input.Pointer): void {
-    if (this.gameStarted) return;
+    // Rely on updateInteractiveScroll() and register/unregister logic to control when this runs.
     this.dragStartY = p.y;
     this.dragStartScrollY = this.cameras.main.scrollY;
   }
 
   private handleBrowseDragMove(p: Phaser.Input.Pointer): void {
-    if (this.gameStarted || this.dragStartY < 0) return;
+    if (this.dragStartY < 0) return;
     if (!p.isDown) return;
     const dy = this.dragStartY - p.y; // drag up → dy positive → scroll up
     const maxScrollY = Math.max(0, this.worldHeight - this.scale.height);
@@ -652,7 +731,6 @@ export class PianoGameScene extends Phaser.Scene {
   }
 
   private handleBrowseWheel(deltaY: number): void {
-    if (this.gameStarted) return;
     const maxScrollY = Math.max(0, this.worldHeight - this.scale.height);
     this.cameras.main.scrollY = Math.max(0, Math.min(maxScrollY, this.cameras.main.scrollY + deltaY * 1.5));
   }
@@ -710,6 +788,22 @@ export class PianoGameScene extends Phaser.Scene {
     this.audioSystem?.playHoldBeat(notes);
   }
 
+  /**
+   * Spawns a persistent red dot at the given world coordinates.
+   * Registered with the display list, so it scrolls with the tiles.
+   *
+   * @param worldX - X position in Phaser pixels.
+   * @param worldY - Y position in Phaser pixels.
+   */
+  private createTapMarker(worldX: number, worldY: number): void {
+    const dot = this.add.circle(worldX, worldY, 8, 0xe74c3c);
+    dot.setDepth(5000); // ABOVE HUD (Diagnostic level)
+    
+    // Log the top object for diagnostic HUD
+    const topObj = this.input.manager.hitTest(this.input.activePointer, this.children.list, this.cameras.main)[0];
+    this.lastHitType = topObj ? (topObj as any).type || topObj.constructor.name : 'Scene';
+  }
+
   // -------------------------------------------------------------------------
   // Private: resize handler
   // -------------------------------------------------------------------------
@@ -751,6 +845,15 @@ export class PianoGameScene extends Phaser.Scene {
         this.scale.height,
         MIN_HEIGHT * this.scaleRatio,
         songTitle,
+        {
+          onToggleMarkers: (active) => this.updateSettings({ showTapMarkers: active }),
+          onToggleInteractiveScroll: (active) => this.updateSettings({ interactiveScroll: active }),
+          onToggleAutoScroll: (active) => {
+            if (active) this.startScroll();
+            else this.pauseScroll();
+          }
+        },
+        this.isDevMode
       );
     }
 
@@ -785,7 +888,16 @@ export class PianoGameScene extends Phaser.Scene {
         () => this.tileObjects,
         (tileObject, worldY) => this.handleTileTap(tileObject, worldY),
         (tileObject) => this.handleTileRelease(tileObject),
+        (worldX, worldY) => {
+          this.phaserTapsCount++;
+          if (this.songData?.showTapMarkers) {
+            this.createTapMarker(worldX, worldY);
+          }
+        },
       );
     }
+    
+    // Ensure scroll listeners are correctly state-synced after rebuild
+    this.updateInteractiveScroll();
   }
 }
