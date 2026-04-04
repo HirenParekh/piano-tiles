@@ -9,6 +9,7 @@ interface Props {
 export function SongSelection({ onPlaySong }: Props) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
+    const isDevMode = new URLSearchParams(window.location.search).get('ui') === 'dev_mode';
 
     const visibleSongs = useMemo(() => {
         if (!search.trim()) return songCatalog;
@@ -25,7 +26,6 @@ export function SongSelection({ onPlaySong }: Props) {
 
     return (
         <div className="song-selection" style={{ paddingTop: '1rem', paddingBottom: '1rem' }}>
-
 
             {/* Search */}
             <div className="song-selection__search-bar">
@@ -90,24 +90,26 @@ export function SongSelection({ onPlaySong }: Props) {
                 </div>
             </div>
 
-            <div style={{ padding: '0 20px', marginTop: 'auto' }}>
-                <button 
-                  onClick={() => window.location.search = '?scene=fx'}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '4px',
-                    color: '#888',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    fontFamily: 'monospace',
-                    width: 'fit-content'
-                  }}
-                >
-                  ⚙️ DEBUG SANDBOX
-                </button>
-            </div>
+            {isDevMode && (
+                <div style={{ padding: '0 20px', marginTop: 'auto' }}>
+                    <button 
+                      onClick={() => window.location.search = '?scene=fx'}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '4px',
+                        color: '#888',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        fontFamily: 'monospace',
+                        width: 'fit-content'
+                      }}
+                    >
+                      ⚙️ DEBUG SANDBOX
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

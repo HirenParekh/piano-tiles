@@ -131,8 +131,8 @@ export default function App() {
     <div style={{ display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#000', overflow: 'hidden' }}>
       <div className="app-container" style={{ position: 'relative', flex: 1, maxWidth: 'min(1024px, 75vh)', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
 
-        {/* Floating Speed Selectors */}
-        {screen === 'selection' && (
+        {/* Floating Speed Selectors — dev mode only */}
+        {isDevMode && screen === 'selection' && (
           <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 90, display: 'flex', gap: '8px' }}>
 
             {/* Engine TimeScale (Animation SlowMo) */}
