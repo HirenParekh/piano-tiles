@@ -20,9 +20,9 @@
 
 import type { GameTile } from '../../types/midi';
 import type Phaser from 'phaser';
-import { SingleTileObject } from './SingleTileObject';
+import { SingleTileObjectV2 } from './SingleTileObjectV2';
 
-export class DoubleTileObject extends SingleTileObject {
+export class DoubleTileObject extends SingleTileObjectV2 {
   /**
    * Constructor is identical to SingleTileObject — just passes everything through.
    * All visual setup (rectangle, color) is handled by the parent constructor.

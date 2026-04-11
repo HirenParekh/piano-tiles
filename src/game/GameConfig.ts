@@ -38,6 +38,7 @@
  */
 
 import Phaser from 'phaser';
+import { GrayscalePipeline } from './pipelines/GrayscalePipeline';
 
 /**
  * Builds the Phaser game configuration.
@@ -82,5 +83,8 @@ export function buildGameConfig(
     // Scenes registered here are accessible by their string key anywhere
     // in the app via `this.scene.start('SceneKey')`.
     scene: scenes as Phaser.Scene[],
+
+    // Register WebGL pipelines
+    pipeline: { GrayscalePipeline } as any,
   };
 }

@@ -232,6 +232,32 @@ export class PianoGameScene extends Phaser.Scene {
   }
 
   // -------------------------------------------------------------------------
+  // Phaser lifecycle: preload
+  // -------------------------------------------------------------------------
+
+  preload(): void {
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+    
+    // Hold tile V2 sprite assets
+    this.load.image('hold-head',       `${basePath}/assets/hold-tiles/hold_head.png`);
+    this.load.image('hold-body',       `${basePath}/assets/hold-tiles/hold_body.png`);
+    this.load.image('hold-dome',       `${basePath}/assets/hold-tiles/hold_dome.png`);
+    this.load.image('hold-fill',       `${basePath}/assets/hold-tiles/hold_fill.png`);
+    this.load.image('hold-finish',     `${basePath}/assets/hold-tiles/hold_finish.png`);
+    this.load.image('hold-dot',        `${basePath}/assets/hold-tiles/hold_dot.png`);
+    this.load.image('hold-dot-glow',   `${basePath}/assets/hold-tiles/hold_dot_glow.png`);
+    this.load.image('hold-glow',       `${basePath}/assets/hold-tiles/hold_glow.png`);
+    this.load.image('hold-body-faded', `${basePath}/assets/hold-tiles/hold_body_faded.png`);
+
+    // Single tile assets
+    this.load.image('tile-black', `${basePath}/assets/atlas_1/tile_black.png`);
+    this.load.image('tile-tap-1', `${basePath}/assets/atlas_1/1.png`);
+    this.load.image('tile-tap-2', `${basePath}/assets/atlas_1/2.png`);
+    this.load.image('tile-tap-3', `${basePath}/assets/atlas_1/3.png`);
+    this.load.image('tile-tap-4', `${basePath}/assets/atlas_1/4.png`);
+  }
+
+  // -------------------------------------------------------------------------
   // Phaser lifecycle: create
   // -------------------------------------------------------------------------
 
@@ -250,6 +276,19 @@ export class PianoGameScene extends Phaser.Scene {
   create(): void {
     // 0. Initialize audio system.
     this.audioSystem = new AudioSystem(this);
+
+    // 0b. Create animations
+    this.anims.create({
+      key: 'single-tile-tap',
+      frames: [
+        { key: 'tile-tap-1' },
+        { key: 'tile-tap-2' },
+        { key: 'tile-tap-3' },
+        { key: 'tile-tap-4' },
+      ],
+      frameRate: 24,
+      // Removed hideOnComplete: true because frame 4 is the final state.
+    });
 
     // 1. Compute how many Phaser pixels equal one tile slot.
     this.computeScaleRatio();

@@ -13,13 +13,13 @@ import Phaser from 'phaser';
 import { Pane } from 'tweakpane';
 import { HoldDecorationPool } from '../tile-objects/HoldDecorationPool';
 import { bakeHoldTileTextures, HOLD_TILE_COLORS } from '../tile-objects/HoldTileTextures';
-import { HoldTileObject } from '../tile-objects/HoldTileObject';
+import { HoldTileObjectV2 } from '../tile-objects/HoldTileObjectV2';
 
 export const FX_SANDBOX_SCENE_KEY = 'FXSandboxScene';
 
 export class FXSandboxScene extends Phaser.Scene {
   private decorPool: HoldDecorationPool | null = null;
-  private testTile: HoldTileObject | null = null;
+  private testTile: HoldTileObjectV2 | null = null;
   private pane: any = null;
 
   // ── Tweakable Parameters ──────────────────────────────────────────────────
@@ -45,6 +45,21 @@ export class FXSandboxScene extends Phaser.Scene {
     super(FX_SANDBOX_SCENE_KEY);
   }
 
+  preload(): void {
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+    
+    // Hold tile V2 sprite assets
+    this.load.image('hold-head',       `${basePath}/assets/hold-tiles/hold_head.png`);
+    this.load.image('hold-body',       `${basePath}/assets/hold-tiles/hold_body.png`);
+    this.load.image('hold-dome',       `${basePath}/assets/hold-tiles/hold_dome.png`);
+    this.load.image('hold-fill',       `${basePath}/assets/hold-tiles/hold_fill.png`);
+    this.load.image('hold-finish',     `${basePath}/assets/hold-tiles/hold_finish.png`);
+    this.load.image('hold-dot',        `${basePath}/assets/hold-tiles/hold_dot.png`);
+    this.load.image('hold-dot-glow',   `${basePath}/assets/hold-tiles/hold_dot_glow.png`);
+    this.load.image('hold-glow',       `${basePath}/assets/hold-tiles/hold_glow.png`);
+    this.load.image('hold-body-faded', `${basePath}/assets/hold-tiles/hold_body_faded.png`);
+  }
+
   create(): void {
     const { width } = this.scale;
 
@@ -57,7 +72,7 @@ export class FXSandboxScene extends Phaser.Scene {
 
     // ── Build Test Tile ───────────────────────────────────────────────────────
     const mockTile = { lane: 1, time: 0, duration: 1000, isHold: true, notes: [] };
-    this.testTile = new HoldTileObject(this, width / 2 - 75, 200, 150, 500, mockTile as any, this.decorPool);
+    this.testTile = new HoldTileObjectV2(this, width / 2 - 75, 200, 150, 500, mockTile as any, this.decorPool);
     this.add.existing(this.testTile);
     this.testTile.debugSetFill(this.config.holdTile.fillHeight);
 

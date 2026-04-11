@@ -23,8 +23,8 @@
 import type Phaser from 'phaser';
 import type { GameTile } from '../../types/midi';
 import { BaseTileObject } from './BaseTileObject';
-import { SingleTileObject } from './SingleTileObject';
-import { HoldTileObject } from './HoldTileObject';
+import { SingleTileObjectV2 } from './SingleTileObjectV2';
+import { HoldTileObjectV2 } from './HoldTileObjectV2';
 import { DoubleTileObject } from './DoubleTileObject';
 import { classifyTile } from './classifyTile';
 import type { HoldDecorationPool } from './HoldDecorationPool';
@@ -55,7 +55,7 @@ export class TileObjectFactory {
   ): BaseTileObject {
     const type = classifyTile(tile);
     if (type === 'DOUBLE') return new DoubleTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile);
-    if (type === 'HOLD')   return new HoldTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile, decorPool);
-    return new SingleTileObject(scene, worldX, worldY, laneWidth, tileHeight, tile);
+    if (type === 'HOLD')   return new HoldTileObjectV2(scene, worldX, worldY, laneWidth, tileHeight, tile, decorPool);
+    return new SingleTileObjectV2(scene, worldX, worldY, laneWidth, tileHeight, tile);
   }
 }

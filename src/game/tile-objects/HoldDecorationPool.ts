@@ -32,7 +32,6 @@
  */
 
 import Phaser from 'phaser';
-import { holdTextureKey } from './HoldTileTextures';
 
 // ---------------------------------------------------------------------------
 // Pool item types
@@ -58,14 +57,17 @@ export interface PooledRipple {
 const DOT_POOL_SIZE     = 9;
 /** Max simultaneous ripple animations (2 ripples/hold × 3 holds) */
 const RIPPLE_POOL_SIZE  = 6;
+/** Max simultaneous glow dot animations (matches RIPPLE_POOL_SIZE) */
+const GLOW_DOT_POOL_SIZE = 6;
 
 // ---------------------------------------------------------------------------
 // Class
 // ---------------------------------------------------------------------------
 
 export class HoldDecorationPool {
-  private readonly dots:    PooledDot[];
-  private readonly ripples: PooledRipple[];
+  private readonly dots:     PooledDot[];
+  private readonly ripples:  PooledRipple[];
+  private readonly glowDots: PooledDot[];
 
   /**
    * Creates all pooled sprites and registers them with the scene.
@@ -75,17 +77,25 @@ export class HoldDecorationPool {
    * @param scene     - The owning Phaser scene.
    * @param laneWidth - Used to derive the correct width-specific texture keys.
    */
-  constructor(scene: Phaser.Scene, laneWidth: number) {
-    const visW   = Math.round(laneWidth);
-
+  constructor(scene: Phaser.Scene, _laneWidth: number) {
     // ── Dot sprites ────────────────────────────────────────────────────────
     // Pre-allocate beat-dot images. These are positioned inside the tile body.
     this.dots = [];
     for (let i = 0; i < DOT_POOL_SIZE; i++) {
-      const img = scene.add.image(0, 0, holdTextureKey('dot'));
+      const img = scene.add.image(0, 0, 'hold-dot');
       img.setVisible(false);
       img.setDepth(15);
       this.dots.push({ image: img, inUse: false });
+    }
+
+    // ── Glow Dot sprites ───────────────────────────────────────────────────
+    // Pre-allocate glow dot images for beat feedback.
+    this.glowDots = [];
+    for (let i = 0; i < GLOW_DOT_POOL_SIZE; i++) {
+      const img = scene.add.image(0, 0, 'hold-dot-glow');
+      img.setVisible(false);
+      img.setDepth(15);
+      this.glowDots.push({ image: img, inUse: false });
     }
 
     // ── Ripple sprites ─────────────────────────────────────────────────────
@@ -93,14 +103,11 @@ export class HoldDecorationPool {
     // and are scaled up by a tween before being returned to the pool.
     this.ripples = [];
     for (let i = 0; i < RIPPLE_POOL_SIZE; i++) {
-      const img = scene.add.image(0, 0, holdTextureKey('ripple'));
+      const img = scene.add.image(0, 0, 'hold-glow');
       img.setVisible(false);
       img.setDepth(15);
       this.ripples.push({ image: img, inUse: false });
     }
-
-    // Suppress unused warning — visW kept for potential future width-keyed pool items.
-    void visW;
   }
 
   // ---------------------------------------------------------------------------
@@ -124,6 +131,14 @@ export class HoldDecorationPool {
   }
 
   /**
+   * Borrows an idle glow dot from the pool.
+   * Returns null if all glow dots are in use.
+   */
+  borrowGlowDot(): PooledDot | null {
+    return this.borrowFrom(this.glowDots);
+  }
+
+  /**
    * Returns a previously borrowed item to the pool.
    * Hides the image and resets its transform so it's clean for the next borrower.
    *
@@ -141,8 +156,9 @@ export class HoldDecorationPool {
    * Call before recreating the pool on scene resize.
    */
   destroy(): void {
-    for (const dot    of this.dots)    dot.image.destroy();
-    for (const ripple of this.ripples) ripple.image.destroy();
+    for (const dot      of this.dots)      dot.image.destroy();
+    for (const ripple   of this.ripples)   ripple.image.destroy();
+    for (const glowDot  of this.glowDots)  glowDot.image.destroy();
   }
 
   // ---------------------------------------------------------------------------
