@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import type { GameTile, ParsedNote } from '../../types/midi';
 import { BaseTileObject, TILE_VISUAL_GAP } from './BaseTileObject';
 import type { HoldDecorationPool, PooledDot } from './HoldDecorationPool';
-import { GrayscalePipeline } from '../pipelines/GrayscalePipeline';
 
 /**
  * The follower dot (dome apex indicator) sits this many pixels above the tap point.
