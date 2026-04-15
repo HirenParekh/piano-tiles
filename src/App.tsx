@@ -12,6 +12,7 @@ import { PhaserGameBoard } from './components/PhaserGameBoard';
 import type { MidiParseResult } from './types/midi';
 import { buildResultFromPianoTilesSong } from './utils/pianoTilesParser';
 import songCatalog from './songCatalog.json';
+import { useCustomSongs } from './hooks/useCustomSongs';
 import './styles/main.scss';
 import { TileRendererWidget } from './components/TileRendererWidget';
 import { HoldTileLayersDebug } from './components/HoldTileLayersDebug';
@@ -37,6 +38,7 @@ export default function App() {
   const [boardSkin, setBoardSkin] = useState<GameBoardSkin>('classic');
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const { getSongJson, songs: customSongs } = useCustomSongs();
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false); // For speed selector dropdown
   const [showTimeScaleMenu, setShowTimeScaleMenu] = useState(false); // For animation slow-mo dropdown
@@ -96,13 +98,29 @@ export default function App() {
       // Prime the Web Audio context on this user gesture so the first note
       // plays with no latency when the player taps START on the board.
       resumeContext();
-      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-      const res = await fetch(`${base}/songs/${encodeURIComponent(id)}.json`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const ptJson = await res.json();
+
+      let ptJson: any;
+      let songTitle = id;
+
+      if (id.startsWith('custom-')) {
+        // Custom song: load JSON directly from localStorage (no fetch needed)
+        const rawJson = getSongJson(id);
+        if (!rawJson) throw new Error('Custom song not found in storage.');
+        ptJson = JSON.parse(rawJson);
+        // Look up the actual title/author from the custom songs store
+        const entry = customSongs.find(s => s.id === id);
+        songTitle = entry?.title ?? 'Custom Song';
+      } else {
+        // Catalog song: fetch from server
+        const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+        const res = await fetch(`${base}/songs/${encodeURIComponent(id)}.json`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        ptJson = await res.json();
+        songTitle = id;
+      }
 
       const catalogEntry = songCatalog.find(s => s.id === id);
-      const result = buildResultFromPianoTilesSong(ptJson, 0, id, [0, 1], catalogEntry as any);
+      const result = buildResultFromPianoTilesSong(ptJson, 0, songTitle, [0, 1], catalogEntry as any);
 
       // Extract unique instruments required by this song, default to piano just in case
       const requiredInstruments = Array.from(new Set(result.notes.map(n => n.instrument || 'piano')));
