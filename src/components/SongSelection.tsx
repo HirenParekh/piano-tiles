@@ -1,19 +1,22 @@
 import { useState, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import songCatalog from '../songCatalog.json';
-import { useCustomSongs } from '../hooks/useCustomSongs';
+import type { CustomSong } from '../hooks/useCustomSongs';
 import { AddSongDialog } from './AddSongDialog';
 
 interface Props {
     onPlaySong: (id: string) => void;
+    // Custom song state is lifted to App.tsx so both components share the same instance
+    customSongs: CustomSong[];
+    onAddSong: (title: string, author: string, json: string) => string | null;
+    onRemoveSong: (id: string) => void;
 }
 
-export function SongSelection({ onPlaySong }: Props) {
+export function SongSelection({ onPlaySong, customSongs, onAddSong, onRemoveSong }: Props) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
     const [showAddDialog, setShowAddDialog] = useState(false);
     const isDevMode = new URLSearchParams(window.location.search).get('ui') === 'dev_mode';
-    const { songs: customSongs, addSong, removeSong } = useCustomSongs();
 
     // Merge custom songs (tagged, pinned at top) with catalog
     const allSongs = useMemo(() => {
@@ -152,7 +155,7 @@ export function SongSelection({ onPlaySong }: Props) {
                                         {/* Remove button for custom songs */}
                                         {song.isCustom && (
                                             <button
-                                                onClick={() => removeSong(song.id)}
+                                                onClick={() => onRemoveSong(song.id)}
                                                 title="Remove song"
                                                 style={{
                                                     background: 'none',
@@ -205,7 +208,7 @@ export function SongSelection({ onPlaySong }: Props) {
             {showAddDialog && (
                 <AddSongDialog
                     onAdd={(title, author, json) => {
-                        const err = addSong(title, author, json);
+                        const err = onAddSong(title, author, json);
                         return err;
                     }}
                     onClose={() => setShowAddDialog(false)}

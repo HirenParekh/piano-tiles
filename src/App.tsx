@@ -38,7 +38,7 @@ export default function App() {
   const [boardSkin, setBoardSkin] = useState<GameBoardSkin>('classic');
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const { getSongJson, songs: customSongs } = useCustomSongs();
+  const { songs: customSongs, addSong, removeSong, getSongJson } = useCustomSongs();
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false); // For speed selector dropdown
   const [showTimeScaleMenu, setShowTimeScaleMenu] = useState(false); // For animation slow-mo dropdown
@@ -332,7 +332,12 @@ export default function App() {
                 </div>
               </div>
             )}
-            <SongSelection onPlaySong={handlePlaySong} />
+            <SongSelection
+                onPlaySong={handlePlaySong}
+                customSongs={customSongs}
+                onAddSong={addSong}
+                onRemoveSong={removeSong}
+              />
           </div>
         </div>
 
