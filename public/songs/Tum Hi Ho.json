@@ -1,0 +1,32 @@
+{
+  "baseBpm": 74,
+  "musics": [
+    {
+      "id": 1,
+      "bpm": 74,
+      "baseBeats": 0.5,
+      "scores": [
+        "f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];",
+        "R;R;R;R;"
+      ]
+    },
+    {
+      "id": 2,
+      "bpm": 74,
+      "baseBeats": 0.5,
+      "scores": [
+        "f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];",
+        "R;R;R;R;"
+      ]
+    },
+    {
+      "id": 3,
+      "bpm": 74,
+      "baseBeats": 0.5,
+      "scores": [
+        "f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];",
+        "R;R;R;R;"
+      ]
+    }
+  ]
+}
