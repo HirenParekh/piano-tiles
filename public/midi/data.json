@@ -1,0 +1,2276 @@
+{
+    "Version": 3,
+    "MusicInfo": {
+        "Tempo": 120,
+        "TimeSignature": "4/4",
+        "Key": 8,
+        "MeasureDuration": 1,
+        "AudioOffset": 0,
+        "AudioDuration": 0,
+        "Duration": 9
+    },
+    "MetaInfo": {
+        "Title": "TumHiHo_Sheet_page_1",
+        "SubTitle": "",
+        "Composer": "unknown",
+        "License": "",
+        "Instrument": "piano",
+        "InstrumentCategory": "piano",
+        "CustomId": ""
+    },
+    "Parts": [
+        {
+            "Name": "Piano",
+            "Staffs": [
+                "treble",
+                "bass"
+            ],
+            "Measures": [
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        -1
+                                    ],
+                                    "Duration": 0.5,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.5,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        -1
+                                    ],
+                                    "Duration": 1,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "4/4",
+                    "Key": 8,
+                    "MeasureDuration": 1,
+                    "Clefs": [
+                        "treble",
+                        "treble"
+                    ],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        -1
+                                    ],
+                                    "Duration": 1,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        -1
+                                    ],
+                                    "Duration": 1,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        29
+                                    ],
+                                    "Duration": 1,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        77
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        75
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        75
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        53
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        60
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        60
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        60
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        60
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        46
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        53
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        58
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        53
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        61
+                                    ],
+                                    "Duration": 0.5,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        51
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        58
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        63
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        58
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.5,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        63
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        56,
+                                        63,
+                                        65
+                                    ],
+                                    "Duration": 0.5,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        48,
+                                        55,
+                                        60,
+                                        63
+                                    ],
+                                    "Duration": 0.5,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        49
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        24
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        25
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        27
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "fm7 ",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                },
+                {
+                    "Voices": [
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        65
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        72
+                                    ],
+                                    "Duration": 0.25,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        73
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        68
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        70
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                },
+                                {
+                                    "Midi": [
+                                        67
+                                    ],
+                                    "Duration": 0.125,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 0
+                        },
+                        {
+                            "Notes": [
+                                {
+                                    "Midi": [
+                                        29,
+                                        41
+                                    ],
+                                    "Duration": 1,
+                                    "TieStart": false,
+                                    "TieStop": false,
+                                    "Pedal": 0,
+                                    "Chord": -1,
+                                    "ChordSymbol": "",
+                                    "Velocity": 80,
+                                    "FingerHints": [],
+                                    "TabPosition": null,
+                                    "NoteFx": [],
+                                    "BeatFx": {
+                                        "PalmMute": false,
+                                        "Vibrato": false,
+                                        "Staccato": false,
+                                        "LetRing": false,
+                                        "Stroke": 0
+                                    },
+                                    "Effects": []
+                                }
+                            ],
+                            "Staff": 1
+                        }
+                    ],
+                    "Section": "",
+                    "Lyric": "",
+                    "Tempo": 0,
+                    "TimeSignature": "",
+                    "Key": -1,
+                    "MeasureDuration": 1,
+                    "Clefs": [],
+                    "TimeStamp": 0
+                }
+            ],
+            "Dynamics": [],
+            "Program": 0,
+            "IsDrum": false,
+            "Tab": false,
+            "Hide": false,
+            "TabConfiguration": null,
+            "NotationOffset": 0,
+            "UseNotationOffset": true
+        }
+    ]
+}
