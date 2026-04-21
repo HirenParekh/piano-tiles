@@ -1,0 +1,373 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Midi } from '@tonejs/midi';
+import './Editor.css';
+import { PianoRoll } from './PianoRoll';
+import { useSynth } from '../../hooks/useSynth';
+
+const TRACK_COLORS_SOLID = [
+  '#3b82f6', // Blue
+  '#f59e0b', // Amber
+  '#10b981', // Emerald
+  '#ef4444', // Red
+  '#8b5cf6', // Violet
+  '#ec4899', // Pink
+  '#06b6d4', // Cyan
+];
+
+const TransportClock: React.FC = () => {
+  const [time, setTime] = useState(0);
+  useEffect(() => {
+    const handleUpdate = (e: any) => setTime(e.detail);
+    window.addEventListener('editor-playback-update', handleUpdate);
+    return () => window.removeEventListener('editor-playback-update', handleUpdate);
+  }, []);
+
+  const mins = Math.floor(time / 60);
+  const secs = Math.floor(time % 60);
+  const ms = Math.floor((time % 1) * 1000);
+
+  return (
+    <div style={{ 
+      fontFamily: '"JetBrains Mono", monospace', 
+      fontSize: '20px', 
+      color: '#38bdf8', 
+      background: '#020617', 
+      padding: '4px 12px', 
+      borderRadius: '6px', 
+      border: '1px solid #1e293b',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+      width: '120px',
+      textAlign: 'center',
+      minWidth: '120px'
+    }}>
+      {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}.{ms.toString().padStart(3, '0')}
+    </div>
+  );
+};
+
+export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
+  const [bpm, setBpm] = useState(68);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [snapResolution, setSnapResolution] = useState(0.25); // default 1/16 note
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [tracks, setTracks] = useState<{ name: string; index: number; visible: boolean; color: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { playNote, loadInstruments, resumeContext } = useSynth();
+  
+  // Non-state playback trackers for 60FPS performance
+  const playbackTimeRef = useRef<number>(0);
+  const lastPlayedTimeRef = useRef<number>(0);
+  const lastFrameTimeRef = useRef<number>(0);
+
+  // Load instruments on mount
+  useEffect(() => {
+    loadInstruments(['piano']);
+  }, [loadInstruments]);
+
+  // Audio Playback & Visual Sync Loop (Zero React Renders)
+  useEffect(() => {
+    let reqId: number;
+    
+    if (isPlaying) {
+      lastFrameTimeRef.current = performance.now();
+      
+      const activeNoteList = notes.filter(n => {
+        const track = tracks.find(t => t.index === n.trackIndex);
+        return track?.visible;
+      });
+
+      const loop = () => {
+        const now = performance.now();
+        const deltaReal = (now - lastFrameTimeRef.current) / 1000;
+        lastFrameTimeRef.current = now;
+        
+        // Advance virtual time by delta * speed
+        const currentPlayback = playbackTimeRef.current + (deltaReal * playbackSpeed);
+        
+        // Trigger Audio
+        activeNoteList.forEach(note => {
+          if (note.start >= lastPlayedTimeRef.current && note.start < currentPlayback) {
+            playNote({
+              midi: note.pitch,
+              velocity: note.velocity || 0.7,
+              instrument: 'piano',
+              name: '', 
+              time: 0,
+              // The duration of the note playback does NOT strictly need to be scaled 
+              // for a synth, but if requested, you'd multiply here. Left unscaled for natural decay.
+              duration: note.duration / playbackSpeed
+            } as any);
+          }
+        });
+
+        lastPlayedTimeRef.current = currentPlayback;
+        playbackTimeRef.current = currentPlayback;
+        
+        // Broadcast time to Piano Roll for 60FPS canvas manipulation without React re-renders
+        window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: currentPlayback }));
+        
+        reqId = requestAnimationFrame(loop);
+      };
+      
+      reqId = requestAnimationFrame(loop);
+    } else {
+      // Pause
+      lastPlayedTimeRef.current = playbackTimeRef.current;
+      window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: playbackTimeRef.current }));
+    }
+    
+    return () => cancelAnimationFrame(reqId);
+  }, [isPlaying, notes, tracks, playNote, playbackSpeed]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pianoTiles_editorState');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.notes && parsed.tracks) {
+          setNotes(parsed.notes);
+          setTracks(parsed.tracks);
+          if (parsed.bpm) setBpm(parsed.bpm);
+          console.log('Restored editor state from localStorage');
+        }
+      }
+    } catch(err) {
+      console.warn("Failed to restore editor state", err);
+    }
+  }, []);
+
+  const toggleTrackVisibility = (idx: number) => {
+    setTracks(prev => prev.map(t => t.index === idx ? { ...t, visible: !t.visible } : t));
+  };
+
+  const handleMidiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const midi = new Midi(arrayBuffer);
+      
+      const newTracks = midi.tracks.map((track, i) => ({
+        name: track.name || `Track ${i + 1}`,
+        index: i,
+        visible: true,
+        color: TRACK_COLORS_SOLID[i % TRACK_COLORS_SOLID.length]
+      }));
+
+      setTracks(newTracks);
+
+      const simplifiedNotes = midi.tracks.flatMap((track, trackIdx) => 
+        track.notes.map((note, noteIdx) => ({
+          id: `t${trackIdx}-n${noteIdx}-${note.time}`,
+          pitch: note.midi,
+          start: note.time,
+          duration: note.duration,
+          velocity: note.velocity,
+          track: track.name || `Track ${trackIdx + 1}`,
+          trackIndex: trackIdx,
+          color: TRACK_COLORS_SOLID[trackIdx % TRACK_COLORS_SOLID.length]
+        }))
+      );
+
+      setNotes(simplifiedNotes);
+      let finalBpm = 68;
+      if (midi.header.tempos.length > 0) {
+        finalBpm = Math.round(midi.header.tempos[0].bpm);
+        setBpm(finalBpm);
+      }
+
+      // Save to localStorage
+      try {
+        localStorage.setItem('pianoTiles_editorState', JSON.stringify({
+          notes: simplifiedNotes,
+          tracks: newTracks,
+          bpm: finalBpm
+        }));
+      } catch(e) {
+        console.warn("Could not save to localStorage. File might be too large.", e);
+      }
+
+      console.log('Loaded MIDI:', midi);
+    } catch (err) {
+      console.error('Failed to parse MIDI:', err);
+      alert('Error parsing MIDI file. Check console for details.');
+    }
+  };
+
+  return (
+    <div className="editor-container">
+      {/* The Shell: Topbar */}
+      <header className="editor-toolbar" style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button 
+            className="btn-icon" 
+            onClick={onExit} 
+            title="Back"
+            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0 8px', display: 'flex', alignItems: 'center' }}
+          >
+            <span className="material-icons-round" style={{ fontSize: '24px' }}>arrow_back</span>
+          </button>
+          <div className="editor-logo">
+            PianoStudio <span style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>SaaS Editor</span>
+          </div>
+        </div>
+
+        <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <TransportClock />
+          
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              className="btn-secondary" 
+              onClick={async () => {
+                if (!isPlaying) await resumeContext();
+                setIsPlaying(!isPlaying);
+              }}
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <span className="material-icons-round" style={{ fontSize: '18px' }}>{isPlaying ? 'pause' : 'play_arrow'}</span>
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+            <button 
+              className="btn-secondary" 
+              title="Stop and Reset"
+              onClick={() => { 
+                setIsPlaying(false); 
+                playbackTimeRef.current = 0; 
+                lastPlayedTimeRef.current = 0;
+                window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: 0 }));
+              }}
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <span className="material-icons-round" style={{ fontSize: '18px' }}>stop</span>
+              Stop
+            </button>
+          </div>
+        </div>
+        
+        {/* Empty div to keep flexbox balanced if needed, or put other actions here */}
+        <div className="toolbar-actions" style={{ width: '120px' }}></div>
+      </header>
+
+      {/* The Shell: Main Area */}
+      <main className="editor-main">
+        {/* Left Properties Panel */}
+        <aside className="editor-sidebar">
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">File Operations</h3>
+            <button 
+              className="btn-secondary" 
+              style={{ width: '100%', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <span className="material-icons-round" style={{ fontSize: '18px' }}>folder_open</span>
+              Load MIDI File
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              accept=".mid,.midi" 
+              onChange={handleMidiUpload} 
+            />
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              onClick={() => alert("JSON Export coming soon!")}
+            >
+              <span className="material-icons-round" style={{ fontSize: '18px' }}>file_download</span>
+              Export JSON
+            </button>
+          </div>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Tracks</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {tracks.map(track => (
+                <div 
+                  key={track.index} 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '6px 10px', background: '#1e293b', borderRadius: '6px',
+                    borderLeft: `3px solid ${track.color}`
+                  }}
+                >
+                  <span style={{ fontSize: '12px', color: track.visible ? '#f8fafc' : '#64748b', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                    {track.name}
+                  </span>
+                  <label className="toggle-switch">
+                    <input 
+                      type="checkbox" 
+                      checked={track.visible} 
+                      onChange={() => toggleTrackVisibility(track.index)} 
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+              ))}
+              {tracks.length === 0 && <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>No tracks loaded</div>}
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Global Settings</h3>
+            <div className="property-group">
+              <label className="property-label">Base BPM</label>
+              <input 
+                type="number" 
+                className="property-input" 
+                value={bpm} 
+                onChange={(e) => setBpm(Number(e.target.value))} 
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Snap to Grid</label>
+              <select 
+                className="property-input"
+                value={snapResolution}
+                onChange={(e) => setSnapResolution(Number(e.target.value))}
+              >
+                <option value="1">1/4 Note (Beat)</option>
+                <option value="0.5">1/8 Note</option>
+                <option value="0.25">1/16 Note</option>
+              </select>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Playback Speed</label>
+              <select 
+                className="property-input"
+                value={playbackSpeed}
+                onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+              >
+                <option value="0.5">0.5x (Half Speed)</option>
+                <option value="0.75">0.75x</option>
+                <option value="1">1.0x (Normal)</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2.0">2.0x (Double Speed)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Selected Note</h3>
+            <div style={{ color: '#64748b', fontSize: '13px', fontStyle: 'italic' }}>
+              Select a note on the timeline to edit properties.
+            </div>
+          </div>
+        </aside>
+
+        {/* The Surface: Konva Canvas Wrapper */}
+        <section className="editor-surface">
+          <PianoRoll 
+            notes={notes.filter(n => tracks.find(t => t.index === n.trackIndex)?.visible)} 
+            bpm={bpm}
+            snapResolution={snapResolution}
+          />
+        </section>
+      </main>
+    </div>
+  );
+};

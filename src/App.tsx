@@ -16,8 +16,9 @@ import { useCustomSongs } from './hooks/useCustomSongs';
 import './styles/main.scss';
 import { TileRendererWidget } from './components/TileRendererWidget';
 import { HoldTileLayersDebug } from './components/HoldTileLayersDebug';
+import { Editor } from './components/Editor/Editor';
 
-type AppScreen = 'home' | 'selection' | 'game';
+type AppScreen = 'home' | 'selection' | 'game' | 'editor';
 export default function App() {
   // Show dev-only UI (Debug Board, canvas toggle, TileRendererWidget) only when
   // the URL contains ?ui=dev_mode. This keeps the prod experience clean without
@@ -28,7 +29,25 @@ export default function App() {
 
   const preload = usePreload(loadInstruments);
 
-  const [screen, setScreen] = useState<AppScreen>('home');
+  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const editorPath = `${baseUrl}/midi-editor`;
+
+  const [screen, setScreen] = useState<AppScreen>(() => {
+    if (window.location.pathname === editorPath) return 'editor';
+    return 'home';
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === editorPath) {
+        setScreen('editor');
+      } else if (screen === 'editor') {
+        setScreen('selection');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [screen, editorPath]);
 
   // Song picked from the Library tab
   const [pickedResult, setPickedResult] = useState<MidiParseResult | null>(null);
@@ -87,10 +106,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (preload.isComplete && screen === 'home') {
+    if (preload.isComplete && screen === 'home' && window.location.pathname !== editorPath) {
       setScreen('selection');
     }
-  }, [preload.isComplete, screen]);
+  }, [preload.isComplete, screen, editorPath]);
 
   const handlePlaySong = async (id: string) => {
     try {
@@ -144,6 +163,17 @@ export default function App() {
   };
 
   const isGameReady = screen === 'game' && !isExiting;
+
+  if (screen === 'editor') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', backgroundColor: '#0f172a', overflow: 'hidden' }}>
+        <Editor onExit={() => {
+          window.history.pushState({}, '', baseUrl || '/');
+          setScreen('selection');
+        }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#000', overflow: 'hidden' }}>

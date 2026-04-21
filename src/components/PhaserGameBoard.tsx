@@ -51,6 +51,8 @@ interface PhaserGameBoardProps {
   interactiveScroll?: boolean;
   /** When true, developer-only tools (diagnostics, special buttons) are shown. */
   isDevMode?: boolean;
+  /** Unique ID for the DOM container. Defaults to 'piano-phaser-container'. */
+  containerId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +68,7 @@ export function PhaserGameBoard({
   showTapMarkers = false,
   interactiveScroll = false,
   isDevMode = false,
+  containerId,
 }: PhaserGameBoardProps) {
   const phaserRef = useRef<IRefPhaserGame>(null);
 
@@ -145,6 +148,7 @@ export function PhaserGameBoard({
         scenes={isSandbox ? [FXSandboxScene, PianoGameScene] : [PianoGameScene, FXSandboxScene]}
         onSceneReady={handleSceneReady}
         data={payload} // Pass the payload directly for synchronous initial load
+        containerId={containerId}
       />
     </div>
   );

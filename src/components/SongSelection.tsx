@@ -42,10 +42,62 @@ export function SongSelection({ onPlaySong, customSongs, onAddSong, onRemoveSong
     });
 
     return (
-        <div className="song-selection" style={{ paddingTop: '1rem', paddingBottom: '1rem' }}>
+        <div className="song-selection" style={{ paddingTop: '0', paddingBottom: '0' }}>
 
-            {/* Search + Add Button */}
-            <div className="song-selection__search-bar">
+            {/* Top Header */}
+            <div style={{
+                display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+                padding: '4px 16px', 
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                marginBottom: '0.2rem',
+                gap: '8px'
+            }}>
+                <button
+                    onClick={() => setShowAddDialog(true)}
+                    title="Add Song"
+                    style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: '#94a3b8', fontSize: '16px', display: 'flex', alignItems: 'center',
+                        transition: 'color 0.2s, transform 0.2s',
+                    }}
+                    onMouseOver={e => {
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseOut={e => {
+                        e.currentTarget.style.color = '#94a3b8';
+                        e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                >
+                    ➕
+                </button>
+                <button
+                    onClick={() => {
+                        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+                        window.history.pushState({}, '', `${baseUrl}/midi-editor`);
+                        window.dispatchEvent(new Event('popstate'));
+                    }}
+                    title="MIDI Editor"
+                    style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: '#94a3b8', fontSize: '16px', display: 'flex', alignItems: 'center',
+                        transition: 'color 0.2s, transform 0.2s',
+                    }}
+                    onMouseOver={e => {
+                        e.currentTarget.style.color = '#38bdf8';
+                        e.currentTarget.style.transform = 'rotate(30deg)';
+                    }}
+                    onMouseOut={e => {
+                        e.currentTarget.style.color = '#94a3b8';
+                        e.currentTarget.style.transform = 'rotate(0deg)';
+                    }}
+                >
+                    ⚙️
+                </button>
+            </div>
+
+            {/* Search Bar only */}
+            <div className="song-selection__search-bar" style={{ padding: '0 20px' }}>
                 <div className="search">
                     <span>🔍</span>
                     <input
@@ -55,30 +107,6 @@ export function SongSelection({ onPlaySong, customSongs, onAddSong, onRemoveSong
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
-                <button
-                    onClick={() => setShowAddDialog(true)}
-                    style={{
-                        flexShrink: 0,
-                        background: 'rgba(255,255,255,0.2)',
-                        border: '1px solid rgba(255,255,255,0.4)',
-                        borderRadius: '10px',
-                        color: '#fff',
-                        fontWeight: 800,
-                        fontSize: '13px',
-                        fontFamily: 'Inter, sans-serif',
-                        padding: '6px 12px',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        transition: 'background 0.2s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                    }}
-                    onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
-                    onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
-                >
-                    + Add
-                </button>
             </div>
 
             {/* Song List */}

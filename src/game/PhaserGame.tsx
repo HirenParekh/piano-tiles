@@ -72,6 +72,11 @@ interface PhaserGameProps {
    * This is used for "Zero-Handshake" synchronous loading.
    */
   data?: any;
+  /**
+   * Unique ID for the DOM container. Defaults to 'piano-phaser-container'.
+   * Required when rendering multiple Phaser games on the same page.
+   */
+  containerId?: string;
 }
 
 /**
@@ -83,8 +88,7 @@ interface PhaserGameProps {
 export let PENDING_SCENE_DATA: any = null;
 
 // DOM element id for the Phaser canvas container.
-// Must be unique on the page. Kept as a constant to avoid typos.
-const PHASER_CONTAINER_ID = 'piano-phaser-container';
+const DEFAULT_PHASER_CONTAINER_ID = 'piano-phaser-container';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -110,7 +114,7 @@ const PHASER_CONTAINER_ID = 'piano-phaser-container';
  * ```
  */
 export const PhaserGame = forwardRef<IRefPhaserGame, PhaserGameProps>(
-  function PhaserGame({ scenes, onSceneReady, data }, ref) {
+  function PhaserGame({ scenes, onSceneReady, data, containerId = DEFAULT_PHASER_CONTAINER_ID }, ref) {
     // Internal ref to the Phaser.Game instance.
     // We use a ref (not state) because changing it must NOT trigger a re-render.
     const gameRef = useRef<Phaser.Game | null>(null);
@@ -127,7 +131,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, PhaserGameProps>(
       PENDING_SCENE_DATA = data;
 
       // 2. Initialize Phaser. This synchronously triggers the first scene's init() and create().
-      const config = buildGameConfig(PHASER_CONTAINER_ID, scenes);
+      const config = buildGameConfig(containerId, scenes);
       gameRef.current = new Phaser.Game(config);
 
       // Expose the game instance to the parent immediately.
@@ -191,7 +195,7 @@ export const PhaserGame = forwardRef<IRefPhaserGame, PhaserGameProps>(
     // `style` ensures the div (and thus the canvas) fills the parent.
     return (
       <div
-        id={PHASER_CONTAINER_ID}
+        id={containerId}
         style={{ width: '100%', height: '100%', touchAction: 'none' }}
       />
     );

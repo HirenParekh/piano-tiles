@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
 import * as Tone from 'tone';
 import type { ParsedNote, GameTile } from '../types/midi';
 import musicUrls from '../music_urls.json';
@@ -271,7 +271,7 @@ export function useSynth(): UseSynthReturn {
 
   const getAudioTime = useCallback(() => rawContext.currentTime, [rawContext]);
 
-  return {
+  return useMemo(() => ({
     loadInstruments,
     resolveNotes,
     resolveChords: (resolveChords as (gameTiles: any[], speedMultiplier?: number) => Promise<void>),
@@ -281,5 +281,15 @@ export function useSynth(): UseSynthReturn {
     playNoteScheduled,
     getAudioTime,
     resumeContext
-  };
+  }), [
+    loadInstruments, 
+    resolveNotes, 
+    resolveChords, 
+    playNote, 
+    attackNote, 
+    releaseNote, 
+    playNoteScheduled, 
+    getAudioTime, 
+    resumeContext
+  ]);
 }
