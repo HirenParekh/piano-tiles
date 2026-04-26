@@ -78,32 +78,51 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
   const activeKeysRef = useRef<Set<number>>(new Set());
   const lastTouchRef = useRef<{ x: number, y: number } | null>(null);
 
+  // Determine which pitches are visible
+  const visiblePitches = React.useMemo(() => {
+    if (folded) {
+      const unique = Array.from(new Set(notes.map(n => n.pitch))).sort((a,b) => b - a);
+      return unique.length > 0 ? unique : [60, 59, 58]; // fallback if empty
+    } else {
+      const full = [];
+      for (let p = 108; p >= 21; p--) full.push(p);
+      return full;
+    }
+  }, [notes, folded]);
+
+  const TOTAL_VISIBLE_ROWS = visiblePitches.length;
+
   // Auto-scroll when playing
   useEffect(() => {
     const handleUpdate = (e: any) => {
-      const pTime = e.detail;
+      const isObject = typeof e.detail === 'object' && e.detail !== null;
+      const pTime = isObject ? e.detail.time : e.detail;
+      const forceScroll = isObject ? e.detail.forceScroll : true;
+      
       const playheadX = pTime * PIXELS_PER_BEAT;
 
-      if (pTime > 0) {
-        // Keep playhead exactly at the left edge of the grid (flush with the Keyboard)
-        const targetScrollX = -playheadX;
-        
-        // Update layer transforms natively
-        if (mainLayerRef.current) mainLayerRef.current.x(targetScrollX + KEYBOARD_WIDTH);
-        if (timelineLayerRef.current) timelineLayerRef.current.x(targetScrollX + KEYBOARD_WIDTH);
-        if (timelineBgRef.current) timelineBgRef.current.x(-targetScrollX - KEYBOARD_WIDTH);
-        
-        // Sync our reference for wheel scrolling compatibility
-        scrollXRef.current = targetScrollX;
-      } else {
-        // If pTime is 0 (Stop clicked), reset everything to origin
-        scrollXRef.current = 0;
-        
-        if (mainLayerRef.current) mainLayerRef.current.x(KEYBOARD_WIDTH);
-        if (timelineLayerRef.current) timelineLayerRef.current.x(KEYBOARD_WIDTH);
-        if (timelineBgRef.current) timelineBgRef.current.x(-KEYBOARD_WIDTH);
+      if (forceScroll) {
+        if (pTime > 0) {
+          // Keep playhead exactly at the left edge of the grid (flush with the Keyboard)
+          const targetScrollX = -playheadX;
+          
+          // Update layer transforms natively
+          if (mainLayerRef.current) mainLayerRef.current.x(targetScrollX + KEYBOARD_WIDTH);
+          if (timelineLayerRef.current) timelineLayerRef.current.x(targetScrollX + KEYBOARD_WIDTH);
+          if (timelineBgRef.current) timelineBgRef.current.x(-targetScrollX - KEYBOARD_WIDTH);
+          
+          // Sync our reference for wheel scrolling compatibility
+          scrollXRef.current = targetScrollX;
+        } else {
+          // If pTime is 0 (Stop clicked), reset everything to origin
+          scrollXRef.current = 0;
+          
+          if (mainLayerRef.current) mainLayerRef.current.x(KEYBOARD_WIDTH);
+          if (timelineLayerRef.current) timelineLayerRef.current.x(KEYBOARD_WIDTH);
+          if (timelineBgRef.current) timelineBgRef.current.x(-KEYBOARD_WIDTH);
 
-        setScroll(prev => ({ ...prev, x: 0 }));
+          setScroll(prev => ({ ...prev, x: 0 }));
+        }
       }
 
       // ── Key Highlight Logic ───────────────────────────────────────────────
@@ -138,6 +157,59 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
     window.addEventListener('editor-playback-update', handleUpdate);
     return () => window.removeEventListener('editor-playback-update', handleUpdate);
   }, [dimensions.width, notes]);
+
+  // Smart Auto-Scroll for jumping between notes
+  useEffect(() => {
+    const handleEnsureVisible = (e: any) => {
+      const isObject = typeof e.detail === 'object' && e.detail !== null;
+      const pTime = isObject ? e.detail.start : e.detail;
+      const pitch = isObject ? e.detail.pitch : null;
+
+      const noteX = pTime * PIXELS_PER_BEAT;
+      
+      const currentScrollX = -scrollXRef.current;
+      const currentScrollY = -scroll.y;
+      
+      const viewWidth = dimensions.width - KEYBOARD_WIDTH;
+      const viewHeight = dimensions.height - TIMELINE_HEIGHT;
+      
+      let newScrollX = scrollXRef.current;
+      let newScrollY = scroll.y;
+      
+      let changed = false;
+      
+      // Horizontal check
+      if (noteX < currentScrollX + 50 || noteX > currentScrollX + viewWidth - 100) {
+         newScrollX = Math.min(0, -(noteX - 100));
+         scrollXRef.current = newScrollX;
+         
+         if (mainLayerRef.current) mainLayerRef.current.x(newScrollX + KEYBOARD_WIDTH);
+         if (timelineLayerRef.current) timelineLayerRef.current.x(newScrollX + KEYBOARD_WIDTH);
+         if (timelineBgRef.current) timelineBgRef.current.x(-newScrollX - KEYBOARD_WIDTH);
+         
+         changed = true;
+      }
+      
+      // Vertical check
+      if (pitch !== null) {
+        const yIndex = visiblePitches.indexOf(pitch);
+        if (yIndex !== -1) {
+          const noteY = yIndex * rowHeight;
+          if (noteY < currentScrollY + 40 || noteY > currentScrollY + viewHeight - 60) {
+            const maxScrollY = -(TOTAL_VISIBLE_ROWS * rowHeight) + viewHeight;
+            newScrollY = Math.min(0, Math.max(maxScrollY, -(noteY - viewHeight / 2)));
+            changed = true;
+          }
+        }
+      }
+      
+      if (changed) {
+        setScroll({ x: newScrollX, y: newScrollY });
+      }
+    };
+    window.addEventListener('editor-ensure-visible', handleEnsureVisible);
+    return () => window.removeEventListener('editor-ensure-visible', handleEnsureVisible);
+  }, [dimensions.width, dimensions.height, visiblePitches, rowHeight, TOTAL_VISIBLE_ROWS]);
 
   const handleTouchStart = (e: any) => {
     const stage = e.target.getStage();
@@ -197,20 +269,6 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
     // Trigger scrub
     window.dispatchEvent(new CustomEvent('editor-user-scrub', { detail: -newX / PIXELS_PER_BEAT }));
   };
-
-  // Determine which pitches are visible
-  const visiblePitches = React.useMemo(() => {
-    if (folded) {
-      const unique = Array.from(new Set(notes.map(n => n.pitch))).sort((a,b) => b - a);
-      return unique.length > 0 ? unique : [60, 59, 58]; // fallback if empty
-    } else {
-      const full = [];
-      for (let p = 108; p >= 21; p--) full.push(p);
-      return full;
-    }
-  }, [notes, folded]);
-
-  const TOTAL_VISIBLE_ROWS = visiblePitches.length;
 
   const gridLines = [];
   const pianoKeys = [];
@@ -391,7 +449,12 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
                       }
                     }}
                     onClick={() => onSelectNote?.(note.id)}
+                    onTap={() => onSelectNote?.(note.id)}
                     onDblClick={() => {
+                      const newTrackIndex = note.trackIndex === 0 ? 1 : 0;
+                      onNoteUpdate?.({ ...note, trackIndex: newTrackIndex });
+                    }}
+                    onDblTap={() => {
                       const newTrackIndex = note.trackIndex === 0 ? 1 : 0;
                       onNoteUpdate?.({ ...note, trackIndex: newTrackIndex });
                     }}

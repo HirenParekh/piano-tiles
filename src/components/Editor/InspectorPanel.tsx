@@ -189,7 +189,28 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   const exportMetadata = exportResult.metadata;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(productionJson);
+    const fallbackCopy = (text: string) => {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+      }
+      document.body.removeChild(textArea);
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(productionJson).catch(() => fallbackCopy(productionJson));
+    } else {
+      fallbackCopy(productionJson);
+    }
   };
 
   const handleTap = (tile: Tile) => {
@@ -310,7 +331,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 <Box sx={{ p: 2, fontFamily: '"JetBrains Mono", monospace', fontSize: '0.8rem' }}>
                   {(() => {
                     let currentTrackIdx = -1;
-                    let nextIsScoreContent = false;
+                    const trackBarOffsets: Record<number, number> = {};
 
                     return productionJson.split('\n').map((line, i) => {
                       const isScoreListStart = line.includes('"scores": [');
@@ -323,15 +344,19 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 
                       if (isScoreDataLine) {
                         currentTrackIdx++;
+                        if (trackBarOffsets[currentTrackIdx] === undefined) {
+                          trackBarOffsets[currentTrackIdx] = startBar;
+                        }
+
                         const padding = line.match(/^(\s*)/)?.[1] || "";
                         const rawTrackContent = line.match(/"(.*)"/)?.[1] || "";
                         const bars = rawTrackContent.split(';').filter(b => b.trim() !== "");
 
-                        return (
+                        const renderedLine = (
                           <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                             <span style={{ color: '#94a3b8' }}>{padding}"</span>
                             {bars.map((barStr, bi) => {
-                              const barNumber = startBar + bi;
+                              const barNumber = trackBarOffsets[currentTrackIdx] + bi;
                               const barTokens = exportMetadata[currentTrackIdx]?.[barNumber] || [];
 
                               return (
@@ -369,6 +394,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                             <span style={{ color: '#94a3b8' }}>",</span>
                           </div>
                         );
+
+                        trackBarOffsets[currentTrackIdx] += bars.length;
+                        return renderedLine;
                       }
 
                       return (

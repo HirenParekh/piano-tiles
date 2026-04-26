@@ -5,7 +5,7 @@ import {
   ThemeProvider, createTheme, CssBaseline, Box, Toolbar, AppBar, 
   Typography, Button, IconButton, Drawer, List, ListItem, 
   ListItemText, Switch, Divider, Select, MenuItem, Stack, TextField,
-  FormControl, InputLabel, Dialog, Slider, Snackbar, Alert
+  FormControl, InputLabel, Dialog, Slider, Snackbar, Alert, Menu
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -16,11 +16,14 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CodeIcon from '@mui/icons-material/Code';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
+import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
 import { InspectorPanel } from './InspectorPanel';
 
 import { PianoRoll } from './PianoRoll';
 import { useSynth } from '../../hooks/useSynth';
 import { buildResultFromPianoTilesSong } from '../../utils/pianoTilesParser';
+import { midiToPitch } from '../../utils/pianoTilesExporter';
 
 const darkTheme = createTheme({
   palette: {
@@ -76,7 +79,10 @@ const drawerWidth = 280;
 const TransportClock: React.FC = () => {
   const [time, setTime] = useState(0);
   useEffect(() => {
-    const handleUpdate = (e: any) => setTime(e.detail);
+    const handleUpdate = (e: any) => {
+      const isObject = typeof e.detail === 'object' && e.detail !== null;
+      setTime(isObject ? e.detail.time : e.detail);
+    };
     window.addEventListener('editor-playback-update', handleUpdate);
     return () => window.removeEventListener('editor-playback-update', handleUpdate);
   }, []);
@@ -123,6 +129,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   
   const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [fileMenuAnchor, setFileMenuAnchor] = useState<null | HTMLElement>(null);
   const { playNote, attackNote, releaseNote, loadInstruments, resumeContext } = useSynth();
   
   // Non-state playback trackers for 60FPS performance
@@ -175,27 +182,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     setBaseBeats(nextState.baseBeats);
   };
 
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if target is an input/textarea to avoid undoing while typing
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key.toLowerCase() === 'z') {
-          e.preventDefault();
-          if (e.shiftKey) handleRedo(); else handleUndo();
-        } else if (e.key.toLowerCase() === 'y') {
-          e.preventDefault();
-          handleRedo();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [notes, tracks, bpm, baseBeats]); // Re-bind so handlers have fresh values
 
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' | 'error' }>({ 
     open: false, 
@@ -270,7 +257,9 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         playbackTimeRef.current = currentPlayback;
         
         // Broadcast time to Piano Roll for 60FPS canvas manipulation without React re-renders
-        window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: currentPlayback }));
+        window.dispatchEvent(new CustomEvent('editor-playback-update', { 
+          detail: { time: currentPlayback, forceScroll: true } 
+        }));
         
         reqId = requestAnimationFrame(loop);
       };
@@ -279,7 +268,9 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     } else {
       // Pause
       lastPlayedTimeRef.current = playbackTimeRef.current;
-      window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: playbackTimeRef.current }));
+      window.dispatchEvent(new CustomEvent('editor-playback-update', { 
+        detail: { time: playbackTimeRef.current, forceScroll: false } 
+      }));
     }
     
     return () => cancelAnimationFrame(reqId);
@@ -371,32 +362,123 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
   const trimLeadingSilence = () => {
     if (notes.length === 0) return;
-    
-    // Find earliest note
     const earliestStart = Math.min(...notes.map(n => n.start));
     if (earliestStart <= 0) return;
 
-    // Calculate how many FULL beats we can safely chop off without misaligning the grid
-    const secPerBeat = 60 / bpm;
-    const emptyBeats = Math.floor(earliestStart / secPerBeat);
+    pushToHistory();
+    const newNotes = notes.map(n => ({ ...n, start: Math.max(0, n.start - earliestStart) }));
+    setNotes(newNotes);
+    notify(`Shifted all notes back by ${earliestStart.toFixed(2)}s to remove leading silence`, 'success');
     
-    if (emptyBeats > 0) {
-      pushToHistory();
-      const timeToChop = emptyBeats * secPerBeat;
-      const newNotes = notes.map(n => ({ ...n, start: Math.max(0, n.start - timeToChop) }));
-      setNotes(newNotes);
-      notify(`Trimmed ${emptyBeats} beats of silence`, 'success');
-      
-      // Update local storage
-      const saved = localStorage.getItem('pianoTiles_editorState');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        localStorage.setItem('pianoTiles_editorState', JSON.stringify({ ...parsed, notes: newNotes }));
-      }
-    } else {
-      notify("No full empty beats found to trim.", "warning");
+    // Update local storage
+    const saved = localStorage.getItem('pianoTiles_editorState');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      localStorage.setItem('pianoTiles_editorState', JSON.stringify({ ...parsed, notes: newNotes }));
     }
   };
+
+  const handleQuantizeSelectedNote = () => {
+    if (!selectedNoteId) return;
+    const selectedNote = notes.find(n => n.id === selectedNoteId);
+    if (!selectedNote) return;
+
+    const isMelody = selectedNote.trackIndex === 0;
+    
+    // Find future notes
+    const futureNotes = notes.filter(n => {
+      if (n.id === selectedNoteId) return false;
+      if (n.start <= selectedNote.start + 0.001) return false;
+      if (isMelody && n.trackIndex !== 0) return false;
+      return true;
+    });
+
+    if (futureNotes.length === 0) {
+      notify("No overlapping future notes found.", "info");
+      return;
+    }
+
+    const nextStart = Math.min(...futureNotes.map(n => n.start));
+
+    if (selectedNote.start + selectedNote.duration > nextStart + 0.001) {
+      pushToHistory();
+      const secPerBeat = 60 / bpm;
+      const snapSec = snapResolution * secPerBeat;
+      const maxAllowedDuration = nextStart - selectedNote.start;
+      
+      // Add a small epsilon to prevent floating-point errors (e.g. 1.999999 becoming 1 instead of 2)
+      let newDuration = Math.floor((maxAllowedDuration / snapSec) + 0.001) * snapSec;
+      
+      if (newDuration < snapSec) newDuration = snapSec;
+
+      const newNotes = notes.map(n => 
+        n.id === selectedNoteId ? { ...n, duration: newDuration } : n
+      );
+      setNotes(newNotes);
+      notify(`Quantized duration to ${newDuration.toFixed(2)}s to resolve overlap.`, 'success');
+    } else {
+      notify("Note does not overlap with next note.", "info");
+    }
+  };
+
+  const handlePrevNote = () => {
+    if (!selectedNoteId) return;
+    const sn = notes.find(n => n.id === selectedNoteId);
+    if (!sn) return;
+    const trackNotes = notes.filter(n => n.trackIndex === sn.trackIndex).sort((a, b) => a.start - b.start);
+    const idx = trackNotes.findIndex(n => n.id === selectedNoteId);
+    if (idx > 0) {
+      const prev = trackNotes[idx - 1];
+      setSelectedNoteId(prev.id);
+      window.dispatchEvent(new CustomEvent('editor-ensure-visible', { detail: { start: prev.start, pitch: prev.pitch } }));
+    }
+  };
+
+  const handleNextNote = () => {
+    if (!selectedNoteId) return;
+    const sn = notes.find(n => n.id === selectedNoteId);
+    if (!sn) return;
+    const trackNotes = notes.filter(n => n.trackIndex === sn.trackIndex).sort((a, b) => a.start - b.start);
+    const idx = trackNotes.findIndex(n => n.id === selectedNoteId);
+    if (idx >= 0 && idx < trackNotes.length - 1) {
+      const next = trackNotes[idx + 1];
+      setSelectedNoteId(next.id);
+      window.dispatchEvent(new CustomEvent('editor-ensure-visible', { detail: { start: next.start, pitch: next.pitch } }));
+    }
+  };
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if target is an input/textarea to avoid triggering shortcuts while typing
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) handleRedo(); else handleUndo();
+        } else if (e.key.toLowerCase() === 'y') {
+          e.preventDefault();
+          handleRedo();
+        }
+      } else {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handlePrevNote();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleNextNote();
+        } else if (e.key.toLowerCase() === 'q') {
+          e.preventDefault();
+          handleQuantizeSelectedNote();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [notes, tracks, bpm, baseBeats, selectedNoteId]);
 
   const handleMidiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -569,7 +651,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', userSelect: 'text', WebkitUserSelect: 'text' }}>
         
         {/* TOP APP BAR */}
         <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
@@ -578,12 +660,22 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
               <IconButton edge="start" onClick={onExit} sx={{ mr: 2, color: 'text.secondary' }}>
                 <ArrowBackIcon />
               </IconButton>
-              <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold', mr: 3 }}>
                 PianoStudio 
                 <Typography component="span" sx={{ color: 'text.secondary', ml: 1, fontSize: '0.8rem', fontWeight: 500 }}>
                   SaaS Editor
                 </Typography>
               </Typography>
+              
+              <Button color="inherit" onClick={(e) => setFileMenuAnchor(e.currentTarget)} sx={{ color: '#94a3b8' }}>
+                File
+              </Button>
+              <Menu anchorEl={fileMenuAnchor} open={Boolean(fileMenuAnchor)} onClose={() => setFileMenuAnchor(null)}>
+                <MenuItem onClick={() => { fileInputRef.current?.click(); setFileMenuAnchor(null); }}>Import MIDI</MenuItem>
+                <MenuItem onClick={() => { jsonInputRef.current?.click(); setFileMenuAnchor(null); }}>Open Project</MenuItem>
+                <MenuItem onClick={() => { saveProject(); setFileMenuAnchor(null); }}>Save Project</MenuItem>
+                <MenuItem onClick={() => { gameJsonInputRef.current?.click(); setFileMenuAnchor(null); }}>Load Game JSON</MenuItem>
+              </Menu>
             </Box>
 
             <Box sx={{ 
@@ -616,7 +708,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     setIsPlaying(false); 
                     playbackTimeRef.current = 0; 
                     lastPlayedTimeRef.current = 0;
-                    window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: 0 }));
+                    window.dispatchEvent(new CustomEvent('editor-playback-update', { detail: { time: 0, forceScroll: true } }));
                   }}
                 >
                   <StopIcon />
@@ -673,80 +765,72 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           
           <Box sx={{ overflowY: 'auto', overflowX: 'hidden' }}>
             <Box sx={{ p: 2 }}>
+              {/* Hidden file inputs moved from File Operations */}
+              <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".mid,.midi" onChange={handleMidiUpload} />
+              <input type="file" ref={jsonInputRef} style={{ display: 'none' }} accept=".json" onChange={openProject} />
+              <input type="file" ref={gameJsonInputRef} style={{ display: 'none' }} accept=".json" onChange={handleGameJsonUpload} />
+
               <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                File Operations
+                Note Info & Actions
               </Typography>
               
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                startIcon={<FolderOpenIcon />} 
-                onClick={() => fileInputRef.current?.click()}
-                sx={{ mb: 1 }}
-              >
-                Import MIDI
-              </Button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
-                accept=".mid,.midi" 
-                onChange={handleMidiUpload} 
-              />
+              {selectedNoteId ? (() => {
+                const sn = notes.find(n => n.id === selectedNoteId);
+                if (!sn) return <Typography variant="body2" color="text.secondary">Select a note</Typography>;
+                
+                const tonePitch = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][sn.pitch % 12] + (Math.floor(sn.pitch / 12) - 1);
+                const pt2Pitch = midiToPitch(sn.pitch);
+                
+                const secPerBeat = 60 / bpm;
+                const startBeats = sn.start / secPerBeat;
+                const bar = Math.floor(startBeats / 4) + 1;
+                const beat = Math.floor(startBeats % 4) + 1;
+                const frac = (startBeats % 1).toFixed(2);
 
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                startIcon={<FolderOpenIcon />} 
-                onClick={() => jsonInputRef.current?.click()}
-                sx={{ mb: 1 }}
-              >
-                Open Project
-              </Button>
-              <input 
-                type="file" 
-                ref={jsonInputRef} 
-                style={{ display: 'none' }} 
-                accept=".json" 
-                onChange={openProject} 
-              />
-              
-              <Button 
-                fullWidth 
-                variant="contained" 
-                color="primary"
-                startIcon={<DownloadIcon />} 
-                onClick={saveProject}
-                sx={{ mb: 1 }}
-              >
-                Save Project
-              </Button>
+                return (
+                  <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', p: 1.5, borderRadius: 1, mb: 1 }}>
+                    <Typography variant="caption" sx={{ color: sn.color || '#fff', fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      {sn.track}
+                    </Typography>
+                    
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>Key: {tonePitch} ({sn.pitch})</Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>JSON: {pt2Pitch}</Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 1 }}>Pos: {bar}:{beat}:{frac}</Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>Dur: {sn.duration.toFixed(3)}s</Typography>
+                    
+                    <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                      <IconButton size="small" onClick={handlePrevNote} sx={{ bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                        <SkipPreviousIcon fontSize="small" />
+                      </IconButton>
+                      <Button 
+                        fullWidth 
+                        variant="contained" 
+                        size="small" 
+                        color="primary" 
+                        onClick={handleQuantizeSelectedNote}
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Quantize
+                      </Button>
+                      <IconButton size="small" onClick={handleNextNote} sx={{ bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                        <SkipNextIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Box>
+                );
+              })() : (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Select a note to view actions.
+                </Typography>
+              )}
 
-              <Divider sx={{ my: 1 }} />
-
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                startIcon={<span className="material-icons-round" style={{ fontSize: '18px' }}>library_music</span>} 
-                onClick={() => gameJsonInputRef.current?.click()}
-                sx={{ mb: 1 }}
-              >
-                Load Game JSON
-              </Button>
-              <input 
-                type="file" 
-                ref={gameJsonInputRef} 
-                style={{ display: 'none' }} 
-                accept=".json" 
-                onChange={handleGameJsonUpload} 
-              />
-              
               <Button 
                 fullWidth 
                 variant="outlined" 
                 color="warning"
                 startIcon={<span className="material-icons-round" style={{ fontSize: '18px' }}>content_cut</span>} 
                 onClick={trimLeadingSilence}
+                sx={{ mt: 1 }}
               >
                 Trim Empty Beats
               </Button>
@@ -968,7 +1052,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           }}
         >
           <Toolbar variant="dense" sx={{ minHeight: 64 }} /> {/* Spacer */}
-          <Box sx={{ height: 'calc(100vh - 64px)', overflow: 'hidden', bgcolor: '#020617' }}>
+          <Box sx={{ height: 'calc(100vh - 64px)', overflow: 'hidden', bgcolor: '#020617', userSelect: 'none', WebkitUserSelect: 'none' }}>
             <PianoRoll 
               notes={notes.filter(n => tracks.find(t => t.index === n.trackIndex)?.visible)} 
               bpm={bpm}

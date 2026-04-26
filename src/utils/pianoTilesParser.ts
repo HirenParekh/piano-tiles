@@ -364,13 +364,13 @@ function handleChord(token: string, ctx: ParseContext): TokenResult {
   // Extract note names and arpeggio operators from the inner content
   // Note names: optional # + letter + optional octave (e.g. "#a1", "g", "c2")
   // Operators:  . @ % ! ~ $ ^ &
-  const noteMatches = [...inner.matchAll(/([a-gA-G]#?-?\d*|mute|empty)|([.@%!~$^&])/gi)];
+  const noteMatches = [...inner.matchAll(/(#?[a-gA-G]-?\d*|mute|empty)|([.@%!~$^&])/gi)];
   const notesToPlay: string[] = [];
   const ops: string[] = [];
 
   for (const match of noteMatches) {
     const str = match[0];
-    if (/^[a-g]/i.test(str) || str === 'mute' || str === 'empty') {
+    if (/^#?[a-g]/i.test(str) || str === 'mute' || str === 'empty') {
       notesToPlay.push(str);
     } else if (/[.@%!~$^&]/.test(str)) {
       ops.push(str);

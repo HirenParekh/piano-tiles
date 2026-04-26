@@ -12,14 +12,31 @@ const BRACKET_MAP = [
   { char: 'P', rest: 'Y', beats: 0.03125 },
 ];
 
-const NOTE_NAMES = ['c', '#c', 'd', '#d', 'e', 'f', '#f', 'g', '#g', 'a', '#a', 'b'];
+const NOTE_NAMES_LOWER = ['c', '#c', 'd', '#d', 'e', 'f', '#f', 'g', '#g', 'a', '#a', 'b'];
+const NOTE_NAMES_UPPER = ['C', '#C', 'D', '#D', 'E', 'F', '#F', 'G', '#G', 'A', '#A', 'B'];
 
-/** Converts MIDI number to PT2 pitch string (e.g. 60 -> "c1") */
-function midiToPitch(midi: number): string {
+/**
+ * Converts MIDI number to PT2 pitch string matching the sim-pt2 pitch table exactly:
+ * - Negative octaves: UPPERCASE + negative number  (e.g. midi 29 -> "F-2")
+ * - Octave 0:        lowercase, no number          (e.g. midi 48 -> "c")
+ * - Positive octaves: lowercase + positive number  (e.g. midi 60 -> "c1")
+ */
+export function midiToPitch(midi: number): string {
+  // PT2 middle-C (c1) = MIDI 60 → octave = Math.floor(60/12) - 4 = 1
+  // PT2 "c" (octave 0) = MIDI 48
+  // PT2 negative octaves: octave < 0
   const octave = Math.floor(midi / 12) - 4;
   const offset = midi % 12;
-  const name = NOTE_NAMES[offset];
-  return octave === 0 ? name : `${name}${octave}`;
+
+  if (octave < 0) {
+    // Uppercase for negative octaves: e.g. "F-2", "#G-1"
+    const name = NOTE_NAMES_UPPER[offset];
+    return `${name}${octave}`;
+  } else if (octave === 0) {
+    return NOTE_NAMES_LOWER[offset];
+  } else {
+    return `${NOTE_NAMES_LOWER[offset]}${octave}`;
+  }
 }
 
 /** Greedy algorithm to convert beat duration into PT2 notation characters */
@@ -110,12 +127,49 @@ export function generateProductionJson(
       const barTokens: { token: string, noteId: string | null }[] = [];
       let barPos = barStart;
 
-      barEvents.forEach((event, idx) => {
+      let i = 0;
+      while (i < barEvents.length) {
+        const event = barEvents[i];
         const gap = event.startBeats - barPos;
+        
         if (gap > 0.02) {
           barTokens.push({ token: calculateNotation(gap, true), noteId: null });
         }
 
+        // --- Double Tile Check ---
+        // Rule: Only Melody track (tid === 0), duration < baseBeats, back-to-back notes, group first two
+        if (tid === 0 && event.durationBeats < baseBeats - 0.01) {
+          if (i + 1 < barEvents.length) {
+            const nextEvent = barEvents[i + 1];
+            const nextGap = Math.abs(nextEvent.startBeats - (event.startBeats + event.durationBeats));
+            
+            if (nextGap < 0.02 && nextEvent.durationBeats < baseBeats - 0.01) {
+              // Group them into a Double Tile!
+              let t1 = "";
+              if (event.pitches.length > 1) {
+                t1 = `(${[...event.pitches].sort((a,b)=>a-b).map(midiToPitch).join('.')})${calculateNotation(event.durationBeats, false)}`;
+              } else {
+                t1 = `${midiToPitch(event.pitches[0])}${calculateNotation(event.durationBeats, false)}`;
+              }
+              
+              let t2 = "";
+              if (nextEvent.pitches.length > 1) {
+                t2 = `(${[...nextEvent.pitches].sort((a,b)=>a-b).map(midiToPitch).join('.')})${calculateNotation(nextEvent.durationBeats, false)}`;
+              } else {
+                t2 = `${midiToPitch(nextEvent.pitches[0])}${calculateNotation(nextEvent.durationBeats, false)}`;
+              }
+              
+              const combinedToken = `5<${t1},${t2}>`;
+              barTokens.push({ token: combinedToken, noteId: event.notes[0].id });
+              
+              barPos = nextEvent.startBeats + nextEvent.durationBeats;
+              i += 2; // Skip the next event since we consumed it
+              continue;
+            }
+          }
+        }
+
+        // --- Normal Single Tile ---
         let tokenStr = "";
         if (event.pitches.length > 1) {
           tokenStr = `(${[...event.pitches].sort((a,b)=>a-b).map(midiToPitch).join('.')})${calculateNotation(event.durationBeats, false)}`;
@@ -124,7 +178,9 @@ export function generateProductionJson(
         }
         barTokens.push({ token: tokenStr, noteId: event.notes[0].id });
         barPos = event.startBeats + event.durationBeats;
-      });
+        
+        i++;
+      }
 
       const trailingGap = barEnd - barPos;
       if (trailingGap > 0.02) {
@@ -145,13 +201,58 @@ export function generateProductionJson(
     metadata[tid] = trackMetadata;
   });
 
+  // --- Split bars equally across 3 music objects ---
+  // Re-derive the full bar range so we can slice per-music.
+  const allTrackIds = Object.keys(tracksLayout).map(Number).sort((a, b) => a - b);
+  const firstBar = startBar;
+
+  // Compute lastBar across all tracks
+  let globalLastBar = firstBar;
+  allTrackIds.forEach(tid => {
+    const trackNotes = tracksLayout[tid];
+    trackNotes.forEach(n => {
+      const endBeatN = (n.start + n.duration) * (bpm / 60);
+      const barN = Math.ceil(endBeatN / BEATS_PER_BAR);
+      if (barN > globalLastBar) globalLastBar = barN;
+    });
+  });
+  if (endBar && endBar < globalLastBar) globalLastBar = endBar;
+
+  const totalBars = globalLastBar - firstBar + 1;
+  const barsPerMusic = Math.ceil(totalBars / 3);
+
+  // Slice function: given a per-track score string and metadata, extract only the bars for [chunkStart, chunkEnd]
+  function sliceScoreForChunk(
+    tid: number,
+    chunkStartBar: number,
+    chunkEndBar: number
+  ): string {
+    const trackMeta = metadata[tid];
+    if (!trackMeta) return "";
+
+    let chunkScore = "";
+    for (let bar = chunkStartBar; bar <= chunkEndBar; bar++) {
+      const barTokens = trackMeta[bar] || [];
+      const barSegment = barTokens.map((t, i) => {
+        const isNextSep = (i < barTokens.length - 1);
+        return t.token + (isNextSep ? "," : "");
+      }).join("");
+      chunkScore += barSegment + ";";
+    }
+    return chunkScore;
+  }
+
+  // Build 3 music objects, each covering 1/3 of the bars
+  const musicObjects = [1, 2, 3].map((musicId, chunkIdx) => {
+    const chunkStartBar = firstBar + chunkIdx * barsPerMusic;
+    const chunkEndBar = Math.min(firstBar + (chunkIdx + 1) * barsPerMusic - 1, globalLastBar);
+    const chunkScores = trackIds.map(tid => sliceScoreForChunk(tid, chunkStartBar, chunkEndBar));
+    return { id: musicId, bpm, baseBeats, scores: chunkScores };
+  });
+
   const result = {
     baseBpm: bpm,
-    musics: [
-      { id: 1, bpm, baseBeats, scores: finalScores },
-      { id: 2, bpm, baseBeats, scores: finalScores.map(() => "") },
-      { id: 3, bpm, baseBeats, scores: finalScores.map(() => "") }
-    ]
+    musics: musicObjects
   };
 
   return {

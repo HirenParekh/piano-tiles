@@ -2,6 +2,7 @@ export type InstrumentCategory = 'piano' | 'keyboard' | 'other';
 
 // Represents a single parsed note from a MIDI file
 export interface ParsedNote {
+  id: string; // Added for editor tracking
   /** MIDI note number (0–127) */
   midi: number;
   /** Human-readable note name, e.g. "C4", "F#3" */
@@ -34,6 +35,16 @@ export interface ParsedNote {
   buffer?: AudioBuffer;
   /** Pre-merged AudioBuffer for chord tiles (SINGLE with 2+ notes) — play once instead of N times */
   mergedBuffer?: AudioBuffer;
+}
+
+export interface NoteData {
+  id: string;
+  pitch: number;
+  start: number;
+  duration: number;
+  track?: string;
+  trackIndex?: number;
+  color?: string;
 }
 
 // A tile in the game — one or more notes assigned to a lane
