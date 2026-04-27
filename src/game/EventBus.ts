@@ -82,6 +82,13 @@ export const PianoEvents = {
    * No payload.
    */
   EXIT_GAME: 'exit-game',
+
+  /**
+   * Emitted by PianoGameScene when the player toggles Assistive Mode via the pill UI.
+   * React listens to keep its global state in sync.
+   * Payload: { enabled: boolean }
+   */
+  TOGGLE_ASSISTIVE_MODE: 'toggle-assistive-mode',
 } as const;
 
 // Derive a union type of all valid event name strings for type-safe listeners.
@@ -128,6 +135,8 @@ export interface LoadSongPayload {
   interactiveScroll?: boolean;
   /** When true, developer-only tools (diagnostics, special buttons) are shown. */
   isDevMode?: boolean;
+  /** When true, tiles are automatically tapped when they reach the tap line. */
+  assistiveMode?: boolean;
 }
 
 /**

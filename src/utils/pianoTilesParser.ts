@@ -286,6 +286,7 @@ function handleDoubleGroup(
     const parsed = parseNoteName(rawName);
     if (parsed) {
       notes.push({
+        id: `note-d-${ctx.trackIndex}-${ctx.currentSlot}-${parsed.midi}-${placeholder}`,
         midi: parsed.midi,
         name: parsed.name,
         time: ctx.currentSlot * ctx.slotDurationS,
@@ -325,6 +326,7 @@ function handleSimpleNote(token: string, ctx: ParseContext): TokenResult {
 
   const bracketStr = token.match(/\[[HIJKLMNOP]+\]/)?.[0] ?? '';
   const note: ParsedNote = {
+    id: `note-s-${ctx.trackIndex}-${ctx.currentSlot}-${parsed.midi}`,
     midi: parsed.midi,
     name: parsed.name,
     time: ctx.currentSlot * ctx.slotDurationS,
@@ -396,6 +398,7 @@ function handleChord(token: string, ctx: ParseContext): TokenResult {
     const parsed = parseNoteName(rawName);
     if (parsed) {
       notes.push({
+        id: `note-c-${ctx.trackIndex}-${ctx.currentSlot}-${parsed.midi}-${i}`,
         midi: parsed.midi,
         name: parsed.name,
         time: ctx.currentSlot * ctx.slotDurationS + arpeggioAccumS,

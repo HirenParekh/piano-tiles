@@ -5,6 +5,8 @@ interface DevSettingsPanelProps {
   setShowTapMarkers: (val: boolean) => void;
   interactiveScroll: boolean;
   setInteractiveScroll: (val: boolean) => void;
+  assistiveMode: boolean;
+  setAssistiveMode: (val: boolean) => void;
 }
 
 /**
@@ -18,6 +20,8 @@ export function DevSettingsPanel({
   setShowTapMarkers,
   interactiveScroll,
   setInteractiveScroll,
+  assistiveMode,
+  setAssistiveMode,
 }: DevSettingsPanelProps) {
   return (
     <div style={{
@@ -84,6 +88,29 @@ export function DevSettingsPanel({
             type="checkbox"
             checked={interactiveScroll}
             onChange={(e) => setInteractiveScroll(e.target.checked)}
+            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+          />
+        </label>
+
+        {/* Toggle: Assistive Mode */}
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          padding: '8px 12px',
+          background: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '8px',
+          transition: 'background 0.2s'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#f1c40f' }}>Assistive Mode</span>
+            <span style={{ fontSize: '12px', color: '#999' }}>Tiles are automatically tapped (sim-pt2)</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={assistiveMode}
+            onChange={(e) => setAssistiveMode(e.target.checked)}
             style={{ width: '20px', height: '20px', cursor: 'pointer' }}
           />
         </label>

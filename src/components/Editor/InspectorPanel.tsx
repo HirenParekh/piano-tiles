@@ -10,13 +10,13 @@ import ViewQuiltIcon from '@mui/icons-material/ViewQuilt';
 import { NoteData } from '../../types/midi';
 import { generateProductionJson } from '../../utils/pianoTilesExporter';
 import { buildTilesFromNotes, MIN_HEIGHT } from '../../utils/tileBuilderStable';
-import { ParsedNote, GameTile } from '../../types/midi';
-import { buildTrackFromTiles } from '../../archive/css-board/trackBuilder';
-import { GameTileCard } from '../../archive/css-board/GameTileCard';
-import { HoldTileCard } from '../../archive/css-board/HoldTileCard';
-import { DoubleTileCard } from '../../archive/css-board/DoubleTileCard';
-import type { Tile } from '../../types/track';
-import { PhaserGameBoard } from '../PhaserGameBoard';
+import { ParsedNote } from '../../types/midi';
+// import { buildTrackFromTiles } from '../../archive/css-board/trackBuilder';
+// import { GameTileCard } from '../../archive/css-board/GameTileCard';
+// import { HoldTileCard } from '../../archive/css-board/HoldTileCard';
+// import { DoubleTileCard } from '../../archive/css-board/DoubleTileCard';
+// import type { Tile } from '../../types/track';
+// import { PhaserGameBoard } from '../PhaserGameBoard';
 import { MidiParseResult } from '../../types/midi';
 
 const midiToNoteName = (midi: number) => {
@@ -43,7 +43,7 @@ interface InspectorPanelProps {
 
 export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   open, onClose, notes, bpm, baseBeats,
-  playNote, attackNote, releaseNote,
+  playNote, attackNote: _, releaseNote: __,
   hoveredNoteId, onHoverNote,
   selectedNoteId, onSelectNote
 }) => {
@@ -141,7 +141,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       const selectedTile = midResult.tiles.find(t => t.id === selectedNoteId);
       if (selectedTile) {
         const viewportH = scrollRef.current.offsetHeight;
-        const totalH = midResult.totalHeight;
+        // const _totalH = midResult.totalHeight;
 
         // Target: Center the tile at the playhead (bottom of viewport)
         // Y_in_content = 300 + selectedTile.top + selectedTile.height/2
@@ -213,18 +213,20 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     }
   };
 
-  const handleTap = (tile: Tile) => {
+  /*
+  const _handleTap = (tile: Tile) => {
     // Play the primary note
     playNote(tile.notes[0]);
   };
 
-  const handleHoldBeat = (note: ParsedNote) => {
+  const _handleHoldBeat = (note: ParsedNote) => {
     playNote(note);
   };
 
-  const handleHoldRelease = (tile: Tile) => {
+  const _handleHoldRelease = (tile: Tile) => {
     releaseNote(tile.notes[0]);
   };
+  */
 
   return (
     <Drawer
@@ -251,7 +253,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#1e293b' }}>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'white', fontSize: '1.1rem' }}>
               Project Inspector
             </Typography>
@@ -355,7 +357,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                         const renderedLine = (
                           <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                             <span style={{ color: '#94a3b8' }}>{padding}"</span>
-                            {bars.map((barStr, bi) => {
+                            {bars.map((_barStr, bi) => {
                               const barNumber = trackBarOffsets[currentTrackIdx] + bi;
                               const barTokens = exportMetadata[currentTrackIdx]?.[barNumber] || [];
 
@@ -498,10 +500,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                             key={tile.id}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onSelectNote?.(tile.notes[0].id);
+                              onSelectNote?.(tile.notes[0].id || null);
                               playNote(tile.notes[0]);
                             }}
-                            onMouseEnter={() => onHoverNote?.(tile.notes[0].id)}
+                            onMouseEnter={() => onHoverNote?.(tile.notes[0].id || null)}
                             onMouseLeave={() => onHoverNote?.(null)}
                             sx={{
                               ...commonStyle,

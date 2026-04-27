@@ -113,10 +113,10 @@ export function useTileAudio({
     }
   }, [attackNote, playNote, resumeContext, getSpeed, playNoteScheduled, getAudioTime]);
 
-  const handleHoldBeat = useCallback((_notes: ParsedNote[]) => {
-    // Secondary beat notes are now baked into the pre-merged hold buffer
-    // triggered at tap-start. We only emit this for visual/score effects.
-  }, []);
+  const handleHoldBeat = useCallback((notes: ParsedNote[]) => {
+    const speed = getSpeed();
+    notes.forEach(note => playNote({ ...note, duration: note.duration / speed }));
+  }, [playNote, getSpeed]);
 
   const handleHoldRelease = useCallback(() => {
     if (heldNoteRef.current) {

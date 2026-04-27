@@ -2,7 +2,7 @@ export type InstrumentCategory = 'piano' | 'keyboard' | 'other';
 
 // Represents a single parsed note from a MIDI file
 export interface ParsedNote {
-  id: string; // Added for editor tracking
+  id?: string; // Added for editor tracking
   /** MIDI note number (0–127) */
   midi: number;
   /** Human-readable note name, e.g. "C4", "F#3" */

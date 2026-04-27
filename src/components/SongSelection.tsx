@@ -10,9 +10,11 @@ interface Props {
     customSongs: CustomSong[];
     onAddSong: (title: string, author: string, json: string) => string | null;
     onRemoveSong: (id: string) => void;
+    assistiveMode: boolean;
+    onToggleAssistive: (enabled: boolean) => void;
 }
 
-export function SongSelection({ onPlaySong, customSongs, onAddSong, onRemoveSong }: Props) {
+export function SongSelection({ onPlaySong, customSongs, onAddSong, onRemoveSong, assistiveMode, onToggleAssistive }: Props) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [search, setSearch] = useState('');
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -94,6 +96,31 @@ export function SongSelection({ onPlaySong, customSongs, onAddSong, onRemoveSong
                 >
                     ⚙️
                 </button>
+                <label style={{ 
+                    display: 'flex', alignItems: 'center', gap: '6px', 
+                    cursor: 'pointer', fontSize: '13px', color: assistiveMode ? '#fff' : '#94a3b8',
+                    padding: '4px 10px', borderRadius: '16px',
+                    backgroundColor: assistiveMode ? 'rgba(108, 99, 255, 0.2)' : 'rgba(255,255,255,0.05)',
+                    border: assistiveMode ? '1px solid rgba(108, 99, 255, 0.4)' : '1px solid transparent',
+                    transition: 'all 0.2s',
+                    userSelect: 'none'
+                }}
+                onMouseOver={e => {
+                    if (!assistiveMode) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                }}
+                onMouseOut={e => {
+                    if (!assistiveMode) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                }}
+                >
+                    <input 
+                        type="checkbox" 
+                        checked={assistiveMode}
+                        onChange={e => onToggleAssistive(e.target.checked)}
+                        style={{ display: 'none' }}
+                    />
+                    <span style={{ fontSize: '14px' }}>{assistiveMode ? '✦' : '✧'}</span>
+                    Assist
+                </label>
             </div>
 
             {/* Search Bar only */}

@@ -144,6 +144,7 @@ export class PianoGameScene extends Phaser.Scene {
   private lastHitType = 'None';
   private onNativeDownBound: (e: Event) => void = () => {};
   private isDevMode = false;
+  private assistiveMode = false;
 
   /**
    * Pixel scale ratio: gameHeight / (VISIBLE_SLOTS * MIN_HEIGHT).
@@ -229,6 +230,7 @@ export class PianoGameScene extends Phaser.Scene {
     // 2. Standard assignment
     this.songData = data?.result ? (data as LoadSongPayload) : null;
     this.isDevMode = data?.isDevMode ?? false;
+    this.assistiveMode = data?.assistiveMode ?? false;
   }
 
   // -------------------------------------------------------------------------
@@ -405,6 +407,11 @@ export class PianoGameScene extends Phaser.Scene {
     // Drive camera upward at musical tempo.
     this.cameraScrollSystem?.update(delta);
 
+    // Auto-tap tiles if assistive mode is enabled
+    if (this.gameStarted && this.assistiveMode) {
+      this.handleAutoTaps();
+    }
+
     // Update FPS HUD
     // Update HUD diagnostic text
     // Periodically update diagnostic HUD
@@ -512,6 +519,14 @@ export class PianoGameScene extends Phaser.Scene {
     if (data.interactiveScroll !== undefined) {
       this.songData.interactiveScroll = data.interactiveScroll;
       this.updateInteractiveScroll();
+    }
+
+    if (data.assistiveMode !== undefined) {
+      this.assistiveMode = data.assistiveMode;
+      // Re-build start cards to update the pill UI if we haven't started yet
+      if (!this.gameStarted) {
+        this.buildStartCards();
+      }
     }
   }
 
@@ -713,6 +728,109 @@ export class PianoGameScene extends Phaser.Scene {
     }
 
     this.startCardObjects.push(startObj, startLabel);
+
+    // ── 3. Pill UI (Assist / Classic toggle)
+    this.buildPillUI(introY, slotPx);
+  }
+
+  /**
+   * Renders the pill-style Assist/Classic toggle at the bottom of the Intro Card.
+   */
+  private buildPillUI(introY: number, slotPx: number): void {
+    const pillWidth = 180;
+    const pillHeight = 36;
+    const pillX = 20; // Left aligned with some padding
+    const pillY = introY + slotPx - pillHeight - 15; // Near bottom of intro card
+
+    // Pill background
+    const bg = this.add.graphics();
+    bg.fillStyle(0xdef2f9, 1);
+    bg.fillRoundedRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2);
+    this.startCardObjects.push(bg);
+
+    // Segments
+    const segmentWidth = pillWidth / 2;
+    
+    // Active highlight
+    const highlight = this.add.graphics();
+    highlight.fillStyle(0x6c63ff, 1);
+    const highlightX = this.assistiveMode ? pillX : pillX + segmentWidth;
+    highlight.fillRoundedRect(highlightX, pillY, segmentWidth, pillHeight, pillHeight / 2);
+    this.startCardObjects.push(highlight);
+
+    // Text: Assist
+    const assistText = this.add.text(pillX + segmentWidth / 2, pillY + pillHeight / 2, 'Assist ✦', {
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: this.assistiveMode ? '#fff' : '#888'
+    }).setOrigin(0.5, 0.5);
+    assistText.setInteractive();
+    assistText.on('pointerdown', () => {
+      if (!this.assistiveMode) {
+        this.assistiveMode = true;
+        EventBus.emit(PianoEvents.TOGGLE_ASSISTIVE_MODE, { enabled: true });
+        this.buildStartCards(); // Redraw
+      }
+    });
+    this.startCardObjects.push(assistText);
+
+    // Text: Classic
+    const classicText = this.add.text(pillX + segmentWidth + segmentWidth / 2, pillY + pillHeight / 2, 'Classic 👑', {
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: !this.assistiveMode ? '#fff' : '#888'
+    }).setOrigin(0.5, 0.5);
+    classicText.setInteractive();
+    classicText.on('pointerdown', () => {
+      if (this.assistiveMode) {
+        this.assistiveMode = false;
+        EventBus.emit(PianoEvents.TOGGLE_ASSISTIVE_MODE, { enabled: false });
+        this.buildStartCards(); // Redraw
+      }
+    });
+    this.startCardObjects.push(classicText);
+
+    // ── Best Score Pill (Right side)
+    const bestPillWidth = 100;
+    const bestPillX = this.scale.width - bestPillWidth - 20;
+    
+    const bestBg = this.add.graphics();
+    bestBg.fillStyle(0xe5e1ff, 1);
+    bestBg.fillRoundedRect(bestPillX, pillY, bestPillWidth, pillHeight, 8);
+    this.startCardObjects.push(bestBg);
+
+    const bestIcon = this.add.text(bestPillX + 15, pillY + pillHeight / 2, '🏆', { fontSize: '16px' }).setOrigin(0.5, 0.5);
+    const bestLabel = this.add.text(bestPillX + 60, pillY + pillHeight / 2 - 8, 'Best', { fontSize: '10px', color: '#6c63ff' }).setOrigin(0.5, 0.5);
+    const bestValue = this.add.text(bestPillX + 60, pillY + pillHeight / 2 + 8, '105', { fontSize: '14px', fontStyle: 'bold', color: '#6c63ff' }).setOrigin(0.5, 0.5);
+    this.startCardObjects.push(bestIcon, bestLabel, bestValue);
+  }
+
+  /**
+   * Scans for untapped tiles that have reached the tap line and triggers them automatically.
+   */
+  private handleAutoTaps(): void {
+    const slotPx = MIN_HEIGHT * this.scaleRatio;
+    const scrollY = this.cameras.main.scrollY;
+    const viewH = this.scale.height;
+    
+    // The "tap line" is where the player usually taps. 
+    // In our coordinate system, it's roughly 1.5 slots from the bottom of the viewport.
+    const tapLineScreenY = viewH - 1.5 * slotPx;
+    const tapLineWorldY = scrollY + tapLineScreenY;
+
+    for (const tile of this.tileObjects) {
+      if (tile.isTapped() || !tile.visible) continue;
+
+      // We trigger the tap when the BOTTOM edge of the tile hits the tap line.
+      const leadingEdgeY = tile.y + tile.tileHeight;
+      
+      if (leadingEdgeY >= tapLineWorldY) {
+        // Trigger the tap!
+        // Passing tapLineWorldY ensures the physics engine inside the tile
+        // starts the hold exactly at the tap line.
+        this.handleTileTap(tile, tapLineWorldY);
+      }
+    }
   }
 
   // -------------------------------------------------------------------------

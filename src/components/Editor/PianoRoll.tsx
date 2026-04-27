@@ -48,6 +48,43 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [scroll, setScroll] = useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const isPanningRef = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) {
+        if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          setIsSpacePressed(true);
+        }
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+    const handleBlur = () => {
+      setIsSpacePressed(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  const stageRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (stageRef.current) {
+      stageRef.current.container().style.cursor = isSpacePressed ? 'grab' : 'default';
+    }
+  }, [isSpacePressed]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -236,7 +273,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
     const newY = Math.min(0, Math.max(-(TOTAL_KEYS * rowHeight) + dimensions.height - TIMELINE_HEIGHT, scroll.y + dy));
 
     scrollXRef.current = newX;
-    setScroll(prev => ({
+    setScroll(_prev => ({
       x: newX,
       y: newY
     }));
@@ -254,6 +291,33 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
 
   const handleTouchEnd = () => {
     lastTouchRef.current = null;
+  };
+
+  const handleMouseDown = (e: any) => {
+    if (isSpacePressed) {
+      isPanningRef.current = true;
+      const stage = e.target.getStage();
+      const pos = stage.getPointerPosition();
+      if (pos) {
+        lastTouchRef.current = { ...pos };
+      }
+      stage.container().style.cursor = 'grabbing';
+    }
+  };
+
+  const handleMouseMove = (e: any) => {
+    if (isPanningRef.current) {
+      handleTouchMove(e);
+    }
+  };
+
+  const handleMouseUp = (e: any) => {
+    if (isPanningRef.current) {
+      isPanningRef.current = false;
+      const stage = e.target.getStage();
+      stage.container().style.cursor = isSpacePressed ? 'grab' : 'default';
+      lastTouchRef.current = null;
+    }
   };
 
   const handleWheel = (e: any) => {
@@ -406,12 +470,17 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
     <div ref={containerRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
       {dimensions.width > 0 && (
         <Stage 
+          ref={stageRef}
           width={dimensions.width} 
           height={dimensions.height} 
           onWheel={handleWheel}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         >
           {/* 1. Main Content Layer (Scrollable Grid + Notes) */}
           <Layer ref={mainLayerRef} x={(scroll.x || scrollXRef.current) + KEYBOARD_WIDTH} y={scroll.y + TIMELINE_HEIGHT}>
@@ -429,7 +498,7 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
                     key={note.id}
                     x={note.start * PIXELS_PER_BEAT}
                     y={yIndex * rowHeight}
-                    draggable
+                    draggable={!isSpacePressed}
                     onDragMove={(e) => {
                       const node = e.target;
                       const snapDistX = secPerSnap * PIXELS_PER_BEAT;
@@ -462,15 +531,16 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
                       e.evt.preventDefault();
                       onNoteDelete?.(note.id);
                     }}
-                    onMouseEnter={() => {
+                    onMouseEnter={(e) => {
+                      if (isSpacePressed) return;
                       onHoverNote?.(note.id);
-                      const stage = containerRef.current?.querySelector('canvas');
-                      if (stage) stage.style.cursor = 'pointer';
+                      const stage = e.target.getStage();
+                      if (stage) stage.container().style.cursor = 'pointer';
                     }}
-                    onMouseLeave={() => {
+                    onMouseLeave={(e) => {
                       onHoverNote?.(null);
-                      const stage = containerRef.current?.querySelector('canvas');
-                      if (stage) stage.style.cursor = 'default';
+                      const stage = e.target.getStage();
+                      if (stage) stage.container().style.cursor = isSpacePressed ? 'grab' : 'default';
                     }}
                   >
                     <Rect
@@ -496,13 +566,15 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
                         e.cancelBubble = true;
                         const handle = e.target;
                         const group = handle.getParent();
-                        const body = group.findOne('.note-body');
-                        const snapDistX = secPerSnap * PIXELS_PER_BEAT;
-                        const rawWidth = handle.x() + 10;
-                        const snappedWidth = Math.max(snapDistX, Math.round(rawWidth / snapDistX) * snapDistX);
-                        body.width(snappedWidth - 1);
-                        handle.x(snappedWidth - 10);
-                        handle.y(2);
+                        if (group) {
+                          const body = group.findOne('.note-body');
+                          const snapDistX = secPerSnap * PIXELS_PER_BEAT;
+                          const rawWidth = handle.x() + 10;
+                          const snappedWidth = Math.max(snapDistX, Math.round(rawWidth / snapDistX) * snapDistX);
+                          if (body) (body as any).width(snappedWidth - 1);
+                          handle.x(snappedWidth - 10);
+                          handle.y(2);
+                        }
                       }}
                       onDragEnd={(e) => {
                         e.cancelBubble = true;
@@ -511,12 +583,13 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
                         onNoteUpdate?.({ ...note, duration: newDuration });
                       }}
                       onMouseEnter={(e) => {
+                        if (isSpacePressed) return;
                         const stage = e.target.getStage();
-                        stage.container().style.cursor = 'ew-resize';
+                        if (stage) stage.container().style.cursor = 'ew-resize';
                       }}
                       onMouseLeave={(e) => {
                         const stage = e.target.getStage();
-                        stage.container().style.cursor = 'default';
+                        if (stage) stage.container().style.cursor = isSpacePressed ? 'grab' : 'default';
                       }}
                     />
                   </Group>

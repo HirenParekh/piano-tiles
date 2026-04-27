@@ -1,22 +1,31 @@
 {
-  "baseBpm": 68,
+  "baseBpm": 74,
   "musics": [
     {
       "id": 1,
-      "bpm": 68,
+      "bpm": 74,
       "baseBeats": 0.5,
       "scores": [
-        "f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];",
-        "R;R;R;f-2[I];"
+        "f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];c2[K],f2[L],#d2[L],(#g1.#d2)[L],#c2[L],#c2[L],c2[L];#a1[L],#g1[L],#a1[L],(#c2.#d2)[L],c2[K],c2[K];",
+        "R;R;R;F-2[L],STU;f[L],c1[L],f1[L],c1[L],U,c1[L],f1[L],c1[L];#A-1[L],f[L],#a[L],f[L],#c1[K],T;"
       ]
     },
     {
       "id": 2,
-      "bpm": 68,
+      "bpm": 74,
       "baseBeats": 0.5,
       "scores": [
-        "c2[K],f2[L],#d2[L],#d2[L],#c2[L],#c2[L],c2[L];#a1[L],#g1[L],#a1[L],#c2[L],c2[K],c2[K];#a1[K],#a1[L],#g1[L],#a1[K],#a1[L],#g1[L];g1[K],#d1[L],f1[L],(#g.#d1.f1)[J];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];",
-        "f[L],c1[L],f1[L],c1[L],#g1[L],c1[L],f1[L],c1[L];#a-1[L],f[L],#a[L],f[L],#c1[J];#d[L],#a[L],#d1[L],#a[L],g1[J];(c.g.c1.#d1)[J],#c[L],c-2[L],#c-2[L],#d-2[L];(f-2.f-1)[I];"
+        "#a1[K],#a1[L],#g1[L],(g1.#a1)[K],#a1[L],#g1[L];(#d1.g1)[K],#d1[L],f1[L],(#d1.f1)[J];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];f1[L],#g1[L],c2[K],#c2[L],#g1[L],#a1[L],g1[L];c3[K],f3[L],#d3[L],#d3[L],#c3[L],#c3[L],c3[L];#a2[L],#g2[L],#a2[L],(#c3.#d3)[L],c3[K],c3[K];",
+        "#d[L],#a[L],#d1[L],#a[L],S;(c.g)[K],T,(#c.#g)[L],C-2[L],#C-2[L],#D-2[L];F-2[L],STU;R;F-1[L],c[L],f[L],#g[L],c1[L],TU;#A-1[L],f[L],#a[L],f[L],#c1[L],f[L],#a[K];"
+      ]
+    },
+    {
+      "id": 3,
+      "bpm": 74,
+      "baseBeats": 0.5,
+      "scores": [
+        "(#d2.#a2)[K],(#d2.#a2)[L],#g2[L],(#d2.#a2)[K],(#d2.#a2)[L],#g2[L];(#d2.g2)[K],(#d2.f2)[L],f2[L],(#d2.f2)[J];c2[L],c2[L],f2[L],#d2[L],#d2[L],#c2[L],#c2[L],c2[L];#a1[L],#g1[L],#a1[L],(#c2.#d2)[L],c2[K],c2[L],5<#a1[M],#g1[M]>;(#d1.#a1)[L],(#d1.#a1)[L],#a1[L],#g1[L],(#d1.#a1)[K],#a1[L],#g1[L];(c1.g1)[L],5<#g1[M],g1[M]>,f1[L],#d1[L],f1[K],#d1[L],f1[L];",
+        "#D-1[L],#A-1[L],#d[L],g[L],#a[K],T;c[L],g[L],#d1[L],U,#c[L],#g[L],#d1[L],f1[L];F-1[L],c[L],f[L],c[L],#g[L],c[L],f[L],c[L];#A-1[L],f[L],#a[L],f[L],#c1[L],f[L],#a[L],f[M],V;#D-1[L],#A-1[L],#d[L],#A-1[L],g[L],#A-1[L],#d[L],#A-1[L];C-1[L],c[M],V,#d[L],g[L],#C-1[L],#G-1[L],#c[L],f[L];"
       ]
     }
   ]

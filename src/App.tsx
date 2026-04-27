@@ -17,6 +17,8 @@ import './styles/main.scss';
 import { TileRendererWidget } from './components/TileRendererWidget';
 import { HoldTileLayersDebug } from './components/HoldTileLayersDebug';
 import { Editor } from './components/Editor/Editor';
+import { DevSettingsPanel } from './components/DevSettingsPanel';
+import { EventBus, PianoEvents } from './game/EventBus';
 
 type AppScreen = 'home' | 'selection' | 'game' | 'editor';
 export default function App() {
@@ -62,6 +64,7 @@ export default function App() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false); // For speed selector dropdown
   const [showTimeScaleMenu, setShowTimeScaleMenu] = useState(false); // For animation slow-mo dropdown
   const [timeScale, setTimeScale] = useState(1);
+  const [assistiveMode, setAssistiveMode] = useState(false);
 
   const playbackNotes = useMemo(
     () => pickedResult?.notes ?? [],
@@ -110,6 +113,14 @@ export default function App() {
       setScreen('selection');
     }
   }, [preload.isComplete, screen, editorPath]);
+
+  useEffect(() => {
+    const handleToggleAssistive = (payload: { enabled: boolean }) => setAssistiveMode(payload.enabled);
+    EventBus.on(PianoEvents.TOGGLE_ASSISTIVE_MODE, handleToggleAssistive);
+    return () => {
+      EventBus.off(PianoEvents.TOGGLE_ASSISTIVE_MODE, handleToggleAssistive);
+    };
+  }, []);
 
   const handlePlaySong = async (id: string) => {
     try {
@@ -268,6 +279,7 @@ export default function App() {
                   debug={boardSkin === 'debug'}
                   timeScale={timeScale}
                   isDevMode={isDevMode}
+                  assistiveMode={assistiveMode}
                 />
             ) : useCanvas ? (
               <CanvasGameBoard
@@ -344,6 +356,10 @@ export default function App() {
                   <input type="checkbox" checked={boardSkin === 'debug'} onChange={e => setBoardSkin(e.target.checked ? 'debug' : 'classic')} />
                   Debug Tiles
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
+                  <input type="checkbox" checked={assistiveMode} onChange={e => setAssistiveMode(e.target.checked)} />
+                  Assistive Mode
+                </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Arial, sans-serif', fontSize: '14px', color: '#555' }}>
                   {[0.25, 0.5, 0.75, 1.5].map(v => (
                     <button
@@ -367,6 +383,8 @@ export default function App() {
                 customSongs={customSongs}
                 onAddSong={addSong}
                 onRemoveSong={removeSong}
+                assistiveMode={assistiveMode}
+                onToggleAssistive={setAssistiveMode}
               />
           </div>
         </div>
@@ -420,6 +438,14 @@ export default function App() {
             boxShadow: isWidgetOpen ? '-8px 0 32px rgba(0,0,0,0.6)' : 'none',
             overflowY: 'auto',
           }}>
+            <DevSettingsPanel
+              showTapMarkers={new URLSearchParams(window.location.search).get('scene') === 'fx'} // simplified for now
+              setShowTapMarkers={() => {}} // simplified for now
+              interactiveScroll={false} // simplified for now
+              setInteractiveScroll={() => {}} // simplified for now
+              assistiveMode={assistiveMode}
+              setAssistiveMode={setAssistiveMode}
+            />
             <TileRendererWidget />
             <HoldTileLayersDebug />
           </div>

@@ -51,6 +51,8 @@ interface PhaserGameBoardProps {
   interactiveScroll?: boolean;
   /** When true, developer-only tools (diagnostics, special buttons) are shown. */
   isDevMode?: boolean;
+  /** When true, tiles are automatically tapped when they reach the tap line. */
+  assistiveMode?: boolean;
   /** Unique ID for the DOM container. Defaults to 'piano-phaser-container'. */
   containerId?: string;
 }
@@ -68,6 +70,7 @@ export function PhaserGameBoard({
   showTapMarkers = false,
   interactiveScroll = false,
   isDevMode = false,
+  assistiveMode = false,
   containerId,
 }: PhaserGameBoardProps) {
   const phaserRef = useRef<IRefPhaserGame>(null);
@@ -95,8 +98,9 @@ export function PhaserGameBoard({
       showTapMarkers,
       interactiveScroll,
       isDevMode,
+      assistiveMode,
     }),
-    [result, speedMultiplier, debug, showTapMarkers, interactiveScroll, isDevMode],
+    [result, speedMultiplier, debug, showTapMarkers, interactiveScroll, isDevMode, assistiveMode],
   );
 
   /**
@@ -123,9 +127,9 @@ export function PhaserGameBoard({
   useEffect(() => {
     const scene = phaserRef.current?.scene as PianoGameScene | null;
     if (scene && typeof scene.updateSettings === 'function') {
-      scene.updateSettings({ showTapMarkers, interactiveScroll });
+      scene.updateSettings({ showTapMarkers, interactiveScroll, assistiveMode });
     }
-  }, [showTapMarkers, interactiveScroll]);
+  }, [showTapMarkers, interactiveScroll, assistiveMode]);
 
   // ── EventBus listeners ────────────────────────────────────────────────────
 

@@ -11,18 +11,34 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import StopIcon from '@mui/icons-material/Stop';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import DownloadIcon from '@mui/icons-material/Download';
 import CodeIcon from '@mui/icons-material/Code';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import { InspectorPanel } from './InspectorPanel';
-
 import { PianoRoll } from './PianoRoll';
+
 import { useSynth } from '../../hooks/useSynth';
 import { buildResultFromPianoTilesSong } from '../../utils/pianoTilesParser';
+import type { PianoTilesSong } from '../../utils/pianoTilesParser';
+
+/**
+ * Specialized wrapper for the MIDI Editor.
+ * Transforms double tile syntax (5<a,b>) into consecutive notes (a,b)
+ * so the editor can display them clearly on the timeline without overlapping.
+ * This happens BEFORE calling the original game parser, so the core logic stays untouched.
+ */
+const buildEditorResult = (song: PianoTilesSong, ...args: any[]) => {
+  // Deep clone to avoid mutating the original song state
+  const editorSong = JSON.parse(JSON.stringify(song));
+  editorSong.musics.forEach((m: any) => {
+    // Regex replace 5<note1,note2> with note1,note2
+    m.scores = m.scores.map((s: string) => s.replace(/5<([^>]*)>/g, '$1'));
+  });
+  return buildResultFromPianoTilesSong(editorSong, ...args);
+};
+
 import { midiToPitch } from '../../utils/pianoTilesExporter';
 
 const darkTheme = createTheme({
@@ -76,6 +92,13 @@ const TRACK_COLORS_SOLID = [
 
 const drawerWidth = 280;
 
+const STORAGE_KEYS = {
+  SNAP: 'piano-studio-snap',
+  FOLDED: 'piano-studio-folded',
+  PITCH_LOCKED: 'piano-studio-pitch-locked',
+  ZOOM_Y: 'piano-studio-zoom-y',
+};
+
 const TransportClock: React.FC = () => {
   const [time, setTime] = useState(0);
   useEffect(() => {
@@ -113,11 +136,17 @@ const TransportClock: React.FC = () => {
 export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [bpm, setBpm] = useState(120);
   const [baseBeats, setBaseBeats] = useState(0.5);
-  const [zoomY, setZoomY] = useState(1.0);
-  const [isPitchLocked, setIsPitchLocked] = useState(false);
+  const [zoomY, setZoomY] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ZOOM_Y);
+    return saved ? parseFloat(saved) : 1.0;
+  });
+  const [isPitchLocked, setIsPitchLocked] = useState(() => localStorage.getItem(STORAGE_KEYS.PITCH_LOCKED) === 'true');
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [snapResolution, setSnapResolution] = useState(0.25); // default 1/16 note
-  const [folded, setFolded] = useState(false);
+  const [snapResolution, setSnapResolution] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.SNAP);
+    return saved ? parseFloat(saved) : 0.25;
+  });
+  const [folded, setFolded] = useState(() => localStorage.getItem(STORAGE_KEYS.FOLDED) === 'true');
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioSuspended, setAudioSuspended] = useState(false);
@@ -130,6 +159,12 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [fileMenuAnchor, setFileMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // Persistence Effects
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.ZOOM_Y, zoomY.toString()); }, [zoomY]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.PITCH_LOCKED, isPitchLocked.toString()); }, [isPitchLocked]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.SNAP, snapResolution.toString()); }, [snapResolution]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.FOLDED, folded.toString()); }, [folded]);
   const { playNote, attackNote, releaseNote, loadInstruments, resumeContext } = useSynth();
   
   // Non-state playback trackers for 60FPS performance
@@ -554,6 +589,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         if (data.snapResolution) setSnapResolution(data.snapResolution);
         if (data.zoomY) setZoomY(data.zoomY);
         if (data.folded !== undefined) setFolded(data.folded);
+        if (data.isPitchLocked !== undefined) setIsPitchLocked(data.isPitchLocked);
         if (data.playbackSpeed) setPlaybackSpeed(data.playbackSpeed);
         
         notify("Project loaded successfully!", "success");
@@ -576,7 +612,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       const songData = JSON.parse(text);
       
       // Use the existing utility parser to handle the string-based score format
-      const parsed = buildResultFromPianoTilesSong(songData, 0, file.name);
+      const parsed = buildEditorResult(songData, 0, file.name);
       
       if (!parsed.notes || parsed.notes.length === 0) {
         alert("Could not parse any notes from this Game JSON.");
@@ -634,6 +670,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       snapResolution,
       zoomY,
       folded,
+      isPitchLocked,
       playbackSpeed,
       version: "1.1",
       exportedAt: new Date().toISOString()
@@ -887,7 +924,7 @@ export const Editor: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                   </Stack>
                   <TextField 
                     type="number" 
-                    step={0.1}
+                    slotProps={{ htmlInput: { step: 0.1 } }}
                     size="small"
                     fullWidth
                     value={baseBeats}

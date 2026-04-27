@@ -181,9 +181,9 @@ export function useSynth(): UseSynthReturn {
     sampler.playNote(note);
   }, [rawContext]);
 
-  const releaseNote = useCallback((note: ParsedNote) => {
+  const releaseNote = useCallback((_note: ParsedNote) => {
     // No-op for sim-pt2 style
-  }, [rawContext]);
+  }, []);
 
   const playNoteScheduled = useCallback((note: ParsedNote, time: number) => {
     const sampler = getSampler(note);
@@ -191,11 +191,11 @@ export function useSynth(): UseSynthReturn {
     sampler.playNote(note, time);
   }, []);
 
-  const resolveNotes = useCallback((notes: ParsedNote[]) => {
+  const resolveNotes = useCallback((_notes: ParsedNote[]) => {
     // No-op for sim-pt2 style
   }, []);
 
-  const resolveChords = useCallback(async (gameTiles: GameTile[], speedMultiplier: number = 1) => {
+  const resolveChords = useCallback(async (_gameTiles: GameTile[], _speedMultiplier: number = 1) => {
     // No-op for sim-pt2 style
   }, []);
 
