@@ -197,6 +197,12 @@ export class AudioSystem {
     const primaryNote = tile.notes[0];
     if (!primaryNote) return;
 
+    const playAll = () => {
+      for (const note of tile.notes) {
+        this._playNoteNow(note);
+      }
+    };
+
     // ── Double-tile rhythmic sequencing ──────────────────────────────────────
     if (primaryNote.tileType === 'DOUBLE') {
       const pairKey = Math.round(primaryNote.time * 10000);
@@ -204,7 +210,7 @@ export class AudioSystem {
 
       if (!existing) {
         // First tap — play immediately
-        this._playNoteNow(primaryNote);
+        playAll();
         const playTime = this.context.currentTime;
         this.doublePairState.set(pairKey, {
           firstTapTime: playTime,
@@ -213,11 +219,11 @@ export class AudioSystem {
         setTimeout(() => this.doublePairState.delete(pairKey), 5000);
       } else {
         // Second tap — schedule after first note's duration
-        const gap = existing.firstTapTime + existing.note0Duration - this.context.currentTime;
+        const gap = (existing.firstTapTime + existing.note0Duration) - this.context.currentTime;
         if (gap > 0) {
-          setTimeout(() => this._playNoteNow(primaryNote), gap * 1000);
+          setTimeout(() => playAll(), gap * 1000);
         } else {
-          this._playNoteNow(primaryNote);
+          playAll();
         }
         this.doublePairState.delete(pairKey);
       }
@@ -225,9 +231,7 @@ export class AudioSystem {
     }
 
     // ── Normal tile: play every note in the tile (sim-pt2 fires all pitches) ─
-    for (const note of tile.notes) {
-      this._playNoteNow(note);
-    }
+    playAll();
   }
 
   /** Attack a hold tile — play all co-starting notes immediately. */

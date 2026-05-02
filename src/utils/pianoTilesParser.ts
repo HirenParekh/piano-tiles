@@ -703,10 +703,21 @@ export function buildResultFromPianoTilesSong(
 
     const sortedTiles = [...sectionTiles].sort((a, b) => a.note.slotStart - b.note.slotStart);
     for (const accNote of bassAccomp) {
+      // Find all tiles whose temporal range covers this bass note.
+      // For DOUBLE tiles two tiles share the exact same slotStart, so we must
+      // add the bass note to BOTH of them — not just the first match.
+      // For non-double tiles, exactly one tile will match, preserving old behaviour.
+      let absorbed = false;
       for (const tile of sortedTiles) {
         if (accNote.slotStart >= tile.note.slotStart &&
           accNote.slotStart < tile.note.slotStart + tile.note.slotSpan) {
           tile.notes.push(accNote);
+          absorbed = true;
+          // Only break if this is NOT a DOUBLE tile — for DOUBLE tiles we keep
+          // iterating so the paired tile at the same slotStart also gets the note.
+          if (tile.note.tileType !== 'DOUBLE') break;
+        } else if (absorbed) {
+          // We've passed the matching slot window — stop scanning.
           break;
         }
       }
