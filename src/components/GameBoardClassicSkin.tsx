@@ -101,7 +101,7 @@ const BOKEH_CIRCLES = [
 export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit }: Props) {
   const {
     trackData, scaleRatio, scaledTotalHeight, speedMultiplier,
-    started, handleStart, scrollRef, tappedIds, tapTile, viewportH, info,
+    started, handleStart, scrollRef, scoreElRef, tapTile, viewportH, info,
   } = engine;
 
   // Attach a non-passive touchstart listener to the canvas so iOS Safari's
@@ -202,7 +202,7 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
           Counts successfully tapped tiles, styled identically to the original
           game (large red text with white stroke). pointer-events:none is set
           via the SCSS class so it doesn't intercept tile taps beneath it. */}
-      <div className="classic-board__score">{tappedIds.size}</div>
+      <div ref={scoreElRef as React.RefObject<HTMLDivElement>} className="classic-board__score">0</div>
 
       {/* ── Scroll viewport ───────────────────────────────────────────────
           Transparent background — layers 0-2 (bg, bokeh, lanes) show through.
@@ -224,7 +224,7 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
         {viewportH > 0 && (
           <div
             ref={canvasRef}
-            style={{ height: scaledTotalHeight, position: 'relative', width: '100%', touchAction: 'none' }}
+            style={{ height: scaledTotalHeight, position: 'relative', width: '100%', touchAction: 'none', willChange: 'transform' }}
             onPointerDown={e => e.stopPropagation()}
             onPointerUp={e => e.stopPropagation()}
             onPointerMove={e => e.stopPropagation()}
@@ -239,7 +239,6 @@ export function GameBoardClassicSkin({ engine, onHoldRelease, onHoldBeat, onExit
             <TileLayer
               cards={trackData.cards}
               scaleRatio={scaleRatio}
-              tappedIds={tappedIds}
               tapTile={tapTile}
               started={started}
               onStart={handleStart}

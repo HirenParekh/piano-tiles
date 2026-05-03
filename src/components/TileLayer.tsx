@@ -24,7 +24,7 @@
  *   correct lane and row span without absolute positioning.
  */
 
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import type { ParsedNote } from '../types/midi';
 import type { Card, Tile, TileCard } from '../types/track';
 import { GameTileCard } from './GameTileCard';
@@ -40,9 +40,7 @@ interface Props {
    * Multiply any slot-based pixel value by this to get true CSS px.
    */
   scaleRatio: number;
-  /** Set of tile IDs that have been tapped — controls visual tapped state. */
-  tappedIds: Set<string>;
-  /** Called by tile cards on pointer-down; engine updates tappedIds and calls onPlayNote. */
+  /** Called by tile cards on pointer-down; engine calls onPlayNote and toggles DOM class. */
   tapTile: (tile: Tile) => void;
   /** Whether the player has tapped START (gates the START tile's interaction). */
   started: boolean;
@@ -62,10 +60,9 @@ interface Props {
 
 const LANE_COUNT = 4;
 
-export function TileLayer({
+export const TileLayer = memo(function TileLayer({
   cards,
   scaleRatio,
-  tappedIds,
   tapTile,
   started,
   onStart,
@@ -228,7 +225,6 @@ export function TileLayer({
                     <HoldTileCard
                       key={tile.id}
                       tile={tile}
-                      tapped={tappedIds.has(tile.id)}
                       onTap={tapTile}
                       onRelease={onHoldRelease}
                       onNotePlay={onHoldBeat}
@@ -245,7 +241,6 @@ export function TileLayer({
                     <DoubleTileCard
                       key={tile.id}
                       tile={tile}
-                      tapped={tappedIds.has(tile.id)}
                       onTap={tapTile}
                       className=""
                       style={tileStyleMap.get(tile.id)}
@@ -257,7 +252,6 @@ export function TileLayer({
                   <GameTileCard
                     key={tile.id}
                     tile={tile}
-                    tapped={tappedIds.has(tile.id)}
                     onTap={tapTile}
                     className=""
                     style={tileStyleMap.get(tile.id)}
@@ -280,4 +274,4 @@ export function TileLayer({
       })}
     </div>
   );
-}
+});

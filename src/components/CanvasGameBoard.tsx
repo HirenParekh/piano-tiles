@@ -15,7 +15,9 @@ interface Props {
 const LANE_COUNT = 4;
 
 export function CanvasGameBoard({ result, onPlayNote, onExit }: Props) {
-    const { tappedIds, tapTile } = useGameBoard(onPlayNote);
+    const { tapTile } = useGameBoard(onPlayNote);
+    // Canvas renderer needs its own tapped set since it can't use DOM class toggling
+    const tappedIds = useRef<Set<string>>(new Set());
     const [started, setStarted] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -92,8 +94,7 @@ export function CanvasGameBoard({ result, onPlayNote, onExit }: Props) {
     }, [trackData, scaleRatio]);
 
     const yOffsetRef = useRef(0);
-    const tappedIdsRef = useRef(tappedIds);
-    tappedIdsRef.current = tappedIds;
+    const tappedIdsRef = tappedIds; // already a ref
 
     // Render Loop
     useEffect(() => {
@@ -196,7 +197,10 @@ export function CanvasGameBoard({ result, onPlayNote, onExit }: Props) {
             const item = renderList[i];
             if (item.type === 'TILE' && item.lane === lane) {
                 if (trackY >= item.y && trackY <= item.y + item.h) {
-                    tapTile(item.tile);
+                    if (!tappedIdsRef.current.has(item.tile.id)) {
+                        tappedIdsRef.current.add(item.tile.id);
+                        tapTile(item.tile);
+                    }
                     break;
                 }
             }
@@ -229,7 +233,7 @@ export function CanvasGameBoard({ result, onPlayNote, onExit }: Props) {
                     fontSize: '48px', fontWeight: 'bold', color: '#ff4b4b',
                     WebkitTextStroke: '1.5px #fff', textShadow: '0px 2px 4px rgba(0,0,0,0.5)',
                 }}>
-                    {tappedIds.size}
+                    {tappedIds.current.size}
                 </div>
             </div>
 

@@ -44,7 +44,6 @@ export function TileRendererWidget() {
   }, [jsonStr]);
 
   const { loadInstruments, playNote, attackNote, releaseNote, playNoteScheduled, getAudioTime, resumeContext } = useSynth();
-  const [tappedIds, setTappedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Ensure piano instrument is loaded as default for the sandbox
@@ -61,9 +60,10 @@ export function TileRendererWidget() {
   });
 
   const handleTap = async (tile: Tile) => {
-    // Visual flash (springs back after 150 ms)
-    setTappedIds(prev => new Set(prev).add(tile.id));
-    setTimeout(() => setTappedIds(prev => { const n = new Set(prev); n.delete(tile.id); return n; }), 150);
+    // Visual flash via direct DOM toggle (150 ms spring-back)
+    const el = document.querySelector<HTMLElement>(`[data-tile-id="${tile.id}"]`);
+    el?.classList.add('game-tile--tapped');
+    setTimeout(() => el?.classList.remove('game-tile--tapped'), 150);
 
     await handleTileTap(tile);
   };
@@ -143,9 +143,9 @@ export function TileRendererWidget() {
                         </div>
                         {tc.tiles.map((tile: Tile) => {
                           const s = { top: 'auto' as const, left: 'auto' as const, bottom: 'auto' as const, position: 'relative' as const, height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` };
-                          if (tile.type === 'HOLD') return <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={s} />;
-                          if (tile.type === 'DOUBLE') return <DoubleTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
-                          return <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
+                          if (tile.type === 'HOLD') return <HoldTileCard key={tile.id} tile={tile} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={s} />;
+                          if (tile.type === 'DOUBLE') return <DoubleTileCard key={tile.id} tile={tile} onTap={handleTap} className="" style={s} />;
+                          return <GameTileCard key={tile.id} tile={tile} onTap={handleTap} className="" style={s} />;
                         })}
                       </div>
                     );
@@ -171,9 +171,9 @@ export function TileRendererWidget() {
                         </div>
                         {tc.tiles.map((tile: Tile) => {
                           const s = { top: 'auto' as const, left: 'auto' as const, bottom: 'auto' as const, position: 'relative' as const, height: '100%', width: '100%', margin: 0, padding: 0, gridColumn: tile.lane + 1, gridRow: `${tc.span - tile.rowStart - tile.rowSpan + 1} / span ${tile.rowSpan}` };
-                          if (tile.type === 'HOLD') return <HoldTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={s} />;
-                          if (tile.type === 'DOUBLE') return <DoubleTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
-                          return <GameTileCard key={tile.id} tile={tile} tapped={tappedIds.has(tile.id)} onTap={handleTap} className="" style={s} />;
+                          if (tile.type === 'HOLD') return <HoldTileCard key={tile.id} tile={tile} onTap={handleTap} onRelease={handleHoldRelease} onNotePlay={handleHoldBeat} className="" style={s} />;
+                          if (tile.type === 'DOUBLE') return <DoubleTileCard key={tile.id} tile={tile} onTap={handleTap} className="" style={s} />;
+                          return <GameTileCard key={tile.id} tile={tile} onTap={handleTap} className="" style={s} />;
                         })}
                       </div>
                     );
